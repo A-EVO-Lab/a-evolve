@@ -1,0 +1,14 @@
+{"method": "get", "url": "/supervisor/profile", "data": {}}
+{"method": "get", "url": "/api_docs/app_descriptions", "data": {}}
+{"method": "get", "url": "/api_docs/api_descriptions", "data": {"app_name": "simple_note"}}
+{"method": "get", "url": "/supervisor/account_passwords", "data": {}}
+{"method": "get", "url": "/api_docs/api_doc", "data": {"app_name": "simple_note", "api_name": "login"}}
+{"method": "post", "url": "/simple_note/auth/token", "data": {"username": "ma_smith@gmail.com", "password": "=&wdfjd"}}
+{"method": "get", "url": "/simple_note/account", "data": {"access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJzaW1wbGVfbm90ZSttYV9zbWl0aEBnbWFpbC5jb20iLCJleHAiOjE2ODQ0NDUxMTB9.SxKXZeeUP3Os_sRPAHyD6YOk582oXdfWxIKPq9xFXYo"}}
+{"method": "get", "url": "/simple_note/notes", "data": {"access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJzaW1wbGVfbm90ZSttYV9zbWl0aEBnbWFpbC5jb20iLCJleHAiOjE2ODQ0NDUxMTB9.SxKXZeeUP3Os_sRPAHyD6YOk582oXdfWxIKPq9xFXYo"}}
+{"method": "get", "url": "/simple_note/notes/1883", "data": {"access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJzaW1wbGVfbm90ZSttYV9zbWl0aEBnbWFpbC5jb20iLCJleHAiOjE2ODQ0NDUxMTB9.SxKXZeeUP3Os_sRPAHyD6YOk582oXdfWxIKPq9xFXYo"}}
+{"method": "get", "url": "/simple_note/notes/1882", "data": {"access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJzaW1wbGVfbm90ZSttYV9zbWl0aEBnbWFpbC5jb20iLCJleHAiOjE2ODQ0NDUxMTB9.SxKXZeeUP3Os_sRPAHyD6YOk582oXdfWxIKPq9xFXYo"}}
+{"method": "get", "url": "/simple_note/notes/1881", "data": {"access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJzaW1wbGVfbm90ZSttYV9zbWl0aEBnbWFpbC5jb20iLCJleHAiOjE2ODQ0NDUxMTB9.SxKXZeeUP3Os_sRPAHyD6YOk582oXdfWxIKPq9xFXYo"}}
+{"method": "post", "url": "/simple_note/notes", "data": {"access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJzaW1wbGVfbm90ZSttYV9zbWl0aEBnbWFpbC5jb20iLCJleHAiOjE2ODQ0NDUxMTB9.SxKXZeeUP3Os_sRPAHyD6YOk582oXdfWxIKPq9xFXYo", "title": "Habit Log -- 2023-05-18", "content": "# Daily Habit Tracker (yes/no questions to answer daily)\n\nexercised_atleast_30_mins: yes\nate_homemade_meals: yes\npracticed_meditation: yes\nread_atleast_30_mins: yes\ndrank_adequate_water: yes\nslept_over_7_hrs: no\nwrote_gratitude_journal: yes\nlimited_screen_time_to_1_hr: yes\npracticed_good_posture: yes\nconnected_with_friends: yes", "tags": ["habit-tracker"], "pinned": true}}
+{"method": "get", "url": "/simple_note/notes/3084", "data": {"access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJzaW1wbGVfbm90ZSttYV9zbWl0aEBnbWFpbC5jb20iLCJleHAiOjE2ODQ0NDUxMTB9.SxKXZeeUP3Os_sRPAHyD6YOk582oXdfWxIKPq9xFXYo"}}
+{"method": "post", "url": "/supervisor/message", "data": {}}

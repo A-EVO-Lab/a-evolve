@@ -1,0 +1,53 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg-info/
+*.egg
+dist/
+build/
+*.whl
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Temp files
+*.tmp
+*.bak
+*.log
+
+# AppWorld data (downloaded via `appworld download data`)
+data/
+
+# Tool sandbox (generated at runtime; keep one tracked sample session)
+tools_sandbox/*
+!tools_sandbox/sessions/
+tools_sandbox/sessions/*
+!tools_sandbox/sessions/appworld_claude-sonnet-4-20250514_train_50_20260219_011927/
+!tools_sandbox/sessions/appworld_claude-sonnet-4-20250514_train_50_20260219_011927/**
+
+# Experiment outputs (keep one tracked sample set)
+experiments/outputs/*
+!experiments/outputs/appworld_claude-sonnet-4-20250514_train_50_20260219_011927/
+!experiments/outputs/appworld_claude-sonnet-4-20250514_train_50_20260219_011927/**
+!experiments/outputs/appworld_claude-sonnet-4-20250514_train_50_20260219_011927_vanilla/
+!experiments/outputs/appworld_claude-sonnet-4-20250514_train_50_20260219_011927_vanilla/**
+!experiments/outputs/appworld_claude-sonnet-4-20250514_train_50_20260219_011927_evolved/
+!experiments/outputs/appworld_claude-sonnet-4-20250514_train_50_20260219_011927_evolved/**
+
+# Cursor
+.cursor/

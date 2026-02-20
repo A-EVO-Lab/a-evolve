@@ -1,0 +1,9 @@
+{
+    "spotify": {
+        "Song": 20,
+        "SongReview": 20
+    },
+    "supervisor": {
+        "Task": 1
+    }
+}

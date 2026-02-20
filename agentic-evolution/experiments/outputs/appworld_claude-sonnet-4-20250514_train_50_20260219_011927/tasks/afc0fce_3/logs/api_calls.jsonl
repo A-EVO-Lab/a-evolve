@@ -1,0 +1,33 @@
+{"method": "get", "url": "/supervisor/profile", "data": {}}
+{"method": "get", "url": "/api_docs/app_descriptions", "data": {}}
+{"method": "get", "url": "/api_docs/api_descriptions", "data": {"app_name": "venmo"}}
+{"method": "get", "url": "/api_docs/api_doc", "data": {"app_name": "venmo", "api_name": "login"}}
+{"method": "get", "url": "/api_docs/api_descriptions", "data": {"app_name": "supervisor"}}
+{"method": "get", "url": "/supervisor/account_passwords", "data": {}}
+{"method": "post", "url": "/venmo/auth/token", "data": {"username": "jo-harr@gmail.com", "password": "ZEgU=ep"}}
+{"method": "get", "url": "/api_docs/api_doc", "data": {"app_name": "venmo", "api_name": "show_transactions"}}
+{"method": "get", "url": "/venmo/transactions", "data": {"access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ2ZW5tbytqby1oYXJyQGdtYWlsLmNvbSIsImV4cCI6MTY4NTc1MDk5OH0.fV2OWP4fMdDblPkJEizW-sRAMpButQT-m9MwkAQz_64", "direction": "received", "min_created_at": "2023-05-24", "page_limit": 20}}
+{"method": "get", "url": "/api_docs/api_descriptions", "data": {"app_name": "phone"}}
+{"method": "post", "url": "/phone/auth/token", "data": {"username": "2254213734", "password": "Ee%AVVI"}}
+{"method": "get", "url": "/phone/contact_relationships", "data": {"access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJwaG9uZSsyMjU0MjEzNzM0IiwiZXhwIjoxNjg1NzUxNjQxfQ.H3aOjJkl7iIOfCWqcXWH3QvuAvpsrkvmA2t-PV8Loe8"}}
+{"method": "get", "url": "/phone/contacts", "data": {"access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJwaG9uZSsyMjU0MjEzNzM0IiwiZXhwIjoxNjg1NzUxNjQxfQ.H3aOjJkl7iIOfCWqcXWH3QvuAvpsrkvmA2t-PV8Loe8", "relationship": "roommate"}}
+{"method": "get", "url": "/venmo/transactions", "data": {"access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ2ZW5tbytqby1oYXJyQGdtYWlsLmNvbSIsImV4cCI6MTY4NTc1MDk5OH0.fV2OWP4fMdDblPkJEizW-sRAMpButQT-m9MwkAQz_64", "direction": "received", "min_created_at": "2023-05-24", "page_limit": 20, "page_index": 1}}
+{"method": "get", "url": "/api_docs/api_doc", "data": {"app_name": "venmo", "api_name": "create_transaction_comment"}}
+{"method": "get", "url": "/api_docs/api_doc", "data": {"app_name": "venmo", "api_name": "like_transaction"}}
+{"method": "post", "url": "/venmo/transactions/8319/comments", "data": {"comment": "Thank you so much!", "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ2ZW5tbytqby1oYXJyQGdtYWlsLmNvbSIsImV4cCI6MTY4NTc1MDk5OH0.fV2OWP4fMdDblPkJEizW-sRAMpButQT-m9MwkAQz_64"}}
+{"method": "post", "url": "/venmo/transactions/8319/likes", "data": {"access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ2ZW5tbytqby1oYXJyQGdtYWlsLmNvbSIsImV4cCI6MTY4NTc1MDk5OH0.fV2OWP4fMdDblPkJEizW-sRAMpButQT-m9MwkAQz_64"}}
+{"method": "post", "url": "/venmo/transactions/8320/comments", "data": {"comment": "Thank you so much!", "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ2ZW5tbytqby1oYXJyQGdtYWlsLmNvbSIsImV4cCI6MTY4NTc1MDk5OH0.fV2OWP4fMdDblPkJEizW-sRAMpButQT-m9MwkAQz_64"}}
+{"method": "post", "url": "/venmo/transactions/8320/likes", "data": {"access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ2ZW5tbytqby1oYXJyQGdtYWlsLmNvbSIsImV4cCI6MTY4NTc1MDk5OH0.fV2OWP4fMdDblPkJEizW-sRAMpButQT-m9MwkAQz_64"}}
+{"method": "post", "url": "/venmo/transactions/8327/comments", "data": {"comment": "Thank you so much!", "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ2ZW5tbytqby1oYXJyQGdtYWlsLmNvbSIsImV4cCI6MTY4NTc1MDk5OH0.fV2OWP4fMdDblPkJEizW-sRAMpButQT-m9MwkAQz_64"}}
+{"method": "post", "url": "/venmo/transactions/8327/likes", "data": {"access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ2ZW5tbytqby1oYXJyQGdtYWlsLmNvbSIsImV4cCI6MTY4NTc1MDk5OH0.fV2OWP4fMdDblPkJEizW-sRAMpButQT-m9MwkAQz_64"}}
+{"method": "post", "url": "/venmo/transactions/8328/comments", "data": {"comment": "Thank you so much!", "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ2ZW5tbytqby1oYXJyQGdtYWlsLmNvbSIsImV4cCI6MTY4NTc1MDk5OH0.fV2OWP4fMdDblPkJEizW-sRAMpButQT-m9MwkAQz_64"}}
+{"method": "post", "url": "/venmo/transactions/8328/likes", "data": {"access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ2ZW5tbytqby1oYXJyQGdtYWlsLmNvbSIsImV4cCI6MTY4NTc1MDk5OH0.fV2OWP4fMdDblPkJEizW-sRAMpButQT-m9MwkAQz_64"}}
+{"method": "post", "url": "/venmo/transactions/8329/comments", "data": {"comment": "Thank you so much!", "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ2ZW5tbytqby1oYXJyQGdtYWlsLmNvbSIsImV4cCI6MTY4NTc1MDk5OH0.fV2OWP4fMdDblPkJEizW-sRAMpButQT-m9MwkAQz_64"}}
+{"method": "post", "url": "/venmo/transactions/8329/likes", "data": {"access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ2ZW5tbytqby1oYXJyQGdtYWlsLmNvbSIsImV4cCI6MTY4NTc1MDk5OH0.fV2OWP4fMdDblPkJEizW-sRAMpButQT-m9MwkAQz_64"}}
+{"method": "post", "url": "/venmo/transactions/8335/comments", "data": {"comment": "Thank you so much!", "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ2ZW5tbytqby1oYXJyQGdtYWlsLmNvbSIsImV4cCI6MTY4NTc1MDk5OH0.fV2OWP4fMdDblPkJEizW-sRAMpButQT-m9MwkAQz_64"}}
+{"method": "post", "url": "/venmo/transactions/8335/likes", "data": {"access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ2ZW5tbytqby1oYXJyQGdtYWlsLmNvbSIsImV4cCI6MTY4NTc1MDk5OH0.fV2OWP4fMdDblPkJEizW-sRAMpButQT-m9MwkAQz_64"}}
+{"method": "post", "url": "/venmo/transactions/8339/comments", "data": {"comment": "Thank you so much!", "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ2ZW5tbytqby1oYXJyQGdtYWlsLmNvbSIsImV4cCI6MTY4NTc1MDk5OH0.fV2OWP4fMdDblPkJEizW-sRAMpButQT-m9MwkAQz_64"}}
+{"method": "post", "url": "/venmo/transactions/8339/likes", "data": {"access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ2ZW5tbytqby1oYXJyQGdtYWlsLmNvbSIsImV4cCI6MTY4NTc1MDk5OH0.fV2OWP4fMdDblPkJEizW-sRAMpButQT-m9MwkAQz_64"}}
+{"method": "post", "url": "/venmo/transactions/8341/comments", "data": {"comment": "Thank you so much!", "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ2ZW5tbytqby1oYXJyQGdtYWlsLmNvbSIsImV4cCI6MTY4NTc1MDk5OH0.fV2OWP4fMdDblPkJEizW-sRAMpButQT-m9MwkAQz_64"}}
+{"method": "post", "url": "/venmo/transactions/8341/likes", "data": {"access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ2ZW5tbytqby1oYXJyQGdtYWlsLmNvbSIsImV4cCI6MTY4NTc1MDk5OH0.fV2OWP4fMdDblPkJEizW-sRAMpButQT-m9MwkAQz_64"}}
+{"method": "post", "url": "/supervisor/message", "data": {}}

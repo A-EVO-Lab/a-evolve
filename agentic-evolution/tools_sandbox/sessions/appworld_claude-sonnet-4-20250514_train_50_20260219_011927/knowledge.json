@@ -1,0 +1,218 @@
+[
+  {
+    "id": "knowledge_20260219_013130",
+    "type": "domain_knowledge",
+    "topic": "venmo_relationship_patterns",
+    "content": "VENMO RELATIONSHIP IDENTIFICATION PATTERNS:\n\n1. ROOMMATE INDICATORS:\n- Transaction descriptions: 'rent', 'utilities', 'electric bill', 'water bill', 'internet', 'groceries', 'household supplies'\n- Payment patterns: Regular monthly payments, often same amounts\n- Bidirectional transactions: Both users pay each other\n- WARNING: Roommates typically DO NOT share surnames\n- Frequency: Multiple transactions per month\n\n2. SIBLING INDICATORS:\n- Shared surnames (most reliable indicator)\n- Transaction descriptions: 'birthday gift', 'family dinner', 'mom's gift'\n- Less frequent than roommate transactions\n- May reference family events\n\n3. TRANSACTION FILTERING BEST PRACTICES:\n- Always check BOTH sender_id AND receiver_id fields\n- Use pagination to retrieve complete history\n- Transaction objects typically have: id, sender_id, receiver_id, amount, description, timestamp\n- Filter after retrieval, don't assume API filtering is complete\n\n4. VERIFICATION CHECKLIST:\n- Did I check all pages of results?\n- Did I check both sender and receiver fields?\n- Did I verify my count matches expectations?\n- Did I consider all relationship indicators, not just surnames?",
+    "examples": [
+      {
+        "scenario": "Finding roommates",
+        "correct_approach": "Filter transactions for 'rent' or 'utilities' in description, check both sender and receiver fields, verify bidirectional payments",
+        "common_mistake": "Only checking surname matches (roommates rarely share surnames)"
+      },
+      {
+        "scenario": "Filtering transactions",
+        "correct_approach": "Check if target_user_id matches EITHER transaction.sender_id OR transaction.receiver_id",
+        "common_mistake": "Only checking one field (sender or receiver)"
+      }
+    ],
+    "timestamp": "2026-02-19T01:31:30.825761",
+    "version": 1
+  },
+  {
+    "id": "knowledge_20260219_013130",
+    "type": "debugging_guide",
+    "topic": "task_completion_pitfalls",
+    "content": "COMMON PITFALLS IN MULTI-STEP SOCIAL FEED TASKS:\n\n1. INCOMPLETE RELATIONSHIP IDENTIFICATION:\n- Pitfall: Assuming shared surnames for all relationships\n- Solution: Use transaction patterns and descriptions as primary indicators\n- Example: Roommates paying 'rent' to each other, regardless of surname\n\n2. INCOMPLETE TRANSACTION FILTERING:\n- Pitfall: Only checking sender_id OR receiver_id, not both\n- Solution: Always use OR logic: (transaction.sender_id == target OR transaction.receiver_id == target)\n- Pitfall: Stopping after first page of results\n- Solution: Implement pagination loop until no more results\n\n3. PREMATURE TASK COMPLETION:\n- Pitfall: Taking actions before verifying complete list\n- Solution: Always compile full list, count items, then verify before acting\n- Red flag: Getting 67% accuracy suggests missing 1 out of 3 items\n\n4. VERIFICATION STRATEGIES:\n- After filtering, ask: 'Could there be more?'\n- Count explicitly: 'I found X items, does this seem complete?'\n- Cross-check: Review raw data one more time\n- Test both directions: For relationships, check A->B and B->A transactions\n\n5. DEBUGGING LOW ACCURACY:\n- 67% accuracy (2/3) suggests systematic omission\n- Check: Are you missing one category of results?\n- Check: Are you stopping pagination too early?\n- Check: Are you only checking one direction of relationships?",
+    "examples": [
+      {
+        "task": "Like posts from all roommates",
+        "failure_mode": "Only found 2 of 3 roommates",
+        "likely_cause": "Checked surname matching instead of transaction patterns",
+        "fix": "Filter transactions for 'rent'/'utilities', check both sender and receiver fields"
+      },
+      {
+        "task": "Filter transactions from user X",
+        "failure_mode": "Missing some transactions",
+        "likely_cause": "Only checked sender_id field",
+        "fix": "Check both sender_id and receiver_id in filter condition"
+      }
+    ],
+    "timestamp": "2026-02-19T01:31:30.872590",
+    "version": 1
+  },
+  {
+    "id": "knowledge_20260219_013618",
+    "type": "formatting_standards",
+    "topic": "csv_output_requirements",
+    "content": "CSV Output Formatting Standards:\n\n1. **Structure**:\n   - First row: Column headers (unless explicitly stated otherwise)\n   - Subsequent rows: Data rows\n   - All rows must have same number of columns\n\n2. **List values** (e.g., multiple artists):\n   - Default separator: ', ' (comma-space)\n   - Example: 'Artist A, Artist B, Artist C'\n   - Check task for specific separator requirements\n\n3. **Escaping and quoting**:\n   - Use proper CSV escaping for commas, quotes, newlines\n   - Quote fields containing separators\n   - Use Python's csv module, not manual string concatenation\n\n4. **Missing values**:\n   - Empty string for missing text fields\n   - Don't use 'null', 'None', or 'N/A' unless specified\n\n5. **Column order**:\n   - Follow order specified in task\n   - If not specified, use logical order (ID, name, details, metadata)\n\n6. **Common mistakes to avoid**:\n   - Manual CSV string building (use csv module)\n   - Wrong separator for list values\n   - Missing headers\n   - Inconsistent column counts\n   - Unescaped special characters",
+    "examples": [
+      {
+        "description": "Song list with multiple artists",
+        "correct": "title,artists,duration\\n\"Song 1\",\"Artist A, Artist B\",180\\n\"Song 2\",\"Artist C\",210",
+        "incorrect": "title,artists,duration\\nSong 1,Artist A; Artist B,180\\nSong 2,Artist C,210",
+        "issue": "Wrong separator (semicolon instead of comma-space)"
+      },
+      {
+        "description": "Handling commas in data",
+        "correct": "name,description\\n\"Smith, John\",\"Senior Developer\"",
+        "incorrect": "name,description\\nSmith, John,Senior Developer",
+        "issue": "Unquoted comma in data breaks CSV structure"
+      }
+    ],
+    "timestamp": "2026-02-19T01:36:18.605121",
+    "version": 1
+  },
+  {
+    "id": "knowledge_20260219_013618",
+    "type": "api_patterns",
+    "topic": "pagination_handling",
+    "content": "AppWorld API Pagination Patterns:\n\n1. **Common pagination parameters**:\n   - 'page': Page number (usually 1-indexed)\n   - 'limit' or 'per_page': Items per page\n   - 'offset': Starting position\n   - 'cursor' or 'next_token': Cursor-based pagination\n\n2. **Detecting end of results**:\n   - Empty results array\n   - Result count less than page size\n   - 'has_more' or 'has_next' flag is false\n   - 'next_page' or 'next_cursor' is null\n\n3. **Complete data collection algorithm**:\n   ```\n   page = 1\n   all_items = []\n   while True:\n       results = api_call(page=page)\n       if not results or len(results) == 0:\n           break\n       all_items.extend(results)\n       page += 1\n       if page > 1000:  # Safety limit\n           break\n   ```\n\n4. **Deduplication strategy**:\n   - Collect unique IDs in a set\n   - Before adding item, check if ID already seen\n   - Common ID fields: 'id', 'song_id', 'user_id', 'message_id'\n\n5. **Error handling**:\n   - If page fails, retry once\n   - If consistent failures, return partial results with warning\n   - Log which pages succeeded/failed\n\n6. **Performance considerations**:\n   - Don't fetch unnecessary fields\n   - Use appropriate page size (balance API calls vs. memory)\n   - Stop early if you reach a known total count",
+    "examples": [
+      {
+        "api": "spotify.get_liked_songs",
+        "pagination_param": "page",
+        "stop_condition": "Empty results array",
+        "example_flow": "page=1 -> 50 items, page=2 -> 50 items, page=3 -> 23 items, page=4 -> 0 items (STOP)"
+      },
+      {
+        "api": "gmail.get_messages",
+        "pagination_param": "page",
+        "stop_condition": "results list is empty",
+        "deduplication": "Use 'message_id' field"
+      }
+    ],
+    "timestamp": "2026-02-19T01:36:18.628853",
+    "version": 1
+  },
+  {
+    "id": "knowledge_20260219_014506",
+    "type": "api_authentication_pattern",
+    "topic": "appworld_token_passing",
+    "content": "AppWorld Authentication Pattern:\n\nCRITICAL: After successful login, AppWorld does NOT use standard session cookies or Authorization headers. Instead:\n\n1. Login returns an 'access_token' in the response\n2. This access_token MUST be explicitly passed as a parameter to EVERY subsequent authenticated API call\n3. The parameter name is 'access_token' (not 'token' or 'auth_token')\n\nPattern:\n- Login: POST /api/login \u2192 returns {'access_token': 'abc123', ...}\n- Subsequent calls: GET /api/resource?access_token=abc123\n- Or for POST: POST /api/action with body {..., 'access_token': 'abc123'}\n\nThis differs from standard REST APIs that use:\n- Session cookies (set automatically)\n- Authorization: Bearer <token> headers\n\nWithout explicit access_token parameter, you'll get 401 Unauthorized even after successful login.",
+    "examples": [
+      {
+        "scenario": "Login and fetch user data",
+        "steps": [
+          "login_result = call_api('POST', '/api/login', {'username': 'user', 'password': 'pass'})",
+          "access_token = login_result['access_token']",
+          "user_data = call_api('GET', f'/api/user?access_token={access_token}')"
+        ]
+      },
+      {
+        "scenario": "Login and create resource",
+        "steps": [
+          "login_result = call_api('POST', '/api/login', credentials)",
+          "token = login_result['access_token']",
+          "result = call_api('POST', '/api/create', {'name': 'item', 'access_token': token})"
+        ]
+      }
+    ],
+    "timestamp": "2026-02-19T01:45:06.748369",
+    "version": 1
+  },
+  {
+    "id": "knowledge_20260219_014548",
+    "type": "api_authentication_pattern",
+    "topic": "appworld_token_passing",
+    "content": "AppWorld Authentication Pattern:\n\nCRITICAL: After successful login, AppWorld does NOT use standard session cookies or Authorization headers. Instead:\n\n1. Login returns an 'access_token' in the response\n2. This access_token MUST be explicitly passed as a parameter to EVERY subsequent authenticated API call\n3. The parameter name is 'access_token' (not 'token' or 'auth_token')\n\nPattern:\n- Login: POST /api/login \u2192 returns {'access_token': 'abc123', ...}\n- Subsequent calls: GET /api/resource?access_token=abc123\n- Or for POST: POST /api/action with body {..., 'access_token': 'abc123'}\n\nThis differs from standard REST APIs that use:\n- Session cookies (set automatically)\n- Authorization: Bearer <token> headers\n\nWithout explicit access_token parameter, you'll get 401 Unauthorized even after successful login.\n\nNote: Some APIs may not require authentication. Always check if access_token is needed before passing it.",
+    "examples": [
+      {
+        "scenario": "Login and fetch user data",
+        "steps": [
+          "login_result = call_api('POST', '/api/login', {'username': 'user', 'password': 'pass'})",
+          "access_token = login_result['access_token']",
+          "user_data = call_api('GET', f'/api/user?access_token={access_token}')"
+        ]
+      },
+      {
+        "scenario": "Login and create resource",
+        "steps": [
+          "login_result = call_api('POST', '/api/login', credentials)",
+          "token = login_result['access_token']",
+          "result = call_api('POST', '/api/create', {'name': 'item', 'access_token': token})"
+        ]
+      }
+    ],
+    "timestamp": "2026-02-19T01:45:48.480938",
+    "version": 1
+  },
+  {
+    "id": "knowledge_20260219_015024",
+    "type": "api_patterns",
+    "topic": "authentication_parameter_conventions",
+    "content": "AUTHENTICATION API PARAMETER PATTERNS:\n\n**Common Parameter Name: 'username'**\nMost AppWorld authentication APIs use 'username' as the parameter name, which accepts:\n- Email addresses (e.g., 'user@example.com')\n- Phone numbers (e.g., '+1234567890')\n- Actual usernames (e.g., 'john_doe')\n\n**CRITICAL RULE:**\nThe parameter is called 'username' even when you're passing an email or phone number!\n\n**Wrong Assumptions (DON'T DO THIS):**\n\u274c Assuming parameter is called 'email' when passing email\n\u274c Assuming parameter is called 'phone_number' when passing phone\n\u274c Assuming parameter is called 'phone' or 'user_email'\n\n**Correct Approach:**\n\u2705 Check API specification first\n\u2705 Use the exact parameter name from spec (usually 'username')\n\u2705 Pass email/phone as the VALUE to the 'username' parameter\n\n**Standard Authentication API Pattern:**\n```\nAPI: login, authenticate, or sign_in\nParameters:\n  - username (required): accepts email, phone, or username string\n  - password (required): user's password\nReturns: auth_token, session_id, or user object\n```\n\n**Verification Strategy:**\nBEFORE calling any auth API:\n1. Call get_api_description_for_app(app_name, 'login') or similar\n2. Read the 'Parameters' section\n3. Use EXACT parameter names shown in spec\n4. Map your data (email/phone) to the spec's parameter name",
+    "examples": [
+      {
+        "scenario": "Venmo login",
+        "wrong_approach": "login(email='user@example.com', password='pass123')",
+        "correct_approach": "First check spec, then: login(username='user@example.com', password='pass123')",
+        "explanation": "Parameter is 'username' not 'email', even though we're passing an email address"
+      },
+      {
+        "scenario": "Spotify authentication",
+        "wrong_approach": "authenticate(phone_number='+1234567890', password='pass')",
+        "correct_approach": "First check spec, then: authenticate(username='+1234567890', password='pass')",
+        "explanation": "Parameter is 'username' not 'phone_number', even though we're passing a phone"
+      }
+    ],
+    "timestamp": "2026-02-19T01:50:24.391869",
+    "version": 1
+  },
+  {
+    "id": "knowledge_20260219_015024",
+    "type": "best_practices",
+    "topic": "api_specification_verification",
+    "content": "WHY AND HOW TO CHECK API SPECIFICATIONS:\n\n**Why It Matters:**\n- Prevents 90% of initial API call failures\n- Saves 2-4 steps of error recovery per API\n- Eliminates guessing about parameter names, types, and requirements\n- Provides authoritative information about return values\n\n**When To Check:**\n- ALWAYS before first use of any API in a task\n- When switching to a new app within a task\n- After receiving unexpected 400-series errors\n- When unsure about any API details\n\n**How To Check (2-step process):**\n\nStep 1: Discover available APIs\n```\nresult = get_all_apis_in_app(app_name=\"venmo\")\n# Returns list of all available API names\n# Example: ['login', 'get_transactions', 'send_payment', ...]\n```\n\nStep 2: Get detailed specification\n```\nspec = get_api_description_for_app(app_name=\"venmo\", api_name=\"login\")\n# Returns complete API documentation including:\n# - Description of what the API does\n# - Required parameters with exact names and types\n# - Optional parameters\n# - Return value structure\n# - Example usage\n```\n\n**What To Extract From Spec:**\n1. Exact parameter names (case-sensitive)\n2. Required vs optional parameters\n3. Parameter types (string, integer, boolean, etc.)\n4. Return value structure\n5. Any special notes or constraints\n\n**Integration Into Workflow:**\n- Make spec-checking your FIRST action when approaching any API\n- Treat it as a prerequisite, not an optional step\n- Think: 'Spec first, call second'\n- Budget 1-2 steps for verification to save 3+ steps on recovery\n\n**Red Flags (Signs You Should Check Spec):**\n- You're about to guess a parameter name\n- You're unsure if an API exists\n- You're assuming based on other APIs you've seen\n- You're about to make an authentication call",
+    "examples": [
+      {
+        "scenario": "Starting a task requiring Venmo payment",
+        "correct_workflow": "1. get_all_apis_in_app('venmo') \u2192 see what's available\n2. get_api_description_for_app('venmo', 'login') \u2192 learn exact params\n3. get_user_info() \u2192 get credentials\n4. login(username=email, password=pwd) \u2192 call with correct params\n5. Proceed with payment APIs",
+        "time_saved": "Saves 3-4 steps vs guessing and recovering from errors"
+      }
+    ],
+    "timestamp": "2026-02-19T01:50:24.415900",
+    "version": 1
+  },
+  {
+    "id": "knowledge_20260219_024838",
+    "type": "domain_knowledge",
+    "topic": "music_playlist_requirements",
+    "content": "## Music Playlist and Queue Requirements\n\n### 'Enough Songs' Interpretation\nWhen a task requires 'enough songs for X minutes/duration':\n- **Preferred Solution**: Provide distinct songs that total at least X minutes without repetition\n- **Why**: Users expect variety, especially for activities like workouts, study sessions, or extended listening\n- **Looping Caveat**: Looping the same playlist repeatedly is technically functional but semantically poor - it's the same songs repeating, not 'enough songs'\n\n### Workout Music Context\n- Workouts require HIGH variety to maintain motivation\n- Repeating the same 10-15 songs during an 85-minute workout is poor user experience\n- Solution: Queue multiple playlists or ensure single playlist has sufficient distinct songs\n\n### Duration Calculation\n- Always calculate total duration of DISTINCT songs in your solution\n- If total distinct song duration < required duration, add more playlists/songs\n- Example: 38-minute playlist for 85-minute workout = insufficient (only 38 distinct minutes)\n\n### Queue vs. Loop\n- **Queue multiple playlists**: Provides variety, distinct songs (PREFERRED)\n- **Loop single playlist**: Technical workaround, poor user experience (AVOID unless explicitly acceptable)\n\n### Best Practices\n1. Calculate required duration\n2. Find playlists and sum their total durations\n3. Keep adding playlists until total duration >= required duration\n4. Queue all selected playlists\n5. Verify total distinct song count and duration before completion",
+    "examples": [
+      {
+        "scenario": "Play music for 85-minute workout",
+        "poor_solution": "Loop 38-minute playlist (only 38 distinct minutes)",
+        "good_solution": "Queue 3 playlists totaling 90+ minutes (43+ distinct songs)",
+        "reasoning": "Good solution provides variety and meets duration with distinct content"
+      },
+      {
+        "scenario": "Background music for 2-hour study session",
+        "poor_solution": "Loop 30-minute ambient playlist",
+        "good_solution": "Queue 4 ambient playlists totaling 120+ minutes",
+        "reasoning": "Even for background music, variety prevents monotony"
+      }
+    ],
+    "timestamp": "2026-02-19T02:48:38.364516",
+    "version": 1
+  },
+  {
+    "id": "knowledge_20260219_025731",
+    "type": "api_behavior",
+    "topic": "spotify_library_management",
+    "content": "Spotify Library API Behavior:\n\n1. SAVED TRACKS (Library Songs):\n- Endpoint: PUT /me/tracks (add), DELETE /me/tracks (remove)\n- Batch operations: Can add/remove up to 50 tracks per request\n- Duplicates: Adding already-saved tracks is idempotent (no error, no duplicate)\n- Verification: GET /me/tracks returns paginated results (limit=50 default)\n- State consistency: Changes are immediately reflected\n\n2. PLAYLISTS:\n- Endpoint: POST /playlists/{id}/tracks (add), DELETE /playlists/{id}/tracks (remove)\n- Duplicates: Playlists CAN contain duplicate tracks\n- Ordering: Track order is preserved based on add order\n- Verification: GET /playlists/{id}/tracks returns paginated results\n\n3. COMMON ISSUES:\n- Pagination: Always check total count vs. items returned\n- Track URIs: Must use correct format (spotify:track:ID)\n- Permissions: Some operations require specific scopes\n- Rate limiting: Batch operations are preferred over individual calls\n\n4. VERIFICATION BEST PRACTICES:\n- After adding N tracks, verify count increased by N (or less if duplicates)\n- After removing N tracks, verify count decreased by N\n- Use pagination to get full count: check 'total' field in response\n- For playlists: verify track order if order matters",
+    "examples": [
+      {
+        "scenario": "Adding 5 tracks to library",
+        "correct_verification": "GET /me/tracks?limit=50, check response.total increased by 5 (or less if some were already saved)",
+        "incorrect_verification": "Just checking first page of results"
+      },
+      {
+        "scenario": "Track count discrepancy",
+        "investigation": "If you added 5 but only see 3 new tracks, check: (1) Were 2 already in library? (2) Did API return any errors? (3) Are you paginating correctly?"
+      }
+    ],
+    "timestamp": "2026-02-19T02:57:31.045877",
+    "version": 1
+  }
+]

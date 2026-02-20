@@ -1,0 +1,39 @@
+{"method": "get", "url": "/supervisor/profile", "data": {}}
+{"method": "get", "url": "/api_docs/app_descriptions", "data": {}}
+{"method": "get", "url": "/api_docs/api_descriptions", "data": {"app_name": "spotify"}}
+{"method": "get", "url": "/api_docs/api_descriptions", "data": {"app_name": "file_system"}}
+{"method": "get", "url": "/api_docs/api_descriptions", "data": {"app_name": "supervisor"}}
+{"method": "get", "url": "/supervisor/account_passwords", "data": {}}
+{"method": "get", "url": "/file_system/file/exists", "data": {"path": "~/documents/personal/songs_to_archive.txt"}}
+{"method": "get", "url": "/supervisor/account_passwords", "data": {}}
+{"method": "get", "url": "/supervisor/account_passwords", "data": {}}
+{"method": "post", "url": "/file_system/auth/token", "data": {"email": "vicpowe@gmail.com", "password": "*AbZz@R"}}
+{"method": "get", "url": "/api_docs/api_doc", "data": {"app_name": "file_system", "api_name": "login"}}
+{"method": "get", "url": "/api_docs/api_doc", "data": {"app_name": "spotify", "api_name": "login"}}
+{"method": "post", "url": "/file_system/auth/token", "data": {"username": "vicpowe@gmail.com", "password": "*AbZz@R"}}
+{"method": "post", "url": "/spotify/auth/token", "data": {"username": "vicpowe@gmail.com", "password": "MG}]ZZ9"}}
+{"method": "get", "url": "/file_system/file", "data": {"path": "~/documents/personal/songs_to_archive.txt"}}
+{"method": "post", "url": "/file_system/auth/token", "data": {"username": "vicpowe@gmail.com", "password": "*AbZz@R"}}
+{"method": "get", "url": "/file_system/file", "data": {"path": "~/documents/personal/songs_to_archive.txt"}}
+{"method": "get", "url": "/file_system/file/exists", "data": {"path": "~/documents/personal/songs_to_archive.txt"}}
+{"method": "get", "url": "/file_system/file/exists", "data": {"path": "/home/documents/personal/songs_to_archive.txt"}}
+{"method": "get", "url": "/file_system/file/exists", "data": {"path": "documents/personal/songs_to_archive.txt"}}
+{"method": "post", "url": "/file_system/auth/token", "data": {"username": "vicpowe@gmail.com", "password": "*AbZz@R"}}
+{"method": "get", "url": "/file_system/account", "data": {}}
+{"method": "get", "url": "/spotify/library/playlists", "data": {}}
+{"method": "post", "url": "/spotify/auth/token", "data": {"username": "vicpowe@gmail.com", "password": "MG}]ZZ9"}}
+{"method": "get", "url": "/spotify/library/playlists", "data": {}}
+{"method": "get", "url": "/spotify/account", "data": {}}
+{"method": "get", "url": "/supervisor/profile", "data": {}}
+{"method": "post", "url": "/spotify/account", "data": {"email": "vicpowe@gmail.com", "password": "MG}]ZZ9", "first_name": "Vickie", "last_name": "Powell"}}
+{"method": "post", "url": "/spotify/auth/token", "data": {"username": "vicpowe@gmail.com", "password": "MG}]ZZ9"}}
+{"method": "get", "url": "/spotify/account", "data": {}}
+{"method": "post", "url": "/file_system/account", "data": {"email": "vicpowe@gmail.com", "password": "*AbZz@R", "first_name": "Vickie", "last_name": "Powell"}}
+{"method": "post", "url": "/file_system/auth/token", "data": {"username": "vicpowe@gmail.com", "password": "*AbZz@R"}}
+{"method": "get", "url": "/file_system/file", "data": {"path": "~/documents/personal/songs_to_archive.txt"}}
+{"method": "get", "url": "/file_system/directory", "data": {"path": "~"}}
+{"method": "post", "url": "/spotify/auth/token", "data": {"username": "vicpowe@gmail.com", "password": "MG}]ZZ9"}}
+{"method": "get", "url": "/spotify/library/playlists", "data": {}}
+{"method": "post", "url": "/file_system/auth/token", "data": {"username": "vicpowe@gmail.com", "password": "*AbZz@R"}}
+{"method": "get", "url": "/file_system/file", "data": {"path": "~/documents/personal/songs_to_archive.txt"}}
+{"method": "post", "url": "/supervisor/message", "data": {"status": "fail"}}

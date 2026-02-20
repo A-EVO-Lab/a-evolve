@@ -1,0 +1,12 @@
+FROM node:20-bookworm-slim
+
+WORKDIR /app/a-evolve-ui
+
+COPY a-evolve-ui/package.json a-evolve-ui/package-lock.json ./
+RUN npm ci
+
+COPY a-evolve-ui /app/a-evolve-ui
+
+EXPOSE 5173
+
+CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0", "--port", "5173"]

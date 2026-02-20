@@ -1,0 +1,34 @@
+{"method": "get", "url": "/supervisor/profile", "data": {}}
+{"method": "get", "url": "/api_docs/app_descriptions", "data": {}}
+{"method": "get", "url": "/api_docs/api_descriptions", "data": {"app_name": "spotify"}}
+{"method": "get", "url": "/api_docs/api_doc", "data": {"app_name": "spotify", "api_name": "show_song_library"}}
+{"method": "get", "url": "/api_docs/api_doc", "data": {"app_name": "spotify", "api_name": "show_song_privates"}}
+{"method": "get", "url": "/api_docs/api_doc", "data": {"app_name": "spotify", "api_name": "show_song"}}
+{"method": "get", "url": "/api_docs/api_descriptions", "data": {"app_name": "supervisor"}}
+{"method": "get", "url": "/api_docs/api_doc", "data": {"app_name": "supervisor", "api_name": "show_account_passwords"}}
+{"method": "get", "url": "/supervisor/account_passwords", "data": {}}
+{"method": "post", "url": "/spotify/auth/token", "data": {"email": "glenn.burton@gmail.com", "password": "EbhXe%D"}}
+{"method": "get", "url": "/api_docs/api_doc", "data": {"app_name": "spotify", "api_name": "login"}}
+{"method": "post", "url": "/spotify/auth/token", "data": {"username": "glenn.burton@gmail.com", "password": "EbhXe%D"}}
+{"method": "get", "url": "/spotify/library/songs", "data": {"access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJzcG90aWZ5K2dsZW5uLmJ1cnRvbkBnbWFpbC5jb20iLCJleHAiOjE2ODQ0MTIwOTh9.ZfYQhLH5HAUhTGeoP9Sil5Smkby8zvIfSpm2gzMvmWk", "page_index": 0, "page_limit": 20}}
+{"method": "get", "url": "/spotify/library/songs", "data": {"access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJzcG90aWZ5K2dsZW5uLmJ1cnRvbkBnbWFpbC5jb20iLCJleHAiOjE2ODQ0MTIwOTh9.ZfYQhLH5HAUhTGeoP9Sil5Smkby8zvIfSpm2gzMvmWk", "page_index": 1, "page_limit": 20}}
+{"method": "get", "url": "/spotify/songs/33", "data": {}}
+{"method": "get", "url": "/spotify/songs/44", "data": {}}
+{"method": "get", "url": "/spotify/songs/56", "data": {}}
+{"method": "get", "url": "/spotify/songs/92", "data": {}}
+{"method": "get", "url": "/spotify/songs/109", "data": {}}
+{"method": "get", "url": "/spotify/songs/114", "data": {}}
+{"method": "get", "url": "/spotify/songs/135", "data": {}}
+{"method": "get", "url": "/spotify/songs/137", "data": {}}
+{"method": "get", "url": "/spotify/songs/156", "data": {}}
+{"method": "get", "url": "/spotify/songs/159", "data": {}}
+{"method": "get", "url": "/spotify/songs/202", "data": {}}
+{"method": "get", "url": "/spotify/songs/225", "data": {}}
+{"method": "get", "url": "/spotify/songs/226", "data": {}}
+{"method": "get", "url": "/spotify/songs/241", "data": {}}
+{"method": "get", "url": "/spotify/songs/265", "data": {}}
+{"method": "get", "url": "/spotify/songs/302", "data": {}}
+{"method": "get", "url": "/spotify/songs/303", "data": {}}
+{"method": "get", "url": "/spotify/songs/308", "data": {}}
+{"method": "get", "url": "/spotify/songs/324", "data": {}}
+{"method": "post", "url": "/supervisor/message", "data": {"answer": "Distant Love"}}

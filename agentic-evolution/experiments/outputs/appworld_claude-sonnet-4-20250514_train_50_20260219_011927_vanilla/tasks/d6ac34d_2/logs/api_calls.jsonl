@@ -1,0 +1,15 @@
+{"method": "get", "url": "/supervisor/profile", "data": {}}
+{"method": "get", "url": "/api_docs/app_descriptions", "data": {}}
+{"method": "get", "url": "/api_docs/api_descriptions", "data": {"app_name": "simple_note"}}
+{"method": "get", "url": "/api_docs/api_doc", "data": {"app_name": "simple_note", "api_name": "show_account"}}
+{"method": "get", "url": "/api_docs/api_descriptions", "data": {"app_name": "supervisor"}}
+{"method": "get", "url": "/supervisor/account_passwords", "data": {}}
+{"method": "get", "url": "/api_docs/api_doc", "data": {"app_name": "simple_note", "api_name": "login"}}
+{"method": "post", "url": "/simple_note/auth/token", "data": {"username": "sab-brown@gmail.com", "password": "l(&[w*s"}}
+{"method": "get", "url": "/simple_note/notes", "data": {"access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJzaW1wbGVfbm90ZStzYWItYnJvd25AZ21haWwuY29tIiwiZXhwIjoxNjg0NDQ2MjM5fQ.YmnyWdWVx21vih3z5QqI-6WsP5Z4b0qSh-UHNmfsBw8"}}
+{"method": "get", "url": "/api_docs/api_doc", "data": {"app_name": "simple_note", "api_name": "search_notes"}}
+{"method": "get", "url": "/simple_note/notes", "data": {"access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJzaW1wbGVfbm90ZStzYWItYnJvd25AZ21haWwuY29tIiwiZXhwIjoxNjg0NDQ2MjM5fQ.YmnyWdWVx21vih3z5QqI-6WsP5Z4b0qSh-UHNmfsBw8", "page_limit": 20, "sort_by": "-created_at"}}
+{"method": "get", "url": "/simple_note/notes/2578", "data": {"access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJzaW1wbGVfbm90ZStzYWItYnJvd25AZ21haWwuY29tIiwiZXhwIjoxNjg0NDQ2MjM5fQ.YmnyWdWVx21vih3z5QqI-6WsP5Z4b0qSh-UHNmfsBw8"}}
+{"method": "post", "url": "/simple_note/notes", "data": {"access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJzaW1wbGVfbm90ZStzYWItYnJvd25AZ21haWwuY29tIiwiZXhwIjoxNjg0NDQ2MjM5fQ.YmnyWdWVx21vih3z5QqI-6WsP5Z4b0qSh-UHNmfsBw8", "title": "Habit Tracker Log for 2023-05-18", "content": "# Daily Habit Tracker (yes/no questions to answer daily)\n\nexercised_atleast_30_mins: yes\nate_homemade_meals: no\npracticed_meditation: no\nread_atleast_30_mins: yes\ndrank_adequate_water: yes\nslept_over_7_hrs: yes\nwrote_gratitude_journal: yes\nlimited_screen_time_to_1_hr: yes\npracticed_good_posture: yes\nconnected_with_friends: no", "pinned": true}}
+{"method": "get", "url": "/simple_note/notes/3084", "data": {"access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJzaW1wbGVfbm90ZStzYWItYnJvd25AZ21haWwuY29tIiwiZXhwIjoxNjg0NDQ2MjM5fQ.YmnyWdWVx21vih3z5QqI-6WsP5Z4b0qSh-UHNmfsBw8"}}
+{"method": "post", "url": "/supervisor/message", "data": {}}

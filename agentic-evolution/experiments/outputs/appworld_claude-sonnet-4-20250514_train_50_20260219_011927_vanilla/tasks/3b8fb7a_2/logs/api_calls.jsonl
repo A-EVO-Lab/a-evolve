@@ -1,0 +1,31 @@
+{"method": "get", "url": "/supervisor/profile", "data": {}}
+{"method": "get", "url": "/api_docs/app_descriptions", "data": {}}
+{"method": "get", "url": "/api_docs/api_descriptions", "data": {"app_name": "supervisor"}}
+{"method": "get", "url": "/api_docs/api_descriptions", "data": {"app_name": "simple_note"}}
+{"method": "get", "url": "/api_docs/api_descriptions", "data": {"app_name": "venmo"}}
+{"method": "get", "url": "/simple_note/notes", "data": {"query": "Athens"}}
+{"method": "get", "url": "/supervisor/account_passwords", "data": {}}
+{"method": "post", "url": "/simple_note/auth/token", "data": {"email": "alexander-ridd@gmail.com", "password": "V)f4tnM"}}
+{"method": "get", "url": "/api_docs/api_doc", "data": {"app_name": "simple_note", "api_name": "login"}}
+{"method": "post", "url": "/simple_note/auth/token", "data": {"username": "alexander-ridd@gmail.com", "password": "V)f4tnM"}}
+{"method": "get", "url": "/simple_note/notes", "data": {"query": "Athens"}}
+{"method": "get", "url": "/api_docs/api_doc", "data": {"app_name": "simple_note", "api_name": "search_notes"}}
+{"method": "get", "url": "/simple_note/notes", "data": {"access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJzaW1wbGVfbm90ZSthbGV4YW5kZXItcmlkZEBnbWFpbC5jb20iLCJleHAiOjE2ODQ0MTIwOTh9.zYLDNsnR2FwK9ZwUfVtAkHWOLzXeybsR1AegkyIZ5MQ", "query": "Athens"}}
+{"method": "get", "url": "/simple_note/notes/3084", "data": {"access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJzaW1wbGVfbm90ZSthbGV4YW5kZXItcmlkZEBnbWFpbC5jb20iLCJleHAiOjE2ODQ0MTIwOTh9.zYLDNsnR2FwK9ZwUfVtAkHWOLzXeybsR1AegkyIZ5MQ"}}
+{"method": "post", "url": "/venmo/auth/token", "data": {"username": "alexander-ridd@gmail.com", "password": "!2XUep8"}}
+{"method": "get", "url": "/api_docs/api_doc", "data": {"app_name": "venmo", "api_name": "create_transaction"}}
+{"method": "get", "url": "/api_docs/api_doc", "data": {"app_name": "venmo", "api_name": "create_payment_request"}}
+{"method": "get", "url": "/api_docs/api_descriptions", "data": {"app_name": "phone"}}
+{"method": "post", "url": "/phone/auth/token", "data": {"phone_number": "9876546221", "password": "XvV@Hof"}}
+{"method": "get", "url": "/api_docs/api_doc", "data": {"app_name": "phone", "api_name": "login"}}
+{"method": "post", "url": "/phone/auth/token", "data": {"username": "9876546221", "password": "XvV@Hof"}}
+{"method": "get", "url": "/phone/contacts", "data": {"access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJwaG9uZSs5ODc2NTQ2MjIxIiwiZXhwIjoxNjg0NDEyNzMxfQ.R9aQi5-6qOVQ1vQcG7AmkYNHMSDvj4xnThEDS9QJ_I4", "query": "Paul"}}
+{"method": "get", "url": "/phone/contacts", "data": {"access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJwaG9uZSs5ODc2NTQ2MjIxIiwiZXhwIjoxNjg0NDEyNzMxfQ.R9aQi5-6qOVQ1vQcG7AmkYNHMSDvj4xnThEDS9QJ_I4", "query": "Robert"}}
+{"method": "get", "url": "/phone/contacts", "data": {"access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJwaG9uZSs5ODc2NTQ2MjIxIiwiZXhwIjoxNjg0NDEyNzMxfQ.R9aQi5-6qOVQ1vQcG7AmkYNHMSDvj4xnThEDS9QJ_I4", "query": "Cesar"}}
+{"method": "get", "url": "/phone/contacts", "data": {"access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJwaG9uZSs5ODc2NTQ2MjIxIiwiZXhwIjoxNjg0NDEyNzMxfQ.R9aQi5-6qOVQ1vQcG7AmkYNHMSDvj4xnThEDS9QJ_I4", "query": "Cheryl"}}
+{"method": "get", "url": "/phone/contacts", "data": {"access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJwaG9uZSs5ODc2NTQ2MjIxIiwiZXhwIjoxNjg0NDEyNzMxfQ.R9aQi5-6qOVQ1vQcG7AmkYNHMSDvj4xnThEDS9QJ_I4", "query": "Bradley"}}
+{"method": "get", "url": "/phone/contacts", "data": {"access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJwaG9uZSs5ODc2NTQ2MjIxIiwiZXhwIjoxNjg0NDEyNzMxfQ.R9aQi5-6qOVQ1vQcG7AmkYNHMSDvj4xnThEDS9QJ_I4", "query": "Carl"}}
+{"method": "post", "url": "/venmo/transactions", "data": {"receiver_email": "paul_mill@gmail.com", "amount": 105, "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ2ZW5tbythbGV4YW5kZXItcmlkZEBnbWFpbC5jb20iLCJleHAiOjE2ODQ0MTI3NDF9.Pd7X3qFqNXyI11CB_zX6mNkEQK9cBLPxfvt4fCmbBJ8", "description": "For Athens trip", "private": true}}
+{"method": "post", "url": "/venmo/transactions", "data": {"receiver_email": "gina-ritter@gmail.com", "amount": 254, "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ2ZW5tbythbGV4YW5kZXItcmlkZEBnbWFpbC5jb20iLCJleHAiOjE2ODQ0MTI3NDF9.Pd7X3qFqNXyI11CB_zX6mNkEQK9cBLPxfvt4fCmbBJ8", "description": "For Athens trip", "private": true}}
+{"method": "post", "url": "/venmo/transactions", "data": {"receiver_email": "cheweber@gmail.com", "amount": 113, "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ2ZW5tbythbGV4YW5kZXItcmlkZEBnbWFpbC5jb20iLCJleHAiOjE2ODQ0MTI3NDF9.Pd7X3qFqNXyI11CB_zX6mNkEQK9cBLPxfvt4fCmbBJ8", "description": "For Athens trip", "private": true}}
+{"method": "post", "url": "/venmo/transactions", "data": {"receiver_email": "bradley_ball@gmail.com", "amount": 207, "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ2ZW5tbythbGV4YW5kZXItcmlkZEBnbWFpbC5jb20iLCJleHAiOjE2ODQ0MTI3NDF9.Pd7X3qFqNXyI11CB_zX6mNkEQK9cBLPxfvt4fCmbBJ8", "description": "For Athens trip", "private": true}}

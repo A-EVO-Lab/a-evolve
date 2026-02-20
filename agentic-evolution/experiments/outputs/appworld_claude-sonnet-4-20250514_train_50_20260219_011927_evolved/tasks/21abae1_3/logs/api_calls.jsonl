@@ -1,0 +1,12 @@
+{"method": "get", "url": "/supervisor/profile", "data": {}}
+{"method": "get", "url": "/api_docs/app_descriptions", "data": {}}
+{"method": "get", "url": "/api_docs/api_descriptions", "data": {"app_name": "venmo"}}
+{"method": "get", "url": "/api_docs/api_doc", "data": {"app_name": "venmo", "api_name": "show_transactions"}}
+{"method": "get", "url": "/api_docs/api_doc", "data": {"app_name": "venmo", "api_name": "login"}}
+{"method": "get", "url": "/api_docs/api_descriptions", "data": {"app_name": "supervisor"}}
+{"method": "get", "url": "/supervisor/account_passwords", "data": {}}
+{"method": "post", "url": "/venmo/auth/token", "data": {"username": "jo-harr@gmail.com", "password": "ZEgU=ep"}}
+{"method": "get", "url": "/venmo/transactions", "data": {"access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ2ZW5tbytqby1oYXJyQGdtYWlsLmNvbSIsImV4cCI6MTY4NDQxMjA5OH0.4kAHHBEgpO70h3jQRPMhEC-3T9ar14kiHiBCNVLKxYY", "min_created_at": "2023-05-01", "max_created_at": "2023-05-18", "page_index": 0, "page_limit": 20}}
+{"method": "get", "url": "/venmo/transactions", "data": {"access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ2ZW5tbytqby1oYXJyQGdtYWlsLmNvbSIsImV4cCI6MTY4NDQxMjA5OH0.4kAHHBEgpO70h3jQRPMhEC-3T9ar14kiHiBCNVLKxYY", "min_created_at": "2023-05-01", "max_created_at": "2023-05-18", "page_index": 1, "page_limit": 20}}
+{"method": "get", "url": "/venmo/transactions", "data": {"access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ2ZW5tbytqby1oYXJyQGdtYWlsLmNvbSIsImV4cCI6MTY4NDQxMjA5OH0.4kAHHBEgpO70h3jQRPMhEC-3T9ar14kiHiBCNVLKxYY", "min_created_at": "2023-05-01", "max_created_at": "2023-05-18", "page_index": 2, "page_limit": 20}}
+{"method": "post", "url": "/supervisor/message", "data": {"answer": 1592.0}}

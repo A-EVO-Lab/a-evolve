@@ -1,0 +1,25 @@
+{"method": "get", "url": "/supervisor/profile", "data": {}}
+{"method": "get", "url": "/api_docs/app_descriptions", "data": {}}
+{"method": "get", "url": "/api_docs/api_descriptions", "data": {"app_name": "venmo"}}
+{"method": "get", "url": "/api_docs/api_descriptions", "data": {"app_name": "supervisor"}}
+{"method": "get", "url": "/api_docs/api_descriptions", "data": {"app_name": "phone"}}
+{"method": "get", "url": "/supervisor/account_passwords", "data": {}}
+{"method": "get", "url": "/api_docs/api_doc", "data": {"app_name": "venmo", "api_name": "login"}}
+{"method": "post", "url": "/venmo/auth/token", "data": {"username": "de_ritt@gmail.com", "password": "hlIf+qU"}}
+{"method": "post", "url": "/phone/auth/token", "data": {"username": "3375602296", "password": "ag+6@4h"}}
+{"method": "get", "url": "/phone/contact_relationships", "data": {"access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJwaG9uZSszMzc1NjAyMjk2IiwiZXhwIjoxNjg0NDEyNzQxfQ.Q4AvpwVnDyHQ0PpZLOnTfYqblsGkvYC-hemcpcjgS3k"}}
+{"method": "get", "url": "/phone/contacts", "data": {"access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJwaG9uZSszMzc1NjAyMjk2IiwiZXhwIjoxNjg0NDEyNzQxfQ.Q4AvpwVnDyHQ0PpZLOnTfYqblsGkvYC-hemcpcjgS3k", "relationship": "coworker"}}
+{"method": "get", "url": "/phone/contacts", "data": {"access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJwaG9uZSszMzc1NjAyMjk2IiwiZXhwIjoxNjg0NDEyNzQxfQ.Q4AvpwVnDyHQ0PpZLOnTfYqblsGkvYC-hemcpcjgS3k", "relationship": "roommate"}}
+{"method": "get", "url": "/venmo/profile", "data": {"access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ2ZW5tbytkZV9yaXR0QGdtYWlsLmNvbSIsImV4cCI6MTY4NDQxMjA5OH0.QNShJvddN-cOqGeNS5PCMN3eK1332Wv8z8Y-HebVsdg", "email": "brandon-webe@gmail.com"}}
+{"method": "get", "url": "/venmo/profile", "data": {"access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ2ZW5tbytkZV9yaXR0QGdtYWlsLmNvbSIsImV4cCI6MTY4NDQxMjA5OH0.QNShJvddN-cOqGeNS5PCMN3eK1332Wv8z8Y-HebVsdg", "email": "clmiller@gmail.com"}}
+{"method": "get", "url": "/venmo/profile", "data": {"access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ2ZW5tbytkZV9yaXR0QGdtYWlsLmNvbSIsImV4cCI6MTY4NDQxMjA5OH0.QNShJvddN-cOqGeNS5PCMN3eK1332Wv8z8Y-HebVsdg", "email": "ja-solomon@gmail.com"}}
+{"method": "get", "url": "/venmo/profile", "data": {"access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ2ZW5tbytkZV9yaXR0QGdtYWlsLmNvbSIsImV4cCI6MTY4NDQxMjA5OH0.QNShJvddN-cOqGeNS5PCMN3eK1332Wv8z8Y-HebVsdg", "email": "kevin.blac@gmail.com"}}
+{"method": "get", "url": "/venmo/profile", "data": {"access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ2ZW5tbytkZV9yaXR0QGdtYWlsLmNvbSIsImV4cCI6MTY4NDQxMjA5OH0.QNShJvddN-cOqGeNS5PCMN3eK1332Wv8z8Y-HebVsdg", "email": "mi.burch@gmail.com"}}
+{"method": "get", "url": "/venmo/profile", "data": {"access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ2ZW5tbytkZV9yaXR0QGdtYWlsLmNvbSIsImV4cCI6MTY4NDQxMjA5OH0.QNShJvddN-cOqGeNS5PCMN3eK1332Wv8z8Y-HebVsdg", "email": "alexander-ridd@gmail.com"}}
+{"method": "get", "url": "/venmo/profile", "data": {"access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ2ZW5tbytkZV9yaXR0QGdtYWlsLmNvbSIsImV4cCI6MTY4NDQxMjA5OH0.QNShJvddN-cOqGeNS5PCMN3eK1332Wv8z8Y-HebVsdg", "email": "matthew.blac@gmail.com"}}
+{"method": "get", "url": "/api_docs/api_doc", "data": {"app_name": "venmo", "api_name": "add_friend"}}
+{"method": "post", "url": "/venmo/friends/brandon-webe@gmail.com", "data": {"access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ2ZW5tbytkZV9yaXR0QGdtYWlsLmNvbSIsImV4cCI6MTY4NDQxMjA5OH0.QNShJvddN-cOqGeNS5PCMN3eK1332Wv8z8Y-HebVsdg"}}
+{"method": "post", "url": "/venmo/friends/ja-solomon@gmail.com", "data": {"access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ2ZW5tbytkZV9yaXR0QGdtYWlsLmNvbSIsImV4cCI6MTY4NDQxMjA5OH0.QNShJvddN-cOqGeNS5PCMN3eK1332Wv8z8Y-HebVsdg"}}
+{"method": "post", "url": "/venmo/friends/mi.burch@gmail.com", "data": {"access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ2ZW5tbytkZV9yaXR0QGdtYWlsLmNvbSIsImV4cCI6MTY4NDQxMjA5OH0.QNShJvddN-cOqGeNS5PCMN3eK1332Wv8z8Y-HebVsdg"}}
+{"method": "post", "url": "/venmo/friends/matthew.blac@gmail.com", "data": {"access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ2ZW5tbytkZV9yaXR0QGdtYWlsLmNvbSIsImV4cCI6MTY4NDQxMjA5OH0.QNShJvddN-cOqGeNS5PCMN3eK1332Wv8z8Y-HebVsdg"}}
+{"method": "post", "url": "/supervisor/message", "data": {}}

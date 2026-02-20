@@ -1,0 +1,20 @@
+{"method": "get", "url": "/supervisor/profile", "data": {}}
+{"method": "get", "url": "/api_docs/app_descriptions", "data": {}}
+{"method": "get", "url": "/api_docs/api_descriptions", "data": {"app_name": "file_system"}}
+{"method": "get", "url": "/api_docs/api_doc", "data": {"app_name": "file_system", "api_name": "login"}}
+{"method": "get", "url": "/api_docs/api_doc", "data": {"app_name": "supervisor", "api_name": "show_account_passwords"}}
+{"method": "get", "url": "/supervisor/account_passwords", "data": {}}
+{"method": "post", "url": "/file_system/auth/token", "data": {"username": "ja-solomon@gmail.com", "password": "fT204^N"}}
+{"method": "get", "url": "/file_system/directory/exists", "data": {"path": "~/bills/", "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJmaWxlX3N5c3RlbStqYS1zb2xvbW9uQGdtYWlsLmNvbSIsImV4cCI6MTY4NDQxMjA5OH0.3hgKBJnOH8mFj59FXtYO1At1DH3OB7r97mlsGbV429I"}}
+{"method": "get", "url": "/api_docs/api_doc", "data": {"app_name": "file_system", "api_name": "directory_exists"}}
+{"method": "get", "url": "/file_system/directory/exists", "data": {"directory_path": "~/bills/", "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJmaWxlX3N5c3RlbStqYS1zb2xvbW9uQGdtYWlsLmNvbSIsImV4cCI6MTY4NDQxMjA5OH0.3hgKBJnOH8mFj59FXtYO1At1DH3OB7r97mlsGbV429I"}}
+{"method": "get", "url": "/api_docs/api_doc", "data": {"app_name": "file_system", "api_name": "show_directory"}}
+{"method": "get", "url": "/file_system/directory", "data": {"access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJmaWxlX3N5c3RlbStqYS1zb2xvbW9uQGdtYWlsLmNvbSIsImV4cCI6MTY4NDQxMjA5OH0.3hgKBJnOH8mFj59FXtYO1At1DH3OB7r97mlsGbV429I", "directory_path": "~/bills/", "entry_type": "files"}}
+{"method": "get", "url": "/api_docs/api_doc", "data": {"app_name": "file_system", "api_name": "show_file"}}
+{"method": "get", "url": "/file_system/file", "data": {"file_path": "/home/james/bills/electricity/2023-01.txt", "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJmaWxlX3N5c3RlbStqYS1zb2xvbW9uQGdtYWlsLmNvbSIsImV4cCI6MTY4NDQxMjA5OH0.3hgKBJnOH8mFj59FXtYO1At1DH3OB7r97mlsGbV429I"}}
+{"method": "get", "url": "/file_system/file", "data": {"file_path": "/home/james/bills/electricity/2023-01.txt", "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJmaWxlX3N5c3RlbStqYS1zb2xvbW9uQGdtYWlsLmNvbSIsImV4cCI6MTY4NDQxMjA5OH0.3hgKBJnOH8mFj59FXtYO1At1DH3OB7r97mlsGbV429I"}}
+{"method": "get", "url": "/file_system/file", "data": {"file_path": "/home/james/bills/electricity/2023-02.txt", "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJmaWxlX3N5c3RlbStqYS1zb2xvbW9uQGdtYWlsLmNvbSIsImV4cCI6MTY4NDQxMjA5OH0.3hgKBJnOH8mFj59FXtYO1At1DH3OB7r97mlsGbV429I"}}
+{"method": "get", "url": "/file_system/file", "data": {"file_path": "/home/james/bills/electricity/2023-03.txt", "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJmaWxlX3N5c3RlbStqYS1zb2xvbW9uQGdtYWlsLmNvbSIsImV4cCI6MTY4NDQxMjA5OH0.3hgKBJnOH8mFj59FXtYO1At1DH3OB7r97mlsGbV429I"}}
+{"method": "get", "url": "/file_system/file", "data": {"file_path": "/home/james/bills/electricity/2023-04.txt", "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJmaWxlX3N5c3RlbStqYS1zb2xvbW9uQGdtYWlsLmNvbSIsImV4cCI6MTY4NDQxMjA5OH0.3hgKBJnOH8mFj59FXtYO1At1DH3OB7r97mlsGbV429I"}}
+{"method": "get", "url": "/file_system/file", "data": {"file_path": "/home/james/bills/electricity/2023-05.pdf", "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJmaWxlX3N5c3RlbStqYS1zb2xvbW9uQGdtYWlsLmNvbSIsImV4cCI6MTY4NDQxMjA5OH0.3hgKBJnOH8mFj59FXtYO1At1DH3OB7r97mlsGbV429I"}}
+{"method": "post", "url": "/supervisor/message", "data": {"answer": 368.0}}

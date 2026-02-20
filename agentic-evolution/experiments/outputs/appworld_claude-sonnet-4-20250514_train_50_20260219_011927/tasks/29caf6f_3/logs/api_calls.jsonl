@@ -1,0 +1,21 @@
+{"method": "get", "url": "/supervisor/profile", "data": {}}
+{"method": "get", "url": "/api_docs/app_descriptions", "data": {}}
+{"method": "get", "url": "/api_docs/api_descriptions", "data": {"app_name": "simple_note"}}
+{"method": "get", "url": "/api_docs/api_doc", "data": {"app_name": "simple_note", "api_name": "login"}}
+{"method": "get", "url": "/api_docs/api_descriptions", "data": {"app_name": "supervisor"}}
+{"method": "get", "url": "/supervisor/account_passwords", "data": {}}
+{"method": "get", "url": "/supervisor/account_passwords", "data": {}}
+{"method": "post", "url": "/simple_note/auth/token", "data": {"username": "pa_ritter@gmail.com", "password": "F%rYCAJ"}}
+{"method": "get", "url": "/simple_note/notes", "data": {"access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJzaW1wbGVfbm90ZStwYV9yaXR0ZXJAZ21haWwuY29tIiwiZXhwIjoxNjg0NDEyMDk4fQ.VOdFsVEQ6DGe-SRt7xVQ-TO3BYzQIgjS8-hgk_bteMk"}}
+{"method": "get", "url": "/simple_note/notes", "data": {"access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJzaW1wbGVfbm90ZStwYV9yaXR0ZXJAZ21haWwuY29tIiwiZXhwIjoxNjg0NDEyMDk4fQ.VOdFsVEQ6DGe-SRt7xVQ-TO3BYzQIgjS8-hgk_bteMk", "query": "movie"}}
+{"method": "get", "url": "/simple_note/notes", "data": {"access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJzaW1wbGVfbm90ZStwYV9yaXR0ZXJAZ21haWwuY29tIiwiZXhwIjoxNjg0NDEyMDk4fQ.VOdFsVEQ6DGe-SRt7xVQ-TO3BYzQIgjS8-hgk_bteMk", "query": "film"}}
+{"method": "get", "url": "/simple_note/notes", "data": {"access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJzaW1wbGVfbm90ZStwYV9yaXR0ZXJAZ21haWwuY29tIiwiZXhwIjoxNjg0NDEyMDk4fQ.VOdFsVEQ6DGe-SRt7xVQ-TO3BYzQIgjS8-hgk_bteMk", "query": "recommendation"}}
+{"method": "get", "url": "/simple_note/notes/2705", "data": {"access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJzaW1wbGVfbm90ZStwYV9yaXR0ZXJAZ21haWwuY29tIiwiZXhwIjoxNjg0NDEyMDk4fQ.VOdFsVEQ6DGe-SRt7xVQ-TO3BYzQIgjS8-hgk_bteMk"}}
+{"method": "get", "url": "/api_docs/api_descriptions", "data": {"app_name": "phone"}}
+{"method": "get", "url": "/api_docs/api_doc", "data": {"app_name": "phone", "api_name": "login"}}
+{"method": "post", "url": "/phone/auth/token", "data": {"username": "2444880289", "password": "Xm4bukk"}}
+{"method": "get", "url": "/phone/contacts", "data": {"access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJwaG9uZSsyNDQ0ODgwMjg5IiwiZXhwIjoxNjg0NDEyNzQxfQ.zfaJ0mFed7hCFAcLPY6KWZcAGwOEQHJgxod0b5iRRSM", "query": "Leslie"}}
+{"method": "get", "url": "/phone/messages/text", "data": {"access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJwaG9uZSsyNDQ0ODgwMjg5IiwiZXhwIjoxNjg0NDEyNzQxfQ.zfaJ0mFed7hCFAcLPY6KWZcAGwOEQHJgxod0b5iRRSM", "contact_phone_number": "7873383923"}}
+{"method": "get", "url": "/phone/messages/text", "data": {"access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJwaG9uZSsyNDQ0ODgwMjg5IiwiZXhwIjoxNjg0NDEyNzQxfQ.zfaJ0mFed7hCFAcLPY6KWZcAGwOEQHJgxod0b5iRRSM", "contact_phone_number": "7873383923"}}
+{"method": "post", "url": "/phone/messages/text/7873383923", "data": {"access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJwaG9uZSsyNDQ0ODgwMjg5IiwiZXhwIjoxNjg0NDEyNzQxfQ.zfaJ0mFed7hCFAcLPY6KWZcAGwOEQHJgxod0b5iRRSM", "message": "The Lord of the Rings: The Two Towers, No Country for Old Men, Forrest Gump, The Lord of the Rings: The Fellowship of the Ring, Blade Runner 2049, Inglourious Basterds, The Wolf of Wall Street, Pulp Fiction, Schindler's List, The Matrix, Interstellar, Inception, Her, A Beautiful Mind, Pan's Labyrinth, The Lord of the Rings: The Return of the King, Am\u00e9lie, The Godfather: Part II, The Pianist"}}
+{"method": "post", "url": "/supervisor/message", "data": {}}

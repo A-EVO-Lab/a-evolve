@@ -1,0 +1,26 @@
+{
+    "file_system": {
+        "File": 1,
+        "Directory": 4
+    },
+    "spotify": {
+        "Song": 5,
+        "SongReview": 5,
+        "Album": 3,
+        "AlbumReview": 3,
+        "Playlist": 2,
+        "PlaylistReview": 1,
+        "UserLibrarySong": 1,
+        "UserLibraryAlbum": 1,
+        "UserDownloadedSong": 1,
+        "UserArtistFollowing": 1,
+        "PaymentCard": 1,
+        "PremiumSubscription": 1,
+        "MusicPlayer": 1,
+        "Recommendation": 1,
+        "User": 1
+    },
+    "supervisor": {
+        "Task": 1
+    }
+}

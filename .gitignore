@@ -1,0 +1,94 @@
+# ===== Python =====
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg-info/
+*.egg
+*.whl
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# ===== Node.js =====
+node_modules/
+
+# ===== Build output =====
+dist/
+build/
+
+# ===== Environment files =====
+.env
+.env.local
+.env.*.local
+
+# ===== Logs =====
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# ===== IDE / Editors =====
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# ===== OS =====
+.DS_Store
+Thumbs.db
+
+# ===== Temp files =====
+*.tmp
+*.bak
+
+# ===== Caches =====
+.cache/
+.parcel-cache/
+.turbo/
+
+# ===== Test output =====
+coverage/
+
+# ===== AppWorld data (downloaded via `appworld download data`) =====
+agentic-evolution/data/
+
+# ===== Tool sandbox (generated at runtime; keep one tracked sample session) =====
+agentic-evolution/tools_sandbox/*
+!agentic-evolution/tools_sandbox/sessions/
+agentic-evolution/tools_sandbox/sessions/*
+!agentic-evolution/tools_sandbox/sessions/appworld_claude-sonnet-4-20250514_train_50_20260219_011927/
+!agentic-evolution/tools_sandbox/sessions/appworld_claude-sonnet-4-20250514_train_50_20260219_011927/**
+
+# ===== Temp directory =====
+agentic-evolution/.tmp/
+
+# ===== Experiment outputs (keep one tracked sample set) =====
+agentic-evolution/experiments/outputs/*
+!agentic-evolution/experiments/outputs/appworld_claude-sonnet-4-20250514_train_50_20260219_011927/
+!agentic-evolution/experiments/outputs/appworld_claude-sonnet-4-20250514_train_50_20260219_011927/**
+!agentic-evolution/experiments/outputs/appworld_claude-sonnet-4-20250514_train_50_20260219_011927_vanilla/
+!agentic-evolution/experiments/outputs/appworld_claude-sonnet-4-20250514_train_50_20260219_011927_vanilla/**
+!agentic-evolution/experiments/outputs/appworld_claude-sonnet-4-20250514_train_50_20260219_011927_evolved/
+!agentic-evolution/experiments/outputs/appworld_claude-sonnet-4-20250514_train_50_20260219_011927_evolved/**
+
+# ===== Cursor =====
+.cursor/
+
+# ===== Excluded directories =====
+agent-prism/
+agentic-evolution-private/
+
+# ===== TypeScript build info =====
+*.tsbuildinfo
+
+# ===== UI runtime files =====
+a-evolve-ui/running_logs.txt
+
+# ===== Setup runtime =====
+.python_path

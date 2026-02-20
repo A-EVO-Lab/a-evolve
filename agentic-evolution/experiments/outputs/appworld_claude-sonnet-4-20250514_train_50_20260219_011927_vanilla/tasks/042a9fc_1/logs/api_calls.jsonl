@@ -1,0 +1,33 @@
+{"method": "get", "url": "/supervisor/profile", "data": {}}
+{"method": "get", "url": "/api_docs/app_descriptions", "data": {}}
+{"method": "get", "url": "/api_docs/api_descriptions", "data": {"app_name": "spotify"}}
+{"method": "get", "url": "/api_docs/api_descriptions", "data": {"app_name": "phone"}}
+{"method": "get", "url": "/api_docs/api_descriptions", "data": {"app_name": "supervisor"}}
+{"method": "get", "url": "/supervisor/account_passwords", "data": {}}
+{"method": "post", "url": "/spotify/auth/token", "data": {"email": "joseharr@gmail.com", "password": "rvP5MvY"}}
+{"method": "get", "url": "/api_docs/api_doc", "data": {"app_name": "spotify", "api_name": "login"}}
+{"method": "post", "url": "/spotify/auth/token", "data": {"username": "joseharr@gmail.com", "password": "rvP5MvY"}}
+{"method": "post", "url": "/phone/auth/token", "data": {"username": "2474975253", "password": "b4GXZH6"}}
+{"method": "get", "url": "/spotify/library/playlists", "data": {}}
+{"method": "get", "url": "/api_docs/api_doc", "data": {"app_name": "spotify", "api_name": "show_playlist_library"}}
+{"method": "get", "url": "/spotify/library/playlists", "data": {"access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJzcG90aWZ5K2pvc2VoYXJyQGdtYWlsLmNvbSIsImV4cCI6MTY4NDQxMjA5OH0.hcqCpRubJLnD0Rb1w1X-ajbN-E6xGyw-mnYWYV9rTqc"}}
+{"method": "get", "url": "/spotify/library/playlists", "data": {"access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJzcG90aWZ5K2pvc2VoYXJyQGdtYWlsLmNvbSIsImV4cCI6MTY4NDQxMjA5OH0.hcqCpRubJLnD0Rb1w1X-ajbN-E6xGyw-mnYWYV9rTqc", "page_index": 1}}
+{"method": "get", "url": "/spotify/playlists/654", "data": {"access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJzcG90aWZ5K2pvc2VoYXJyQGdtYWlsLmNvbSIsImV4cCI6MTY4NDQxMjA5OH0.hcqCpRubJLnD0Rb1w1X-ajbN-E6xGyw-mnYWYV9rTqc"}}
+{"method": "get", "url": "/api_docs/api_doc", "data": {"app_name": "spotify", "api_name": "show_playlist"}}
+{"method": "get", "url": "/spotify/playlists/654", "data": {"access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJzcG90aWZ5K2pvc2VoYXJyQGdtYWlsLmNvbSIsImV4cCI6MTY4NDQxMjA5OH0.hcqCpRubJLnD0Rb1w1X-ajbN-E6xGyw-mnYWYV9rTqc"}}
+{"method": "get", "url": "/phone/messages/text", "data": {"access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJwaG9uZSsyNDc0OTc1MjUzIiwiZXhwIjoxNjg0NDEyNzQxfQ.kMxDBAKyoAMPGcRLq_1ujbXRnG0gmVbHY4qVaoeerw4"}}
+{"method": "get", "url": "/api_docs/api_doc", "data": {"app_name": "phone", "api_name": "search_text_messages"}}
+{"method": "get", "url": "/phone/messages/text", "data": {"access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJwaG9uZSsyNDc0OTc1MjUzIiwiZXhwIjoxNjg0NDEyNzQxfQ.kMxDBAKyoAMPGcRLq_1ujbXRnG0gmVbHY4qVaoeerw4", "query": "playlist", "page_limit": 20, "sort_by": "-sent_at"}}
+{"method": "get", "url": "/phone/messages/text", "data": {"access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJwaG9uZSsyNDc0OTc1MjUzIiwiZXhwIjoxNjg0NDEyNzQxfQ.kMxDBAKyoAMPGcRLq_1ujbXRnG0gmVbHY4qVaoeerw4", "query": "playlist", "page_limit": 20, "sort_by": "-created_at"}}
+{"method": "get", "url": "/phone/messages/text", "data": {"access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJwaG9uZSsyNDc0OTc1MjUzIiwiZXhwIjoxNjg0NDEyNzQxfQ.kMxDBAKyoAMPGcRLq_1ujbXRnG0gmVbHY4qVaoeerw4", "query": "roadtrip", "page_limit": 10, "sort_by": "-created_at"}}
+{"method": "get", "url": "/spotify/songs", "data": {"access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJzcG90aWZ5K2pvc2VoYXJyQGdtYWlsLmNvbSIsImV4cCI6MTY4NDQxMjA5OH0.hcqCpRubJLnD0Rb1w1X-ajbN-E6xGyw-mnYWYV9rTqc", "query": "Electric Pulse Felix Blackwood"}}
+{"method": "get", "url": "/api_docs/api_doc", "data": {"app_name": "spotify", "api_name": "search_songs"}}
+{"method": "get", "url": "/spotify/songs", "data": {"query": "Electric Pulse Felix Blackwood"}}
+{"method": "get", "url": "/spotify/songs", "data": {"query": "Lonesome Road Seraphina Dawn"}}
+{"method": "delete", "url": "/spotify/playlists/654/songs/6", "data": {"access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJzcG90aWZ5K2pvc2VoYXJyQGdtYWlsLmNvbSIsImV4cCI6MTY4NDQxMjA5OH0.hcqCpRubJLnD0Rb1w1X-ajbN-E6xGyw-mnYWYV9rTqc"}}
+{"method": "delete", "url": "/spotify/playlists/654/songs/113", "data": {"access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJzcG90aWZ5K2pvc2VoYXJyQGdtYWlsLmNvbSIsImV4cCI6MTY4NDQxMjA5OH0.hcqCpRubJLnD0Rb1w1X-ajbN-E6xGyw-mnYWYV9rTqc"}}
+{"method": "delete", "url": "/spotify/playlists/654/songs/173", "data": {"access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJzcG90aWZ5K2pvc2VoYXJyQGdtYWlsLmNvbSIsImV4cCI6MTY4NDQxMjA5OH0.hcqCpRubJLnD0Rb1w1X-ajbN-E6xGyw-mnYWYV9rTqc"}}
+{"method": "post", "url": "/spotify/playlists/654/songs/305", "data": {"access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJzcG90aWZ5K2pvc2VoYXJyQGdtYWlsLmNvbSIsImV4cCI6MTY4NDQxMjA5OH0.hcqCpRubJLnD0Rb1w1X-ajbN-E6xGyw-mnYWYV9rTqc"}}
+{"method": "post", "url": "/spotify/playlists/654/songs/111", "data": {"access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJzcG90aWZ5K2pvc2VoYXJyQGdtYWlsLmNvbSIsImV4cCI6MTY4NDQxMjA5OH0.hcqCpRubJLnD0Rb1w1X-ajbN-E6xGyw-mnYWYV9rTqc"}}
+{"method": "get", "url": "/spotify/playlists/654", "data": {"access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJzcG90aWZ5K2pvc2VoYXJyQGdtYWlsLmNvbSIsImV4cCI6MTY4NDQxMjA5OH0.hcqCpRubJLnD0Rb1w1X-ajbN-E6xGyw-mnYWYV9rTqc"}}
+{"method": "post", "url": "/supervisor/message", "data": {"answer": "Updated the 'Road Trip with Roommates' playlist based on roommate suggestions: removed 3 songs (Reflections in a Pool of Regret, Chasing Echoes in the Dark, Beyond the Echo) and added 2 songs (Electric Pulse by Felix Blackwood, Lonesome Road by Seraphina Dawn). Paul Miller had no suggestions. Final playlist has 20 songs."}}

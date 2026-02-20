@@ -1,0 +1,22 @@
+{"method": "get", "url": "/supervisor/profile", "data": {}}
+{"method": "get", "url": "/api_docs/app_descriptions", "data": {}}
+{"method": "get", "url": "/api_docs/api_descriptions", "data": {"app_name": "venmo"}}
+{"method": "get", "url": "/api_docs/api_doc", "data": {"app_name": "venmo", "api_name": "create_transaction"}}
+{"method": "get", "url": "/api_docs/api_doc", "data": {"app_name": "venmo", "api_name": "create_payment_request"}}
+{"method": "get", "url": "/api_docs/api_descriptions", "data": {"app_name": "supervisor"}}
+{"method": "get", "url": "/api_docs/api_doc", "data": {"app_name": "supervisor", "api_name": "show_account_passwords"}}
+{"method": "get", "url": "/supervisor/account_passwords", "data": {}}
+{"method": "get", "url": "/api_docs/api_doc", "data": {"app_name": "venmo", "api_name": "login"}}
+{"method": "post", "url": "/venmo/auth/token", "data": {"username": "jo-harr@gmail.com", "password": "ZEgU=ep"}}
+{"method": "get", "url": "/api_docs/api_descriptions", "data": {"app_name": "phone"}}
+{"method": "post", "url": "/phone/auth/token", "data": {"username": "jo-harr@gmail.com", "password": "Ee%AVVI"}}
+{"method": "get", "url": "/api_docs/api_doc", "data": {"app_name": "phone", "api_name": "login"}}
+{"method": "post", "url": "/phone/auth/token", "data": {"username": "2254213734", "password": "Ee%AVVI"}}
+{"method": "get", "url": "/api_docs/api_doc", "data": {"app_name": "phone", "api_name": "search_contacts"}}
+{"method": "get", "url": "/phone/contacts", "data": {"access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJwaG9uZSsyMjU0MjEzNzM0IiwiZXhwIjoxNjg0NDEyNzQxfQ.QeM73y_jEuP2hURwQ2HUU9G4Fs5iYPjtn7T9x4y2dcQ", "query": "Nancy"}}
+{"method": "get", "url": "/phone/contacts", "data": {"access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJwaG9uZSsyMjU0MjEzNzM0IiwiZXhwIjoxNjg0NDEyNzQxfQ.QeM73y_jEuP2hURwQ2HUU9G4Fs5iYPjtn7T9x4y2dcQ", "relationship": "roommate"}}
+{"method": "post", "url": "/venmo/transactions", "data": {"receiver_email": "nan_ritt@gmail.com", "amount": 114.5, "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ2ZW5tbytqby1oYXJyQGdtYWlsLmNvbSIsImV4cCI6MTY4NDQxMjA5OH0.4kAHHBEgpO70h3jQRPMhEC-3T9ar14kiHiBCNVLKxYY", "description": "Dinner"}}
+{"method": "post", "url": "/venmo/payment_requests", "data": {"user_email": "kathrynmaldonado@gmail.com", "amount": 10.0, "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ2ZW5tbytqby1oYXJyQGdtYWlsLmNvbSIsImV4cCI6MTY4NDQxMjA5OH0.4kAHHBEgpO70h3jQRPMhEC-3T9ar14kiHiBCNVLKxYY", "description": "Commute"}}
+{"method": "post", "url": "/venmo/payment_requests", "data": {"user_email": "tr_solo@gmail.com", "amount": 10.0, "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ2ZW5tbytqby1oYXJyQGdtYWlsLmNvbSIsImV4cCI6MTY4NDQxMjA5OH0.4kAHHBEgpO70h3jQRPMhEC-3T9ar14kiHiBCNVLKxYY", "description": "Commute"}}
+{"method": "post", "url": "/venmo/payment_requests", "data": {"user_email": "nan_ritt@gmail.com", "amount": 10.0, "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ2ZW5tbytqby1oYXJyQGdtYWlsLmNvbSIsImV4cCI6MTY4NDQxMjA5OH0.4kAHHBEgpO70h3jQRPMhEC-3T9ar14kiHiBCNVLKxYY", "description": "Commute"}}
+{"method": "post", "url": "/supervisor/message", "data": {}}

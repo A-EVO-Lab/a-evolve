@@ -1,0 +1,28 @@
+{"method": "get", "url": "/supervisor/profile", "data": {}}
+{"method": "get", "url": "/api_docs/app_descriptions", "data": {}}
+{"method": "get", "url": "/api_docs/api_descriptions", "data": {"app_name": "simple_note"}}
+{"method": "get", "url": "/api_docs/api_descriptions", "data": {"app_name": "venmo"}}
+{"method": "get", "url": "/api_docs/api_descriptions", "data": {"app_name": "supervisor"}}
+{"method": "get", "url": "/supervisor/account_passwords", "data": {}}
+{"method": "get", "url": "/api_docs/api_doc", "data": {"app_name": "simple_note", "api_name": "login"}}
+{"method": "post", "url": "/simple_note/auth/token", "data": {"username": "gra-martinez@gmail.com", "password": "9J2X8Ow"}}
+{"method": "get", "url": "/api_docs/api_doc", "data": {"app_name": "simple_note", "api_name": "search_notes"}}
+{"method": "get", "url": "/simple_note/notes", "data": {"access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJzaW1wbGVfbm90ZStncmEtbWFydGluZXpAZ21haWwuY29tIiwiZXhwIjoxNjg0NTk1NzI3fQ.BhkYSMWV5_17xa9lmjfHpOA1-yqkqI6DLCtgPAOBekE", "query": "dinner"}}
+{"method": "get", "url": "/api_docs/api_doc", "data": {"app_name": "simple_note", "api_name": "show_note"}}
+{"method": "get", "url": "/simple_note/notes/3084", "data": {"access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJzaW1wbGVfbm90ZStncmEtbWFydGluZXpAZ21haWwuY29tIiwiZXhwIjoxNjg0NTk1NzI3fQ.BhkYSMWV5_17xa9lmjfHpOA1-yqkqI6DLCtgPAOBekE"}}
+{"method": "get", "url": "/api_docs/api_doc", "data": {"app_name": "venmo", "api_name": "login"}}
+{"method": "post", "url": "/venmo/auth/token", "data": {"username": "gra-martinez@gmail.com", "password": "Nql%+4G"}}
+{"method": "get", "url": "/api_docs/api_doc", "data": {"app_name": "venmo", "api_name": "show_transactions"}}
+{"method": "get", "url": "/venmo/transactions", "data": {"access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ2ZW5tbytncmEtbWFydGluZXpAZ21haWwuY29tIiwiZXhwIjoxNjg0NTk2MzcwfQ.LsAE_IEULOb2cscjpm5eCWZjeSgOvJ7epBWqoUARYsI", "min_created_at": "2023-05-19", "direction": "received", "page_limit": 20}}
+{"method": "get", "url": "/api_docs/api_doc", "data": {"app_name": "venmo", "api_name": "create_payment_request"}}
+{"method": "get", "url": "/api_docs/api_doc", "data": {"app_name": "venmo", "api_name": "search_users"}}
+{"method": "get", "url": "/venmo/users", "data": {"access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ2ZW5tbytncmEtbWFydGluZXpAZ21haWwuY29tIiwiZXhwIjoxNjg0NTk2MzcwfQ.LsAE_IEULOb2cscjpm5eCWZjeSgOvJ7epBWqoUARYsI", "query": "Stephen", "page_limit": 10}}
+{"method": "get", "url": "/venmo/users", "data": {"access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ2ZW5tbytncmEtbWFydGluZXpAZ21haWwuY29tIiwiZXhwIjoxNjg0NTk2MzcwfQ.LsAE_IEULOb2cscjpm5eCWZjeSgOvJ7epBWqoUARYsI", "query": "Sabrina", "page_limit": 10}}
+{"method": "get", "url": "/venmo/users", "data": {"access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ2ZW5tbytncmEtbWFydGluZXpAZ21haWwuY29tIiwiZXhwIjoxNjg0NTk2MzcwfQ.LsAE_IEULOb2cscjpm5eCWZjeSgOvJ7epBWqoUARYsI", "query": "Jamie", "page_limit": 10}}
+{"method": "get", "url": "/venmo/users", "data": {"access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ2ZW5tbytncmEtbWFydGluZXpAZ21haWwuY29tIiwiZXhwIjoxNjg0NTk2MzcwfQ.LsAE_IEULOb2cscjpm5eCWZjeSgOvJ7epBWqoUARYsI", "query": "Anita", "page_limit": 10}}
+{"method": "post", "url": "/venmo/payment_requests", "data": {"user_email": "stmcco@gmail.com", "amount": 33.0, "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ2ZW5tbytncmEtbWFydGluZXpAZ21haWwuY29tIiwiZXhwIjoxNjg0NTk2MzcwfQ.LsAE_IEULOb2cscjpm5eCWZjeSgOvJ7epBWqoUARYsI", "description": "Dinner with Colleagues"}}
+{"method": "post", "url": "/venmo/payment_requests", "data": {"user_email": "sab-brown@gmail.com", "amount": 32.0, "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ2ZW5tbytncmEtbWFydGluZXpAZ21haWwuY29tIiwiZXhwIjoxNjg0NTk2MzcwfQ.LsAE_IEULOb2cscjpm5eCWZjeSgOvJ7epBWqoUARYsI", "description": "Dinner with Colleagues"}}
+{"method": "post", "url": "/venmo/payment_requests", "data": {"user_email": "jamie-solomon@gmail.com", "amount": 31.0, "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ2ZW5tbytncmEtbWFydGluZXpAZ21haWwuY29tIiwiZXhwIjoxNjg0NTk2MzcwfQ.LsAE_IEULOb2cscjpm5eCWZjeSgOvJ7epBWqoUARYsI", "description": "Dinner with Colleagues"}}
+{"method": "post", "url": "/venmo/payment_requests", "data": {"user_email": "anita.burch@gmail.com", "amount": 32.0, "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ2ZW5tbytncmEtbWFydGluZXpAZ21haWwuY29tIiwiZXhwIjoxNjg0NTk2MzcwfQ.LsAE_IEULOb2cscjpm5eCWZjeSgOvJ7epBWqoUARYsI", "description": "Dinner with Colleagues"}}
+{"method": "get", "url": "/venmo/sent_payment_requests", "data": {"access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ2ZW5tbytncmEtbWFydGluZXpAZ21haWwuY29tIiwiZXhwIjoxNjg0NTk2MzcwfQ.LsAE_IEULOb2cscjpm5eCWZjeSgOvJ7epBWqoUARYsI", "page_limit": 10}}
+{"method": "post", "url": "/supervisor/message", "data": {}}

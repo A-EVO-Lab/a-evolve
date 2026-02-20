@@ -1,0 +1,31 @@
+{"method": "get", "url": "/supervisor/profile", "data": {}}
+{"method": "get", "url": "/api_docs/app_descriptions", "data": {}}
+{"method": "get", "url": "/api_docs/api_descriptions", "data": {"app_name": "simple_note"}}
+{"method": "get", "url": "/api_docs/api_descriptions", "data": {"app_name": "venmo"}}
+{"method": "get", "url": "/api_docs/api_descriptions", "data": {"app_name": "supervisor"}}
+{"method": "get", "url": "/supervisor/account_passwords", "data": {}}
+{"method": "get", "url": "/api_docs/api_doc", "data": {"app_name": "simple_note", "api_name": "login"}}
+{"method": "post", "url": "/simple_note/auth/token", "data": {"username": "brenda.webe@gmail.com", "password": "nwrDB{O"}}
+{"method": "get", "url": "/api_docs/api_doc", "data": {"app_name": "simple_note", "api_name": "search_notes"}}
+{"method": "get", "url": "/simple_note/notes", "data": {"access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJzaW1wbGVfbm90ZSticmVuZGEud2ViZUBnbWFpbC5jb20iLCJleHAiOjE2ODQ0MTIwOTh9.NmGEu2wIPVFtHgvgiQYjriCN6OAch0lDnq1GyG8tbEY", "query": "Maui"}}
+{"method": "get", "url": "/api_docs/api_doc", "data": {"app_name": "simple_note", "api_name": "show_note"}}
+{"method": "get", "url": "/simple_note/notes/3084", "data": {"access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJzaW1wbGVfbm90ZSticmVuZGEud2ViZUBnbWFpbC5jb20iLCJleHAiOjE2ODQ0MTIwOTh9.NmGEu2wIPVFtHgvgiQYjriCN6OAch0lDnq1GyG8tbEY"}}
+{"method": "get", "url": "/api_docs/api_doc", "data": {"app_name": "venmo", "api_name": "login"}}
+{"method": "post", "url": "/venmo/auth/token", "data": {"username": "brenda.webe@gmail.com", "password": "$LRYdG7"}}
+{"method": "get", "url": "/api_docs/api_doc", "data": {"app_name": "venmo", "api_name": "create_transaction"}}
+{"method": "get", "url": "/api_docs/api_doc", "data": {"app_name": "venmo", "api_name": "create_payment_request"}}
+{"method": "get", "url": "/api_docs/api_descriptions", "data": {"app_name": "phone"}}
+{"method": "post", "url": "/phone/auth/token", "data": {"username": "brenda.webe@gmail.com", "password": "N^ssqde"}}
+{"method": "get", "url": "/api_docs/api_doc", "data": {"app_name": "phone", "api_name": "login"}}
+{"method": "post", "url": "/phone/auth/token", "data": {"username": "9312015677", "password": "N^ssqde"}}
+{"method": "get", "url": "/api_docs/api_doc", "data": {"app_name": "phone", "api_name": "search_contacts"}}
+{"method": "get", "url": "/phone/contacts", "data": {"access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJwaG9uZSs5MzEyMDE1Njc3IiwiZXhwIjoxNjg0NDEyNzMxfQ.EK6VuNJfNjHbLO4STfVZ2eXb2yQGsJrmK7eMOFsFJq0", "query": "Glen"}}
+{"method": "get", "url": "/phone/contacts", "data": {"access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJwaG9uZSs5MzEyMDE1Njc3IiwiZXhwIjoxNjg0NDEyNzMxfQ.EK6VuNJfNjHbLO4STfVZ2eXb2yQGsJrmK7eMOFsFJq0", "query": "Norman"}}
+{"method": "get", "url": "/phone/contacts", "data": {"access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJwaG9uZSs5MzEyMDE1Njc3IiwiZXhwIjoxNjg0NDEyNzMxfQ.EK6VuNJfNjHbLO4STfVZ2eXb2yQGsJrmK7eMOFsFJq0", "query": "Cory"}}
+{"method": "get", "url": "/phone/contacts", "data": {"access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJwaG9uZSs5MzEyMDE1Njc3IiwiZXhwIjoxNjg0NDEyNzMxfQ.EK6VuNJfNjHbLO4STfVZ2eXb2yQGsJrmK7eMOFsFJq0", "query": "Edwin"}}
+{"method": "get", "url": "/phone/contacts", "data": {"access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJwaG9uZSs5MzEyMDE1Njc3IiwiZXhwIjoxNjg0NDEyNzMxfQ.EK6VuNJfNjHbLO4STfVZ2eXb2yQGsJrmK7eMOFsFJq0", "query": "Katherine"}}
+{"method": "get", "url": "/phone/contacts", "data": {"access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJwaG9uZSs5MzEyMDE1Njc3IiwiZXhwIjoxNjg0NDEyNzMxfQ.EK6VuNJfNjHbLO4STfVZ2eXb2yQGsJrmK7eMOFsFJq0", "query": "Jeremy"}}
+{"method": "post", "url": "/venmo/transactions", "data": {"receiver_email": "gl.moore@gmail.com", "amount": 285, "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ2ZW5tbyticmVuZGEud2ViZUBnbWFpbC5jb20iLCJleHAiOjE2ODQ0MTI3NDF9.kXf9dwJNzyteJPTy4MpyC6gXo88kGAuzMgb3ijVjL1Y", "description": "For Maui trip", "private": true}}
+{"method": "post", "url": "/venmo/transactions", "data": {"receiver_email": "normansmit@gmail.com", "amount": 115, "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ2ZW5tbyticmVuZGEud2ViZUBnbWFpbC5jb20iLCJleHAiOjE2ODQ0MTI3NDF9.kXf9dwJNzyteJPTy4MpyC6gXo88kGAuzMgb3ijVjL1Y", "description": "For Maui trip", "private": true}}
+{"method": "post", "url": "/venmo/transactions", "data": {"receiver_email": "ka_ball@gmail.com", "amount": 171, "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ2ZW5tbyticmVuZGEud2ViZUBnbWFpbC5jb20iLCJleHAiOjE2ODQ0MTI3NDF9.kXf9dwJNzyteJPTy4MpyC6gXo88kGAuzMgb3ijVjL1Y", "description": "For Maui trip", "private": true}}
+{"method": "post", "url": "/venmo/payment_requests", "data": {"user_email": "corwils@gmail.com", "amount": 212, "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ2ZW5tbyticmVuZGEud2ViZUBnbWFpbC5jb20iLCJleHAiOjE2ODQ0MTI3NDF9.kXf9dwJNzyteJPTy4MpyC6gXo88kGAuzMgb3ijVjL1Y", "description": "For Maui trip", "private": true}}

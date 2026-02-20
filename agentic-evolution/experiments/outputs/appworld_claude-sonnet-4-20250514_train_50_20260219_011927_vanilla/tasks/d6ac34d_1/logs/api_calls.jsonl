@@ -1,0 +1,15 @@
+{"method": "get", "url": "/supervisor/profile", "data": {}}
+{"method": "get", "url": "/api_docs/app_descriptions", "data": {}}
+{"method": "get", "url": "/api_docs/api_descriptions", "data": {"app_name": "simple_note"}}
+{"method": "get", "url": "/api_docs/api_descriptions", "data": {"app_name": "supervisor"}}
+{"method": "get", "url": "/api_docs/api_doc", "data": {"app_name": "supervisor", "api_name": "show_account_passwords"}}
+{"method": "get", "url": "/supervisor/account_passwords", "data": {}}
+{"method": "post", "url": "/simple_note/auth/token", "data": {"email": "anita.burch@gmail.com", "password": "]ic5XP5"}}
+{"method": "get", "url": "/api_docs/api_doc", "data": {"app_name": "simple_note", "api_name": "login"}}
+{"method": "post", "url": "/simple_note/auth/token", "data": {"username": "anita.burch@gmail.com", "password": "]ic5XP5"}}
+{"method": "get", "url": "/simple_note/notes", "data": {}}
+{"method": "get", "url": "/api_docs/api_doc", "data": {"app_name": "simple_note", "api_name": "search_notes"}}
+{"method": "get", "url": "/simple_note/notes", "data": {"access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJzaW1wbGVfbm90ZSthbml0YS5idXJjaEBnbWFpbC5jb20iLCJleHAiOjE2ODQ0NDUwNjZ9.lty9RseUcfgLtWSGGpZjfrDDvYqA7BfRt4T5xdXSCPw", "query": "habit"}}
+{"method": "get", "url": "/simple_note/notes/1066", "data": {"access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJzaW1wbGVfbm90ZSthbml0YS5idXJjaEBnbWFpbC5jb20iLCJleHAiOjE2ODQ0NDUwNjZ9.lty9RseUcfgLtWSGGpZjfrDDvYqA7BfRt4T5xdXSCPw"}}
+{"method": "post", "url": "/simple_note/notes", "data": {"access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJzaW1wbGVfbm90ZSthbml0YS5idXJjaEBnbWFpbC5jb20iLCJleHAiOjE2ODQ0NDUwNjZ9.lty9RseUcfgLtWSGGpZjfrDDvYqA7BfRt4T5xdXSCPw", "title": "Habit Tracking Log for 2023-05-18", "content": "# Daily Habit Tracker (yes/no questions to answer daily)\n\nexercised_atleast_30_mins: yes\nate_homemade_meals: yes\npracticed_meditation: no\nread_atleast_30_mins: yes\ndrank_adequate_water: yes\nslept_over_7_hrs: yes\nwrote_gratitude_journal: yes\nlimited_screen_time_to_1_hr: yes\npracticed_good_posture: yes\nconnected_with_friends: yes", "tags": ["habit-tracker"], "pinned": true}}
+{"method": "post", "url": "/supervisor/message", "data": {}}

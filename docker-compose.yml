@@ -1,0 +1,32 @@
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.backend
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    environment:
+      - AEVOLVE_SESSIONS_DIR=/app/agentic-evolution/tools_sandbox/sessions
+      - AEVOLVE_EXPERIMENTS_DIR=/app/agentic-evolution/experiments/outputs
+      - AEVOLVE_EXAMPLES_DIR=/app/agentic-evolution/examples
+      - APPWORLD_ROOT=/app/agentic-evolution
+    volumes:
+      - ./agentic-evolution/tools_sandbox:/app/agentic-evolution/tools_sandbox
+      - ./agentic-evolution/experiments:/app/agentic-evolution/experiments
+      - appworld-data:/app/agentic-evolution/data
+
+  frontend:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.frontend
+    depends_on:
+      - backend
+    ports:
+      - "5173:5173"
+    environment:
+      - VITE_API_BASE=http://localhost:8000/api
+
+volumes:
+  appworld-data:

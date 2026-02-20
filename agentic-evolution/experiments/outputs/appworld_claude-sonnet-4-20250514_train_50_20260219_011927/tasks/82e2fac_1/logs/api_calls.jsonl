@@ -1,0 +1,72 @@
+{"method": "get", "url": "/supervisor/profile", "data": {}}
+{"method": "get", "url": "/api_docs/app_descriptions", "data": {}}
+{"method": "get", "url": "/api_docs/api_descriptions", "data": {"app_name": "spotify"}}
+{"method": "get", "url": "/api_docs/api_descriptions", "data": {"app_name": "supervisor"}}
+{"method": "get", "url": "/supervisor/account_passwords", "data": {}}
+{"method": "post", "url": "/spotify/auth/token", "data": {"email": "joyce-weav@gmail.com", "password": "qge1k1L"}}
+{"method": "get", "url": "/api_docs/api_doc", "data": {"app_name": "spotify", "api_name": "login"}}
+{"method": "post", "url": "/spotify/auth/token", "data": {"username": "joyce-weav@gmail.com", "password": "qge1k1L"}}
+{"method": "get", "url": "/spotify/library/playlists", "data": {}}
+{"method": "get", "url": "/api_docs/api_doc", "data": {"app_name": "spotify", "api_name": "show_playlist_library"}}
+{"method": "get", "url": "/spotify/library/playlists", "data": {"access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJzcG90aWZ5K2pveWNlLXdlYXZAZ21haWwuY29tIiwiZXhwIjoxNjg0NDEyMDk4fQ.-4SESAodmQQZXj1xkfwFIRI1EUfc2rL_fGELgWkJlXg"}}
+{"method": "get", "url": "/spotify/library/playlists", "data": {"access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJzcG90aWZ5K2pveWNlLXdlYXZAZ21haWwuY29tIiwiZXhwIjoxNjg0NDEyMDk4fQ.-4SESAodmQQZXj1xkfwFIRI1EUfc2rL_fGELgWkJlXg", "page_index": 1}}
+{"method": "get", "url": "/spotify/library/playlists", "data": {"access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJzcG90aWZ5K2pveWNlLXdlYXZAZ21haWwuY29tIiwiZXhwIjoxNjg0NDEyMDk4fQ.-4SESAodmQQZXj1xkfwFIRI1EUfc2rL_fGELgWkJlXg", "page_index": 2}}
+{"method": "get", "url": "/api_docs/api_doc", "data": {"app_name": "spotify", "api_name": "show_song"}}
+{"method": "get", "url": "/spotify/songs/12", "data": {}}
+{"method": "get", "url": "/spotify/songs/13", "data": {}}
+{"method": "get", "url": "/spotify/songs/14", "data": {}}
+{"method": "get", "url": "/spotify/songs/28", "data": {}}
+{"method": "get", "url": "/spotify/songs/36", "data": {}}
+{"method": "get", "url": "/spotify/songs/42", "data": {}}
+{"method": "get", "url": "/spotify/songs/44", "data": {}}
+{"method": "get", "url": "/spotify/songs/46", "data": {}}
+{"method": "get", "url": "/spotify/songs/50", "data": {}}
+{"method": "get", "url": "/spotify/songs/57", "data": {}}
+{"method": "get", "url": "/spotify/songs/70", "data": {}}
+{"method": "get", "url": "/spotify/songs/78", "data": {}}
+{"method": "get", "url": "/spotify/songs/89", "data": {}}
+{"method": "get", "url": "/spotify/songs/92", "data": {}}
+{"method": "get", "url": "/spotify/songs/110", "data": {}}
+{"method": "get", "url": "/spotify/songs/117", "data": {}}
+{"method": "get", "url": "/spotify/songs/124", "data": {}}
+{"method": "get", "url": "/spotify/songs/125", "data": {}}
+{"method": "get", "url": "/spotify/songs/136", "data": {}}
+{"method": "get", "url": "/spotify/songs/139", "data": {}}
+{"method": "get", "url": "/spotify/songs/155", "data": {}}
+{"method": "get", "url": "/spotify/songs/156", "data": {}}
+{"method": "get", "url": "/spotify/songs/173", "data": {}}
+{"method": "get", "url": "/spotify/songs/181", "data": {}}
+{"method": "get", "url": "/spotify/songs/185", "data": {}}
+{"method": "get", "url": "/spotify/songs/188", "data": {}}
+{"method": "get", "url": "/spotify/songs/189", "data": {}}
+{"method": "get", "url": "/spotify/songs/190", "data": {}}
+{"method": "get", "url": "/spotify/songs/191", "data": {}}
+{"method": "get", "url": "/spotify/songs/196", "data": {}}
+{"method": "get", "url": "/spotify/songs/197", "data": {}}
+{"method": "get", "url": "/spotify/songs/198", "data": {}}
+{"method": "get", "url": "/spotify/songs/201", "data": {}}
+{"method": "get", "url": "/spotify/songs/204", "data": {}}
+{"method": "get", "url": "/spotify/songs/208", "data": {}}
+{"method": "get", "url": "/spotify/songs/216", "data": {}}
+{"method": "get", "url": "/spotify/songs/218", "data": {}}
+{"method": "get", "url": "/spotify/songs/221", "data": {}}
+{"method": "get", "url": "/spotify/songs/224", "data": {}}
+{"method": "get", "url": "/spotify/songs/229", "data": {}}
+{"method": "get", "url": "/spotify/songs/231", "data": {}}
+{"method": "get", "url": "/spotify/songs/235", "data": {}}
+{"method": "get", "url": "/spotify/songs/249", "data": {}}
+{"method": "get", "url": "/spotify/songs/259", "data": {}}
+{"method": "get", "url": "/spotify/songs/262", "data": {}}
+{"method": "get", "url": "/spotify/songs/272", "data": {}}
+{"method": "get", "url": "/spotify/songs/276", "data": {}}
+{"method": "get", "url": "/spotify/songs/293", "data": {}}
+{"method": "get", "url": "/spotify/songs/296", "data": {}}
+{"method": "get", "url": "/spotify/songs/298", "data": {}}
+{"method": "get", "url": "/spotify/songs/302", "data": {}}
+{"method": "get", "url": "/spotify/songs/306", "data": {}}
+{"method": "get", "url": "/spotify/songs/308", "data": {}}
+{"method": "get", "url": "/spotify/songs/314", "data": {}}
+{"method": "get", "url": "/spotify/songs/315", "data": {}}
+{"method": "get", "url": "/spotify/songs/317", "data": {}}
+{"method": "get", "url": "/spotify/songs/318", "data": {}}
+{"method": "post", "url": "/supervisor/message", "data": {"answer": "A Love That Never Was"}}

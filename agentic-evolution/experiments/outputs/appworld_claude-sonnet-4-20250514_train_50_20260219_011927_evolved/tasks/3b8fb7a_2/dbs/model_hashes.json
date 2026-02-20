@@ -1,0 +1,8 @@
+{
+    "venmo": {
+        "User": 8,
+        "Transaction": 4,
+        "Notification": 5,
+        "PaymentRequest": 1
+    }
+}

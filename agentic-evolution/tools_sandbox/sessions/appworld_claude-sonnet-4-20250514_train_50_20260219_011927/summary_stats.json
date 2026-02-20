@@ -1,0 +1,212 @@
+{
+  "total_samples": 50,
+  "total_batches": 25,
+  "batch_accuracies": [
+    {
+      "batch_id": 0,
+      "accuracy": 1.0,
+      "num_samples": 2,
+      "num_correct": 2,
+      "timestamp": "2026-02-19T06:21:35.282953"
+    },
+    {
+      "batch_id": 1,
+      "accuracy": 0.5,
+      "num_samples": 2,
+      "num_correct": 1,
+      "timestamp": "2026-02-19T06:24:02.213879"
+    },
+    {
+      "batch_id": 2,
+      "accuracy": 0.5,
+      "num_samples": 2,
+      "num_correct": 1,
+      "timestamp": "2026-02-19T06:27:33.060347"
+    },
+    {
+      "batch_id": 3,
+      "accuracy": 0.0,
+      "num_samples": 2,
+      "num_correct": 0,
+      "timestamp": "2026-02-19T06:31:30.898587"
+    },
+    {
+      "batch_id": 4,
+      "accuracy": 0.0,
+      "num_samples": 2,
+      "num_correct": 0,
+      "timestamp": "2026-02-19T06:37:05.700395"
+    },
+    {
+      "batch_id": 5,
+      "accuracy": 0.0,
+      "num_samples": 2,
+      "num_correct": 0,
+      "timestamp": "2026-02-19T06:46:19.551234"
+    },
+    {
+      "batch_id": 6,
+      "accuracy": 0.0,
+      "num_samples": 2,
+      "num_correct": 0,
+      "timestamp": "2026-02-19T06:50:24.448893"
+    },
+    {
+      "batch_id": 7,
+      "accuracy": 0.0,
+      "num_samples": 2,
+      "num_correct": 0,
+      "timestamp": "2026-02-19T06:54:58.250001"
+    },
+    {
+      "batch_id": 8,
+      "accuracy": 0.5,
+      "num_samples": 2,
+      "num_correct": 1,
+      "timestamp": "2026-02-19T06:59:13.048236"
+    },
+    {
+      "batch_id": 9,
+      "accuracy": 1.0,
+      "num_samples": 2,
+      "num_correct": 2,
+      "timestamp": "2026-02-19T07:01:16.688971"
+    },
+    {
+      "batch_id": 10,
+      "accuracy": 1.0,
+      "num_samples": 2,
+      "num_correct": 2,
+      "timestamp": "2026-02-19T07:04:02.192340"
+    },
+    {
+      "batch_id": 11,
+      "accuracy": 1.0,
+      "num_samples": 2,
+      "num_correct": 2,
+      "timestamp": "2026-02-19T07:08:19.014815"
+    },
+    {
+      "batch_id": 12,
+      "accuracy": 1.0,
+      "num_samples": 2,
+      "num_correct": 2,
+      "timestamp": "2026-02-19T07:12:32.755332"
+    },
+    {
+      "batch_id": 13,
+      "accuracy": 1.0,
+      "num_samples": 2,
+      "num_correct": 2,
+      "timestamp": "2026-02-19T07:16:31.685471"
+    },
+    {
+      "batch_id": 14,
+      "accuracy": 1.0,
+      "num_samples": 2,
+      "num_correct": 2,
+      "timestamp": "2026-02-19T07:21:13.703001"
+    },
+    {
+      "batch_id": 15,
+      "accuracy": 0.5,
+      "num_samples": 2,
+      "num_correct": 1,
+      "timestamp": "2026-02-19T07:25:36.752628"
+    },
+    {
+      "batch_id": 16,
+      "accuracy": 1.0,
+      "num_samples": 2,
+      "num_correct": 2,
+      "timestamp": "2026-02-19T07:28:35.777067"
+    },
+    {
+      "batch_id": 17,
+      "accuracy": 1.0,
+      "num_samples": 2,
+      "num_correct": 2,
+      "timestamp": "2026-02-19T07:31:21.941516"
+    },
+    {
+      "batch_id": 18,
+      "accuracy": 1.0,
+      "num_samples": 2,
+      "num_correct": 2,
+      "timestamp": "2026-02-19T07:34:43.471649"
+    },
+    {
+      "batch_id": 19,
+      "accuracy": 1.0,
+      "num_samples": 2,
+      "num_correct": 2,
+      "timestamp": "2026-02-19T07:37:53.200949"
+    },
+    {
+      "batch_id": 20,
+      "accuracy": 1.0,
+      "num_samples": 2,
+      "num_correct": 2,
+      "timestamp": "2026-02-19T07:42:48.852024"
+    },
+    {
+      "batch_id": 21,
+      "accuracy": 0.0,
+      "num_samples": 2,
+      "num_correct": 0,
+      "timestamp": "2026-02-19T07:48:38.447005"
+    },
+    {
+      "batch_id": 22,
+      "accuracy": 0.0,
+      "num_samples": 2,
+      "num_correct": 0,
+      "timestamp": "2026-02-19T07:57:31.101564"
+    },
+    {
+      "batch_id": 23,
+      "accuracy": 0.5,
+      "num_samples": 2,
+      "num_correct": 1,
+      "timestamp": "2026-02-19T08:06:16.586374"
+    },
+    {
+      "batch_id": 24,
+      "accuracy": 1.0,
+      "num_samples": 2,
+      "num_correct": 2,
+      "timestamp": "2026-02-19T08:08:15.817970"
+    }
+  ],
+  "field_accuracies_over_time": {
+    "0": {},
+    "1": {},
+    "2": {},
+    "3": {},
+    "4": {},
+    "5": {},
+    "6": {},
+    "7": {},
+    "8": {},
+    "9": {},
+    "10": {},
+    "11": {},
+    "12": {},
+    "13": {},
+    "14": {},
+    "15": {},
+    "16": {},
+    "17": {},
+    "18": {},
+    "19": {},
+    "20": {},
+    "21": {},
+    "22": {},
+    "23": {},
+    "24": {}
+  },
+  "error_type_counts": {
+    "unknown_error": 19
+  },
+  "created_at": "2026-02-19T06:19:27.479812"
+}

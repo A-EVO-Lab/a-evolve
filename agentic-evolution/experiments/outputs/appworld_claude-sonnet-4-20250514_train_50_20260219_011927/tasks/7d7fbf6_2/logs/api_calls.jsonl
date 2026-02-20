@@ -1,0 +1,15 @@
+{"method": "get", "url": "/supervisor/profile", "data": {}}
+{"method": "get", "url": "/api_docs/app_descriptions", "data": {}}
+{"method": "get", "url": "/api_docs/api_descriptions", "data": {"app_name": "file_system"}}
+{"method": "get", "url": "/api_docs/api_doc", "data": {"app_name": "file_system", "api_name": "login"}}
+{"method": "get", "url": "/api_docs/api_descriptions", "data": {"app_name": "supervisor"}}
+{"method": "get", "url": "/supervisor/account_passwords", "data": {}}
+{"method": "post", "url": "/file_system/auth/token", "data": {"username": "jasonsimp@gmail.com", "password": "6ubYf]C"}}
+{"method": "get", "url": "/file_system/directory", "data": {"directory": "~/photos/", "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJmaWxlX3N5c3RlbStqYXNvbnNpbXBAZ21haWwuY29tIiwiZXhwIjoxNjg0NDEyMDk4fQ._cqOYHfZ0nZ345YW72q2I8SdweuWDc6b4okDY-gma90"}}
+{"method": "get", "url": "/api_docs/api_doc", "data": {"app_name": "file_system", "api_name": "compress_directory"}}
+{"method": "post", "url": "/file_system/directory/compress", "data": {"directory_path": "~/photos/vacations/bali/", "compressed_file_path": "~/photos/vacations/bali.tar", "delete_directory": true, "overwrite": true, "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJmaWxlX3N5c3RlbStqYXNvbnNpbXBAZ21haWwuY29tIiwiZXhwIjoxNjg0NDEyMDk4fQ._cqOYHfZ0nZ345YW72q2I8SdweuWDc6b4okDY-gma90"}}
+{"method": "post", "url": "/file_system/directory/compress", "data": {"directory_path": "~/photos/vacations/barcelona/", "compressed_file_path": "~/photos/vacations/barcelona.tar", "delete_directory": true, "overwrite": true, "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJmaWxlX3N5c3RlbStqYXNvbnNpbXBAZ21haWwuY29tIiwiZXhwIjoxNjg0NDEyMDk4fQ._cqOYHfZ0nZ345YW72q2I8SdweuWDc6b4okDY-gma90"}}
+{"method": "post", "url": "/file_system/directory/compress", "data": {"directory_path": "~/photos/vacations/kyoto/", "compressed_file_path": "~/photos/vacations/kyoto.tar", "delete_directory": true, "overwrite": true, "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJmaWxlX3N5c3RlbStqYXNvbnNpbXBAZ21haWwuY29tIiwiZXhwIjoxNjg0NDEyMDk4fQ._cqOYHfZ0nZ345YW72q2I8SdweuWDc6b4okDY-gma90"}}
+{"method": "post", "url": "/file_system/directory/compress", "data": {"directory_path": "~/photos/vacations/maldives/", "compressed_file_path": "~/photos/vacations/maldives.tar", "delete_directory": true, "overwrite": true, "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJmaWxlX3N5c3RlbStqYXNvbnNpbXBAZ21haWwuY29tIiwiZXhwIjoxNjg0NDEyMDk4fQ._cqOYHfZ0nZ345YW72q2I8SdweuWDc6b4okDY-gma90"}}
+{"method": "get", "url": "/file_system/directory", "data": {"directory": "~/photos/vacations/", "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJmaWxlX3N5c3RlbStqYXNvbnNpbXBAZ21haWwuY29tIiwiZXhwIjoxNjg0NDEyMDk4fQ._cqOYHfZ0nZ345YW72q2I8SdweuWDc6b4okDY-gma90"}}
+{"method": "post", "url": "/supervisor/message", "data": {}}

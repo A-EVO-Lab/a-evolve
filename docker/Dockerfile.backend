@@ -1,0 +1,25 @@
+FROM python:3.11-slim
+
+WORKDIR /app
+
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY agentic-evolution/requirements.txt /tmp/agentic-requirements.txt
+COPY a-evolve-ui/server/requirements.txt /tmp/server-requirements.txt
+RUN python -m pip install --upgrade pip && \
+    python -m pip install -r /tmp/agentic-requirements.txt && \
+    python -m pip install -r /tmp/server-requirements.txt
+
+COPY agentic-evolution /app/agentic-evolution
+COPY a-evolve-ui/server /app/a-evolve-ui/server
+
+WORKDIR /app/a-evolve-ui/server
+
+EXPOSE 8000
+
+CMD ["python", "-m", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]

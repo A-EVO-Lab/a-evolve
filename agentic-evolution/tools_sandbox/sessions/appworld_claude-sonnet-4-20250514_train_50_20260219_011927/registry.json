@@ -1,0 +1,39 @@
+{
+  "version": "1.0",
+  "tools": [
+    {
+      "name": "paginate_api_results",
+      "type": "generated",
+      "module": "tools_sandbox.generated.tool_paginate_api_results",
+      "function": "paginate_api_results",
+      "description": "Updated tool",
+      "parameters": {},
+      "return_type": "Any",
+      "file_path": "/data/home/mfl5681/project-evolution/A-EVOLVE/agentic-evolution/tools_sandbox/generated/appworld_claude-sonnet-4-20250514_train_50_20260219_011927/tool_paginate_api_results.py",
+      "usage_prompt": "Use paginate_api_results when you need to fetch ALL results from a paginated API endpoint. Call it with the API function name and initial parameters. Example: paginate_api_results(api_function_name='appworld_api_call', initial_params={'app_name': 'spotify', 'endpoint': '/me/tracks', 'method': 'GET'}, pagination_key='next')",
+      "id": "generated_paginate_api_results",
+      "created_at": "2026-02-19T06:37:05.644700Z",
+      "usage_count": 11,
+      "success_rate": 0.45454545454545453,
+      "last_used": "2023-05-18T12:00:00Z",
+      "last_updated": "2026-02-19T08:06:16.523118Z"
+    },
+    {
+      "name": "format_csv_output",
+      "type": "generated",
+      "module": "tools_sandbox.generated.tool_format_csv_output",
+      "function": "format_csv_output",
+      "description": "Updated tool",
+      "parameters": {},
+      "return_type": "Any",
+      "file_path": "/data/home/mfl5681/project-evolution/A-EVOLVE/agentic-evolution/tools_sandbox/generated/appworld_claude-sonnet-4-20250514_train_50_20260219_011927/tool_format_csv_output.py",
+      "usage_prompt": "**How to call this tool:**\n1. Format: `TOOL_CALL: format_csv_output()`\n2. Pass the input data as the appropriate parameter\n3. The tool returns a dictionary of extracted features\n\n**How to use the results:**\n- Review the returned features\n- Use them to inform your prediction (don't just copy the values)\n- Combine with other context and behavioral patterns",
+      "id": "generated_format_csv_output",
+      "created_at": "2026-02-19T06:36:18.530253Z",
+      "usage_count": 1,
+      "success_rate": 0.0,
+      "last_used": "2023-05-18T12:00:00Z",
+      "last_updated": "2026-02-19T06:37:05.620751Z"
+    }
+  ]
+}

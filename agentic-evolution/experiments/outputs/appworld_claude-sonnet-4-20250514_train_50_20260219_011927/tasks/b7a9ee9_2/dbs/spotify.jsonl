@@ -1,0 +1,6 @@
+["DELETE FROM user_artist_followings WHERE user_artist_followings.id = ?",[591],false]
+["DELETE FROM user_artist_followings WHERE user_artist_followings.id = ?",[597],false]
+["INSERT INTO user_artist_followings (created_at, record_hash, user_id, artist_id) VALUES (?, ?, ?, ?)",["2023-05-18 12:00:00.000000","jRs2g+7xcr4=",92,18],false]
+["INSERT INTO user_artist_followings (created_at, record_hash, user_id, artist_id) VALUES (?, ?, ?, ?)",["2023-05-18 12:00:00.000000","0Xbs1YqNRy4=",92,13],false]
+["INSERT INTO user_artist_followings (created_at, record_hash, user_id, artist_id) VALUES (?, ?, ?, ?)",["2023-05-18 12:00:00.000000","aI/DyGXDM4Y=",92,22],false]
+["INSERT INTO user_artist_followings (created_at, record_hash, user_id, artist_id) VALUES (?, ?, ?, ?)",["2023-05-18 12:00:00.000000","OXedp25WV/0=",92,15],false]

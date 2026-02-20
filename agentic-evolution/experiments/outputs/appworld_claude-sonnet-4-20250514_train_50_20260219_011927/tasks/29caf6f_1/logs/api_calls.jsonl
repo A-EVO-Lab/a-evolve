@@ -1,0 +1,17 @@
+{"method": "get", "url": "/supervisor/profile", "data": {}}
+{"method": "get", "url": "/api_docs/api_descriptions", "data": {"app_name": "simple_note"}}
+{"method": "get", "url": "/supervisor/account_passwords", "data": {}}
+{"method": "post", "url": "/simple_note/auth/token", "data": {"email": "joyce-weav@gmail.com", "password": "RluCyXn"}}
+{"method": "get", "url": "/api_docs/api_doc", "data": {"app_name": "simple_note", "api_name": "login"}}
+{"method": "post", "url": "/simple_note/auth/token", "data": {"username": "joyce-weav@gmail.com", "password": "RluCyXn"}}
+{"method": "get", "url": "/simple_note/notes", "data": {"access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJzaW1wbGVfbm90ZStqb3ljZS13ZWF2QGdtYWlsLmNvbSIsImV4cCI6MTY4NDQxMjA5OH0.ylS_T2qEp3N0QmX7hyfNwXb-VcLzKeReZ9HRKhmVJ-U"}}
+{"method": "get", "url": "/simple_note/notes", "data": {"access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJzaW1wbGVfbm90ZStqb3ljZS13ZWF2QGdtYWlsLmNvbSIsImV4cCI6MTY4NDQxMjA5OH0.ylS_T2qEp3N0QmX7hyfNwXb-VcLzKeReZ9HRKhmVJ-U", "query": "movie"}}
+{"method": "get", "url": "/simple_note/notes/1608", "data": {"access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJzaW1wbGVfbm90ZStqb3ljZS13ZWF2QGdtYWlsLmNvbSIsImV4cCI6MTY4NDQxMjA5OH0.ylS_T2qEp3N0QmX7hyfNwXb-VcLzKeReZ9HRKhmVJ-U"}}
+{"method": "get", "url": "/api_docs/api_descriptions", "data": {"app_name": "phone"}}
+{"method": "post", "url": "/phone/auth/token", "data": {"phone_number": "3155673041", "password": "QAEZ+BF"}}
+{"method": "get", "url": "/api_docs/api_doc", "data": {"app_name": "phone", "api_name": "login"}}
+{"method": "post", "url": "/phone/auth/token", "data": {"username": "3155673041", "password": "QAEZ+BF"}}
+{"method": "get", "url": "/phone/contacts", "data": {"access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJwaG9uZSszMTU1NjczMDQxIiwiZXhwIjoxNjg0NDEyNzQxfQ.y1OIFFIjPpmWzSusRPzhB0dOCULy0cT6XUYczShIK5I", "query": "Christopher"}}
+{"method": "get", "url": "/api_docs/api_doc", "data": {"app_name": "phone", "api_name": "send_text_message"}}
+{"method": "post", "url": "/phone/messages/text/4275730168", "data": {"access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJwaG9uZSszMTU1NjczMDQxIiwiZXhwIjoxNjg0NDEyNzQxfQ.y1OIFFIjPpmWzSusRPzhB0dOCULy0cT6XUYczShIK5I", "message": "Here are my movie recommendations: Interstellar, Forrest Gump, Blade Runner 2049, No Country for Old Men, Schindler's List, The Revenant, The Wolf of Wall Street, The Green Mile, Fight Club, Pulp Fiction, Spirited Away, The Social Network, The Godfather, Django Unchained"}}
+{"method": "post", "url": "/supervisor/message", "data": {}}

@@ -1,0 +1,34 @@
+{"method": "get", "url": "/supervisor/profile", "data": {}}
+{"method": "get", "url": "/api_docs/app_descriptions", "data": {}}
+{"method": "get", "url": "/api_docs/api_descriptions", "data": {"app_name": "venmo"}}
+{"method": "get", "url": "/api_docs/api_descriptions", "data": {"app_name": "supervisor"}}
+{"method": "get", "url": "/supervisor/account_passwords", "data": {}}
+{"method": "post", "url": "/venmo/auth/token", "data": {"email": "nicholas.weber@gmail.com", "password": "W]!$p+I"}}
+{"method": "get", "url": "/api_docs/api_doc", "data": {"app_name": "venmo", "api_name": "login"}}
+{"method": "post", "url": "/venmo/auth/token", "data": {"username": "nicholas.weber@gmail.com", "password": "W]!$p+I"}}
+{"method": "get", "url": "/venmo/received_payment_requests", "data": {}}
+{"method": "get", "url": "/api_docs/api_doc", "data": {"app_name": "venmo", "api_name": "show_received_payment_requests"}}
+{"method": "get", "url": "/venmo/received_payment_requests", "data": {"access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ2ZW5tbytuaWNob2xhcy53ZWJlckBnbWFpbC5jb20iLCJleHAiOjE2ODc3MDc0NDV9.ekKyo4oFBazRR6VRktVy2WcxWE68NM5cQglYXSMhHfk", "status": "pending"}}
+{"method": "get", "url": "/venmo/received_payment_requests", "data": {"access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ2ZW5tbytuaWNob2xhcy53ZWJlckBnbWFpbC5jb20iLCJleHAiOjE2ODc3MDc0NDV9.ekKyo4oFBazRR6VRktVy2WcxWE68NM5cQglYXSMhHfk", "status": "pending", "page_index": 1}}
+{"method": "get", "url": "/venmo/received_payment_requests", "data": {"access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ2ZW5tbytuaWNob2xhcy53ZWJlckBnbWFpbC5jb20iLCJleHAiOjE2ODc3MDc0NDV9.ekKyo4oFBazRR6VRktVy2WcxWE68NM5cQglYXSMhHfk", "status": "pending", "page_index": 2}}
+{"method": "get", "url": "/api_docs/api_descriptions", "data": {"app_name": "phone"}}
+{"method": "post", "url": "/phone/auth/token", "data": {"phone_number": "9503658964", "password": "ox6SqF4"}}
+{"method": "get", "url": "/api_docs/api_doc", "data": {"app_name": "phone", "api_name": "login"}}
+{"method": "post", "url": "/phone/auth/token", "data": {"username": "9503658964", "password": "ox6SqF4"}}
+{"method": "get", "url": "/api_docs/api_doc", "data": {"app_name": "phone", "api_name": "show_contact_relationships"}}
+{"method": "get", "url": "/phone/contact_relationships", "data": {"access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJwaG9uZSs5NTAzNjU4OTY0IiwiZXhwIjoxNjg3NzA4MDg4fQ.G7LkiRsC4i1MSQq_vViujkIXHgobSOjCM8mPl9GoYkM"}}
+{"method": "get", "url": "/api_docs/api_doc", "data": {"app_name": "phone", "api_name": "search_contacts"}}
+{"method": "get", "url": "/phone/contacts", "data": {"access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJwaG9uZSs5NTAzNjU4OTY0IiwiZXhwIjoxNjg3NzA4MDg4fQ.G7LkiRsC4i1MSQq_vViujkIXHgobSOjCM8mPl9GoYkM", "relationship": "roommate"}}
+{"method": "get", "url": "/api_docs/api_doc", "data": {"app_name": "venmo", "api_name": "approve_payment_request"}}
+{"method": "post", "url": "/venmo/payment_requests/6168/approve", "data": {"access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ2ZW5tbytuaWNob2xhcy53ZWJlckBnbWFpbC5jb20iLCJleHAiOjE2ODc3MDc0NDV9.ekKyo4oFBazRR6VRktVy2WcxWE68NM5cQglYXSMhHfk"}}
+{"method": "post", "url": "/venmo/payment_requests/6149/approve", "data": {"access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ2ZW5tbytuaWNob2xhcy53ZWJlckBnbWFpbC5jb20iLCJleHAiOjE2ODc3MDc0NDV9.ekKyo4oFBazRR6VRktVy2WcxWE68NM5cQglYXSMhHfk"}}
+{"method": "post", "url": "/venmo/payment_requests/6151/approve", "data": {"access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ2ZW5tbytuaWNob2xhcy53ZWJlckBnbWFpbC5jb20iLCJleHAiOjE2ODc3MDc0NDV9.ekKyo4oFBazRR6VRktVy2WcxWE68NM5cQglYXSMhHfk"}}
+{"method": "post", "url": "/venmo/payment_requests/6145/approve", "data": {"access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ2ZW5tbytuaWNob2xhcy53ZWJlckBnbWFpbC5jb20iLCJleHAiOjE2ODc3MDc0NDV9.ekKyo4oFBazRR6VRktVy2WcxWE68NM5cQglYXSMhHfk"}}
+{"method": "post", "url": "/venmo/payment_requests/6143/approve", "data": {"access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ2ZW5tbytuaWNob2xhcy53ZWJlckBnbWFpbC5jb20iLCJleHAiOjE2ODc3MDc0NDV9.ekKyo4oFBazRR6VRktVy2WcxWE68NM5cQglYXSMhHfk"}}
+{"method": "post", "url": "/venmo/payment_requests/6137/approve", "data": {"access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ2ZW5tbytuaWNob2xhcy53ZWJlckBnbWFpbC5jb20iLCJleHAiOjE2ODc3MDc0NDV9.ekKyo4oFBazRR6VRktVy2WcxWE68NM5cQglYXSMhHfk"}}
+{"method": "post", "url": "/venmo/payment_requests/6138/approve", "data": {"access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ2ZW5tbytuaWNob2xhcy53ZWJlckBnbWFpbC5jb20iLCJleHAiOjE2ODc3MDc0NDV9.ekKyo4oFBazRR6VRktVy2WcxWE68NM5cQglYXSMhHfk"}}
+{"method": "post", "url": "/venmo/payment_requests/6139/approve", "data": {"access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ2ZW5tbytuaWNob2xhcy53ZWJlckBnbWFpbC5jb20iLCJleHAiOjE2ODc3MDc0NDV9.ekKyo4oFBazRR6VRktVy2WcxWE68NM5cQglYXSMhHfk"}}
+{"method": "post", "url": "/venmo/payment_requests/6131/approve", "data": {"access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ2ZW5tbytuaWNob2xhcy53ZWJlckBnbWFpbC5jb20iLCJleHAiOjE2ODc3MDc0NDV9.ekKyo4oFBazRR6VRktVy2WcxWE68NM5cQglYXSMhHfk"}}
+{"method": "get", "url": "/venmo/payment_cards", "data": {"access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ2ZW5tbytuaWNob2xhcy53ZWJlckBnbWFpbC5jb20iLCJleHAiOjE2ODc3MDc0NDV9.ekKyo4oFBazRR6VRktVy2WcxWE68NM5cQglYXSMhHfk"}}
+{"method": "post", "url": "/venmo/payment_requests/6137/approve", "data": {"access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ2ZW5tbytuaWNob2xhcy53ZWJlckBnbWFpbC5jb20iLCJleHAiOjE2ODc3MDc0NDV9.ekKyo4oFBazRR6VRktVy2WcxWE68NM5cQglYXSMhHfk", "payment_card_id": 217}}
+{"method": "post", "url": "/supervisor/message", "data": {"answer": "9"}}

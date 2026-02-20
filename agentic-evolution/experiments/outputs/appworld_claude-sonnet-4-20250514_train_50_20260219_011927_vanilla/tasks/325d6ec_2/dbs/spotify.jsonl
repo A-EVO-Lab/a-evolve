@@ -1,0 +1,7 @@
+["INSERT INTO user_downloaded_songs (downloaded_at, record_hash, user_id, song_id) VALUES (?, ?, ?, ?)",["2023-05-18 12:00:00.000000","7L+fWvkSq+w=",90,55],false]
+["INSERT INTO user_downloaded_songs (downloaded_at, record_hash, user_id, song_id) VALUES (?, ?, ?, ?)",["2023-05-18 12:00:00.000000","5LcQEM5UuMM=",90,66],false]
+["UPDATE music_players SET record_hash=?, cursor_position=? WHERE music_players.id = ?",["fmJ/zA3hu6Y=",2,90],false]
+["UPDATE music_players SET record_hash=?, cursor_position=? WHERE music_players.id = ?",["nBppBXkgaMU=",3,90],false]
+["UPDATE music_players SET record_hash=?, cursor_position=? WHERE music_players.id = ?",["zIjUmpMabnA=",4,90],false]
+["UPDATE music_players SET record_hash=?, cursor_position=? WHERE music_players.id = ?",["OGkwOmjxpzA=",5,90],false]
+["UPDATE users SET password_reset_code_expiry=?, record_hash=?, password_reset_code=? WHERE users.id = ?",["2023-05-18 13:00:00.000000","Iq+C3KmDPNU=","59885af",90],false]

@@ -1,0 +1,35 @@
+{"method": "get", "url": "/supervisor/profile", "data": {}}
+{"method": "get", "url": "/api_docs/app_descriptions", "data": {}}
+{"method": "get", "url": "/api_docs/api_descriptions", "data": {"app_name": "phone"}}
+{"method": "get", "url": "/api_docs/api_descriptions", "data": {"app_name": "venmo"}}
+{"method": "get", "url": "/api_docs/api_doc", "data": {"app_name": "phone", "api_name": "search_contacts"}}
+{"method": "get", "url": "/api_docs/api_doc", "data": {"app_name": "venmo", "api_name": "search_friends"}}
+{"method": "get", "url": "/api_docs/api_doc", "data": {"app_name": "venmo", "api_name": "add_friend"}}
+{"method": "get", "url": "/api_docs/api_doc", "data": {"app_name": "venmo", "api_name": "remove_friend"}}
+{"method": "get", "url": "/api_docs/api_doc", "data": {"app_name": "supervisor", "api_name": "show_account_passwords"}}
+{"method": "get", "url": "/supervisor/account_passwords", "data": {}}
+{"method": "post", "url": "/phone/auth/token", "data": {"email": "carbrown@gmail.com", "password": "X53y6aW"}}
+{"method": "get", "url": "/api_docs/api_doc", "data": {"app_name": "phone", "api_name": "login"}}
+{"method": "post", "url": "/phone/auth/token", "data": {"username": "7934818191", "password": "X53y6aW"}}
+{"method": "get", "url": "/api_docs/api_doc", "data": {"app_name": "venmo", "api_name": "login"}}
+{"method": "post", "url": "/venmo/auth/token", "data": {"username": "carbrown@gmail.com", "password": "rl2A-Xl"}}
+{"method": "get", "url": "/phone/contacts", "data": {"access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJwaG9uZSs3OTM0ODE4MTkxIiwiZXhwIjoxNjg0NDEyMDk4fQ.ad3t3S_Xj7YhoDDFZeW4BlVL4dNniMdfaXC1143fbzw", "query": "", "page_index": 0, "page_limit": 20}}
+{"method": "get", "url": "/phone/contacts", "data": {"access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJwaG9uZSs3OTM0ODE4MTkxIiwiZXhwIjoxNjg0NDEyMDk4fQ.ad3t3S_Xj7YhoDDFZeW4BlVL4dNniMdfaXC1143fbzw", "query": "", "page_index": 1, "page_limit": 20}}
+{"method": "get", "url": "/venmo/friends", "data": {"access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ2ZW5tbytjYXJicm93bkBnbWFpbC5jb20iLCJleHAiOjE2ODQ0MTI3NDF9.nOks5vxZHO0LuXmEs6HuytZxNJlS7Bh0a7TUuLMCV5M", "query": "", "page_index": 0, "page_limit": 20}}
+{"method": "post", "url": "/venmo/friends/alexander-ridd@gmail.com", "data": {"access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ2ZW5tbytjYXJicm93bkBnbWFpbC5jb20iLCJleHAiOjE2ODQ0MTI3NDF9.nOks5vxZHO0LuXmEs6HuytZxNJlS7Bh0a7TUuLMCV5M"}}
+{"method": "post", "url": "/venmo/friends/an-harrison@gmail.com", "data": {"access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ2ZW5tbytjYXJicm93bkBnbWFpbC5jb20iLCJleHAiOjE2ODQ0MTI3NDF9.nOks5vxZHO0LuXmEs6HuytZxNJlS7Bh0a7TUuLMCV5M"}}
+{"method": "post", "url": "/venmo/friends/andrew_brow@gmail.com", "data": {"access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ2ZW5tbytjYXJicm93bkBnbWFpbC5jb20iLCJleHAiOjE2ODQ0MTI3NDF9.nOks5vxZHO0LuXmEs6HuytZxNJlS7Bh0a7TUuLMCV5M"}}
+{"method": "post", "url": "/venmo/friends/ch.brow@gmail.com", "data": {"access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ2ZW5tbytjYXJicm93bkBnbWFpbC5jb20iLCJleHAiOjE2ODQ0MTI3NDF9.nOks5vxZHO0LuXmEs6HuytZxNJlS7Bh0a7TUuLMCV5M"}}
+{"method": "post", "url": "/venmo/friends/clmiller@gmail.com", "data": {"access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ2ZW5tbytjYXJicm93bkBnbWFpbC5jb20iLCJleHAiOjE2ODQ0MTI3NDF9.nOks5vxZHO0LuXmEs6HuytZxNJlS7Bh0a7TUuLMCV5M"}}
+{"method": "post", "url": "/venmo/friends/cod.smith@gmail.com", "data": {"access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ2ZW5tbytjYXJicm93bkBnbWFpbC5jb20iLCJleHAiOjE2ODQ0MTI3NDF9.nOks5vxZHO0LuXmEs6HuytZxNJlS7Bh0a7TUuLMCV5M"}}
+{"method": "post", "url": "/venmo/friends/connorbrow@gmail.com", "data": {"access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ2ZW5tbytjYXJicm93bkBnbWFpbC5jb20iLCJleHAiOjE2ODQ0MTI3NDF9.nOks5vxZHO0LuXmEs6HuytZxNJlS7Bh0a7TUuLMCV5M"}}
+{"method": "post", "url": "/venmo/friends/diwils@gmail.com", "data": {"access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ2ZW5tbytjYXJicm93bkBnbWFpbC5jb20iLCJleHAiOjE2ODQ0MTI3NDF9.nOks5vxZHO0LuXmEs6HuytZxNJlS7Bh0a7TUuLMCV5M"}}
+{"method": "post", "url": "/venmo/friends/gl.moore@gmail.com", "data": {"access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ2ZW5tbytjYXJicm93bkBnbWFpbC5jb20iLCJleHAiOjE2ODQ0MTI3NDF9.nOks5vxZHO0LuXmEs6HuytZxNJlS7Bh0a7TUuLMCV5M"}}
+{"method": "post", "url": "/venmo/friends/ja-solomon@gmail.com", "data": {"access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ2ZW5tbytjYXJicm93bkBnbWFpbC5jb20iLCJleHAiOjE2ODQ0MTI3NDF9.nOks5vxZHO0LuXmEs6HuytZxNJlS7Bh0a7TUuLMCV5M"}}
+{"method": "post", "url": "/venmo/friends/jer.calhoun@gmail.com", "data": {"access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ2ZW5tbytjYXJicm93bkBnbWFpbC5jb20iLCJleHAiOjE2ODQ0MTI3NDF9.nOks5vxZHO0LuXmEs6HuytZxNJlS7Bh0a7TUuLMCV5M"}}
+{"method": "post", "url": "/venmo/friends/mar_blac@gmail.com", "data": {"access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ2ZW5tbytjYXJicm93bkBnbWFpbC5jb20iLCJleHAiOjE2ODQ0MTI3NDF9.nOks5vxZHO0LuXmEs6HuytZxNJlS7Bh0a7TUuLMCV5M"}}
+{"method": "post", "url": "/venmo/friends/nan_ritt@gmail.com", "data": {"access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ2ZW5tbytjYXJicm93bkBnbWFpbC5jb20iLCJleHAiOjE2ODQ0MTI3NDF9.nOks5vxZHO0LuXmEs6HuytZxNJlS7Bh0a7TUuLMCV5M"}}
+{"method": "post", "url": "/venmo/friends/sab-brown@gmail.com", "data": {"access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ2ZW5tbytjYXJicm93bkBnbWFpbC5jb20iLCJleHAiOjE2ODQ0MTI3NDF9.nOks5vxZHO0LuXmEs6HuytZxNJlS7Bh0a7TUuLMCV5M"}}
+{"method": "get", "url": "/venmo/friends", "data": {"access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ2ZW5tbytjYXJicm93bkBnbWFpbC5jb20iLCJleHAiOjE2ODQ0MTI3NDF9.nOks5vxZHO0LuXmEs6HuytZxNJlS7Bh0a7TUuLMCV5M", "query": "", "page_index": 0, "page_limit": 20}}
+{"method": "get", "url": "/venmo/friends", "data": {"access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ2ZW5tbytjYXJicm93bkBnbWFpbC5jb20iLCJleHAiOjE2ODQ0MTI3NDF9.nOks5vxZHO0LuXmEs6HuytZxNJlS7Bh0a7TUuLMCV5M", "query": "", "page_index": 1, "page_limit": 20}}
+{"method": "post", "url": "/supervisor/message", "data": {"answer": "Successfully synchronized Venmo friends with phone contacts. Added 14 new friends to Venmo. No friends needed to be removed. Venmo now has 24 friends matching all 24 phone contacts with email addresses."}}

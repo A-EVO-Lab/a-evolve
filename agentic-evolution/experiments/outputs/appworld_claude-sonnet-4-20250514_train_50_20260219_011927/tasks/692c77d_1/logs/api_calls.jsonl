@@ -1,0 +1,45 @@
+{"method": "get", "url": "/supervisor/profile", "data": {}}
+{"method": "get", "url": "/api_docs/app_descriptions", "data": {}}
+{"method": "get", "url": "/api_docs/api_descriptions", "data": {"app_name": "spotify"}}
+{"method": "get", "url": "/api_docs/api_doc", "data": {"app_name": "spotify", "api_name": "review_song"}}
+{"method": "get", "url": "/api_docs/api_doc", "data": {"app_name": "spotify", "api_name": "update_song_review"}}
+{"method": "get", "url": "/api_docs/api_doc", "data": {"app_name": "spotify", "api_name": "show_playlist_library"}}
+{"method": "get", "url": "/api_docs/api_doc", "data": {"app_name": "spotify", "api_name": "show_liked_songs"}}
+{"method": "get", "url": "/api_docs/api_doc", "data": {"app_name": "spotify", "api_name": "show_song_privates"}}
+{"method": "get", "url": "/api_docs/api_doc", "data": {"app_name": "spotify", "api_name": "show_song_reviews"}}
+{"method": "get", "url": "/api_docs/api_descriptions", "data": {"app_name": "supervisor"}}
+{"method": "get", "url": "/supervisor/account_passwords", "data": {}}
+{"method": "post", "url": "/spotify/auth/token", "data": {"email": "as_moore@gmail.com", "password": "%oxCE]q"}}
+{"method": "get", "url": "/api_docs/api_doc", "data": {"app_name": "spotify", "api_name": "login"}}
+{"method": "post", "url": "/spotify/auth/token", "data": {"username": "as_moore@gmail.com", "password": "%oxCE]q"}}
+{"method": "get", "url": "/spotify/library/playlists", "data": {"access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJzcG90aWZ5K2FzX21vb3JlQGdtYWlsLmNvbSIsImV4cCI6MTY4NDQxMjA5OH0.Ry-dT0WNVUiSCQYSD3KUYzl-EGoNtS5NB0ssm2lBGNQ", "page_limit": 20}}
+{"method": "get", "url": "/spotify/library/playlists", "data": {"access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJzcG90aWZ5K2FzX21vb3JlQGdtYWlsLmNvbSIsImV4cCI6MTY4NDQxMjA5OH0.Ry-dT0WNVUiSCQYSD3KUYzl-EGoNtS5NB0ssm2lBGNQ", "page_index": 1, "page_limit": 20}}
+{"method": "get", "url": "/spotify/liked_songs", "data": {"access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJzcG90aWZ5K2FzX21vb3JlQGdtYWlsLmNvbSIsImV4cCI6MTY4NDQxMjA5OH0.Ry-dT0WNVUiSCQYSD3KUYzl-EGoNtS5NB0ssm2lBGNQ", "page_limit": 20}}
+{"method": "get", "url": "/spotify/liked_songs", "data": {"access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJzcG90aWZ5K2FzX21vb3JlQGdtYWlsLmNvbSIsImV4cCI6MTY4NDQxMjA5OH0.Ry-dT0WNVUiSCQYSD3KUYzl-EGoNtS5NB0ssm2lBGNQ", "page_index": 1, "page_limit": 20}}
+{"method": "get", "url": "/spotify/songs/159/reviews", "data": {"user_email": "as_moore@gmail.com"}}
+{"method": "get", "url": "/spotify/songs/231/reviews", "data": {"user_email": "as_moore@gmail.com"}}
+{"method": "get", "url": "/spotify/songs/40/reviews", "data": {"user_email": "as_moore@gmail.com"}}
+{"method": "get", "url": "/spotify/songs/239/reviews", "data": {"user_email": "as_moore@gmail.com"}}
+{"method": "get", "url": "/spotify/songs/175/reviews", "data": {"user_email": "as_moore@gmail.com"}}
+{"method": "get", "url": "/spotify/songs/211/reviews", "data": {"user_email": "as_moore@gmail.com"}}
+{"method": "get", "url": "/spotify/songs/249/reviews", "data": {"user_email": "as_moore@gmail.com"}}
+{"method": "get", "url": "/spotify/songs/122/reviews", "data": {"user_email": "as_moore@gmail.com"}}
+{"method": "get", "url": "/spotify/songs/28/reviews", "data": {"user_email": "as_moore@gmail.com"}}
+{"method": "get", "url": "/spotify/songs/254/reviews", "data": {"user_email": "as_moore@gmail.com"}}
+{"method": "get", "url": "/spotify/songs/95/reviews", "data": {"user_email": "as_moore@gmail.com"}}
+{"method": "patch", "url": "/spotify/song_reviews/291", "data": {"access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJzcG90aWZ5K2FzX21vb3JlQGdtYWlsLmNvbSIsImV4cCI6MTY4NDQxMjA5OH0.Ry-dT0WNVUiSCQYSD3KUYzl-EGoNtS5NB0ssm2lBGNQ", "rating": 5}}
+{"method": "patch", "url": "/spotify/song_reviews/292", "data": {"access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJzcG90aWZ5K2FzX21vb3JlQGdtYWlsLmNvbSIsImV4cCI6MTY4NDQxMjA5OH0.Ry-dT0WNVUiSCQYSD3KUYzl-EGoNtS5NB0ssm2lBGNQ", "rating": 5}}
+{"method": "patch", "url": "/spotify/song_reviews/293", "data": {"access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJzcG90aWZ5K2FzX21vb3JlQGdtYWlsLmNvbSIsImV4cCI6MTY4NDQxMjA5OH0.Ry-dT0WNVUiSCQYSD3KUYzl-EGoNtS5NB0ssm2lBGNQ", "rating": 5}}
+{"method": "post", "url": "/spotify/songs/231/reviews", "data": {"rating": 5, "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJzcG90aWZ5K2FzX21vb3JlQGdtYWlsLmNvbSIsImV4cCI6MTY4NDQxMjA5OH0.Ry-dT0WNVUiSCQYSD3KUYzl-EGoNtS5NB0ssm2lBGNQ"}}
+{"method": "post", "url": "/spotify/songs/40/reviews", "data": {"rating": 5, "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJzcG90aWZ5K2FzX21vb3JlQGdtYWlsLmNvbSIsImV4cCI6MTY4NDQxMjA5OH0.Ry-dT0WNVUiSCQYSD3KUYzl-EGoNtS5NB0ssm2lBGNQ"}}
+{"method": "post", "url": "/spotify/songs/239/reviews", "data": {"rating": 5, "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJzcG90aWZ5K2FzX21vb3JlQGdtYWlsLmNvbSIsImV4cCI6MTY4NDQxMjA5OH0.Ry-dT0WNVUiSCQYSD3KUYzl-EGoNtS5NB0ssm2lBGNQ"}}
+{"method": "post", "url": "/spotify/songs/175/reviews", "data": {"rating": 5, "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJzcG90aWZ5K2FzX21vb3JlQGdtYWlsLmNvbSIsImV4cCI6MTY4NDQxMjA5OH0.Ry-dT0WNVUiSCQYSD3KUYzl-EGoNtS5NB0ssm2lBGNQ"}}
+{"method": "post", "url": "/spotify/songs/249/reviews", "data": {"rating": 5, "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJzcG90aWZ5K2FzX21vb3JlQGdtYWlsLmNvbSIsImV4cCI6MTY4NDQxMjA5OH0.Ry-dT0WNVUiSCQYSD3KUYzl-EGoNtS5NB0ssm2lBGNQ"}}
+{"method": "post", "url": "/spotify/songs/122/reviews", "data": {"rating": 5, "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJzcG90aWZ5K2FzX21vb3JlQGdtYWlsLmNvbSIsImV4cCI6MTY4NDQxMjA5OH0.Ry-dT0WNVUiSCQYSD3KUYzl-EGoNtS5NB0ssm2lBGNQ"}}
+{"method": "post", "url": "/spotify/songs/28/reviews", "data": {"rating": 5, "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJzcG90aWZ5K2FzX21vb3JlQGdtYWlsLmNvbSIsImV4cCI6MTY4NDQxMjA5OH0.Ry-dT0WNVUiSCQYSD3KUYzl-EGoNtS5NB0ssm2lBGNQ"}}
+{"method": "post", "url": "/spotify/songs/95/reviews", "data": {"rating": 5, "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJzcG90aWZ5K2FzX21vb3JlQGdtYWlsLmNvbSIsImV4cCI6MTY4NDQxMjA5OH0.Ry-dT0WNVUiSCQYSD3KUYzl-EGoNtS5NB0ssm2lBGNQ"}}
+{"method": "get", "url": "/spotify/songs/159/reviews", "data": {"user_email": "as_moore@gmail.com"}}
+{"method": "get", "url": "/spotify/songs/231/reviews", "data": {"user_email": "as_moore@gmail.com"}}
+{"method": "get", "url": "/spotify/songs/40/reviews", "data": {"user_email": "as_moore@gmail.com"}}
+{"method": "get", "url": "/spotify/songs/254/reviews", "data": {"user_email": "as_moore@gmail.com"}}
+{"method": "post", "url": "/supervisor/message", "data": {"answer": "Completed: 11 liked songs in playlists now have 5-star ratings (3 updated from lower ratings, 8 newly rated)"}}

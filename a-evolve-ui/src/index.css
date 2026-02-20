@@ -1,0 +1,64 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  font-family:
+    Inter,
+    ui-sans-serif,
+    system-ui,
+    -apple-system,
+    Segoe UI,
+    Roboto,
+    Helvetica,
+    Arial,
+    sans-serif;
+}
+
+html,
+body,
+#root {
+  margin: 0;
+  width: 100%;
+  height: 100%;
+}
+
+body {
+  background: rgb(2 6 23);
+  color: rgb(226 232 240);
+}
+
+@keyframes pulse-stage {
+  0% {
+    box-shadow: 0 0 0 0 rgb(99 102 241 / 0.45);
+  }
+  70% {
+    box-shadow: 0 0 0 8px rgb(99 102 241 / 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgb(99 102 241 / 0);
+  }
+}
+
+@keyframes slide-in {
+  0% {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.stage-active {
+  animation: pulse-stage 1.4s ease-in-out infinite;
+}
+
+.stage-spinner {
+  animation: spin 1s linear infinite;
+}
+
+.stage-result-enter {
+  animation: slide-in 220ms ease-out;
+}

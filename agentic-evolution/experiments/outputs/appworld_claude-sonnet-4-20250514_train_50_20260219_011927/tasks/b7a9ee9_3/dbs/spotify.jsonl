@@ -1,0 +1,3 @@
+["INSERT INTO user_artist_followings (created_at, record_hash, user_id, artist_id) VALUES (?, ?, ?, ?)",["2023-05-18 12:00:00.000000","6xLNdYCZjys=",66,35],false]
+["INSERT INTO user_artist_followings (created_at, record_hash, user_id, artist_id) VALUES (?, ?, ?, ?)",["2023-05-18 12:00:00.000000","YNjMb2XyX/s=",66,19],false]
+["INSERT INTO user_artist_followings (created_at, record_hash, user_id, artist_id) VALUES (?, ?, ?, ?)",["2023-05-18 12:00:00.000000","bns2/kztcnk=",66,36],false]

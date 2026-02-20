@@ -1,0 +1,39 @@
+{"method": "get", "url": "/supervisor/profile", "data": {}}
+{"method": "get", "url": "/api_docs/api_descriptions", "data": {"app_name": "spotify"}}
+{"method": "get", "url": "/spotify/account", "data": {}}
+{"method": "post", "url": "/spotify/auth/token", "data": {"email": "sab-brown@gmail.com", "password": "<need_password>"}}
+{"method": "get", "url": "/supervisor/account_passwords", "data": {}}
+{"method": "get", "url": "/api_docs/api_doc", "data": {"app_name": "spotify", "api_name": "login"}}
+{"method": "get", "url": "/supervisor/account_passwords", "data": {}}
+{"method": "post", "url": "/spotify/auth/token", "data": {"username": "sab-brown@gmail.com", "password": "!+EcqW8"}}
+{"method": "get", "url": "/spotify/account", "data": {}}
+{"method": "post", "url": "/spotify/auth/logout", "data": {}}
+{"method": "post", "url": "/spotify/auth/token", "data": {"username": "sab-brown@gmail.com", "password": "!+EcqW8"}}
+{"method": "get", "url": "/spotify/account", "data": {}}
+{"method": "get", "url": "/spotify/profile", "data": {"user_email": "sab-brown@gmail.com"}}
+{"method": "post", "url": "/spotify/send_verification_code", "data": {}}
+{"method": "get", "url": "/spotify/genres", "data": {}}
+{"method": "post", "url": "/spotify/auth/token", "data": {"username": "sab-brown@gmail.com", "password": "!+EcqW8"}}
+{"method": "get", "url": "/spotify/library/songs", "data": {"page": 1}}
+{"method": "get", "url": "/api_docs/api_doc", "data": {"app_name": "spotify", "api_name": "login"}}
+{"method": "post", "url": "/spotify/send_verification_code", "data": {"email": "sab-brown@gmail.com"}}
+{"method": "get", "url": "/spotify/genres", "data": {}}
+{"method": "get", "url": "/spotify/account", "data": {}}
+{"method": "post", "url": "/spotify/auth/logout", "data": {}}
+{"method": "post", "url": "/spotify/auth/token", "data": {"username": "sab-brown@gmail.com", "password": "!+EcqW8"}}
+{"method": "get", "url": "/spotify/library/songs", "data": {"page": 1}}
+{"method": "get", "url": "/spotify/liked_songs", "data": {"page": 1}}
+{"method": "post", "url": "/spotify/auth/logout", "data": {}}
+{"method": "post", "url": "/spotify/auth/token", "data": {"username": "sab-brown@gmail.com", "password": "!+EcqW8"}}
+{"method": "get", "url": "/spotify/genres", "data": {}}
+{"method": "get", "url": "/spotify/library/songs", "data": {"page": 1}}
+{"method": "post", "url": "/spotify/auth/token", "data": {"username": "sab-brown@gmail.com", "password": "!+EcqW8"}}
+{"method": "get", "url": "/spotify/genres", "data": {}}
+{"method": "get", "url": "/spotify/library/songs", "data": {"page": 1}}
+{"method": "post", "url": "/spotify/auth/token", "data": {"username": "sab-brown@gmail.com", "password": "!+EcqW8"}}
+{"method": "get", "url": "/spotify/genres", "data": {}}
+{"method": "get", "url": "/spotify/premium/plans", "data": {}}
+{"method": "get", "url": "/spotify/songs", "data": {"query": "test"}}
+{"method": "get", "url": "/spotify/albums", "data": {"query": "test"}}
+{"method": "get", "url": "/spotify/playlists", "data": {"query": "test"}}
+{"method": "post", "url": "/supervisor/message", "data": {"status": "fail", "answer": "Spotify API authentication system failure - cannot access user library data despite correct credentials and successful login"}}

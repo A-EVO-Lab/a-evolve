@@ -1,0 +1,5 @@
+["INSERT INTO files (compressed_data, created_at, updated_at, record_hash, path, tilde_path, user_id, content) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",["[]","2023-05-18 12:00:00.000000","2023-05-18 12:00:00.000000","X9PWZJfYJz0=","/home/christina/backups/spotify_songs.csv","~/backups/spotify_songs.csv",13,"Title,Artists\nThe Curse of Loving You,Lucas Grey\nEndless Roads,Aria Sterling\nHeartstrings Symphony,Ava Morgan\nEternal Solitude,Hazel Winter|Ava Morgan\nCrimson Skies of Longing,Phoenix Rivers\n"],false]
+["UPDATE directories SET updated_at=?, record_hash=? WHERE directories.id = ?",["2023-05-18 12:00:00.000000","85g9Fii/C5c=",403],false]
+["UPDATE directories SET updated_at=?, record_hash=? WHERE directories.id = ?",["2023-05-18 12:00:00.000000","Td3p7yHWwNk=",394],false]
+["UPDATE directories SET updated_at=?, record_hash=? WHERE directories.id = ?",["2023-05-18 12:00:00.000000","GQ/y+svNrEU=",395],false]
+["UPDATE directories SET updated_at=?, record_hash=? WHERE directories.id = ?",["2023-05-18 12:00:00.000000","jvd/AvcvmeU=",396],false]

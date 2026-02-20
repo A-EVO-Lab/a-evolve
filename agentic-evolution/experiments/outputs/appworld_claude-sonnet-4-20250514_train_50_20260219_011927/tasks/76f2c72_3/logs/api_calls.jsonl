@@ -1,0 +1,16 @@
+{"method": "get", "url": "/supervisor/profile", "data": {}}
+{"method": "get", "url": "/api_docs/app_descriptions", "data": {}}
+{"method": "get", "url": "/api_docs/api_descriptions", "data": {"app_name": "file_system"}}
+{"method": "get", "url": "/api_docs/api_doc", "data": {"app_name": "file_system", "api_name": "login"}}
+{"method": "get", "url": "/api_docs/api_descriptions", "data": {"app_name": "supervisor"}}
+{"method": "get", "url": "/supervisor/account_passwords", "data": {}}
+{"method": "post", "url": "/file_system/auth/token", "data": {"username": "chrharrison@gmail.com", "password": "-k$qjIu"}}
+{"method": "get", "url": "/api_docs/api_doc", "data": {"app_name": "file_system", "api_name": "show_directory"}}
+{"method": "get", "url": "/file_system/directory", "data": {"access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJmaWxlX3N5c3RlbStjaHJoYXJyaXNvbkBnbWFpbC5jb20iLCJleHAiOjE2ODQ0MTIwOTh9.ELheHyGyLgIakv47-tdmVKL-TrukNfFHeFuFlHebxUQ", "directory_path": "~/bills/", "recursive": true}}
+{"method": "get", "url": "/api_docs/api_doc", "data": {"app_name": "file_system", "api_name": "show_file"}}
+{"method": "get", "url": "/file_system/file", "data": {"file_path": "/home/christina/bills/cable/2023-01.txt", "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJmaWxlX3N5c3RlbStjaHJoYXJyaXNvbkBnbWFpbC5jb20iLCJleHAiOjE2ODQ0MTIwOTh9.ELheHyGyLgIakv47-tdmVKL-TrukNfFHeFuFlHebxUQ"}}
+{"method": "get", "url": "/file_system/file", "data": {"file_path": "/home/christina/bills/cable/2023-01.txt", "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJmaWxlX3N5c3RlbStjaHJoYXJyaXNvbkBnbWFpbC5jb20iLCJleHAiOjE2ODQ0MTIwOTh9.ELheHyGyLgIakv47-tdmVKL-TrukNfFHeFuFlHebxUQ"}}
+{"method": "get", "url": "/file_system/file", "data": {"file_path": "/home/christina/bills/cable/2023-02.txt", "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJmaWxlX3N5c3RlbStjaHJoYXJyaXNvbkBnbWFpbC5jb20iLCJleHAiOjE2ODQ0MTIwOTh9.ELheHyGyLgIakv47-tdmVKL-TrukNfFHeFuFlHebxUQ"}}
+{"method": "get", "url": "/file_system/file", "data": {"file_path": "/home/christina/bills/cable/2023-03.txt", "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJmaWxlX3N5c3RlbStjaHJoYXJyaXNvbkBnbWFpbC5jb20iLCJleHAiOjE2ODQ0MTIwOTh9.ELheHyGyLgIakv47-tdmVKL-TrukNfFHeFuFlHebxUQ"}}
+{"method": "get", "url": "/file_system/file", "data": {"file_path": "/home/christina/bills/cable/2023-04.txt", "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJmaWxlX3N5c3RlbStjaHJoYXJyaXNvbkBnbWFpbC5jb20iLCJleHAiOjE2ODQ0MTIwOTh9.ELheHyGyLgIakv47-tdmVKL-TrukNfFHeFuFlHebxUQ"}}
+{"method": "post", "url": "/supervisor/message", "data": {"answer": 310.0}}

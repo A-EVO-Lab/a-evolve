@@ -1,0 +1,79 @@
+{
+  "session_id": "appworld_claude-sonnet-4-20250514_train_50_20260219_011927",
+  "model": "claude-sonnet-4-20250514",
+  "training_stats": {
+    "total_tasks": 50,
+    "completed_tasks": 48,
+    "perfect_tasks": 31,
+    "partial_tasks": 18,
+    "failed_tasks": 1,
+    "average_score": 0.8755634920634919,
+    "average_steps": 20.74,
+    "completion_rate": 0.96,
+    "top_apis": [
+      [
+        "api_docs.show_api_doc",
+        252
+      ],
+      [
+        "api_docs.show_api_descriptions",
+        109
+      ],
+      [
+        "supervisor.show_account_passwords",
+        57
+      ],
+      [
+        "supervisor.complete_task",
+        50
+      ],
+      [
+        "api_docs.show_app_descriptions",
+        46
+      ],
+      [
+        "spotify.login",
+        44
+      ],
+      [
+        "spotify.show_song",
+        39
+      ],
+      [
+        "spotify.show_song_library",
+        36
+      ],
+      [
+        "spotify.show_playlist_library",
+        24
+      ],
+      [
+        "spotify.show_account",
+        24
+      ]
+    ]
+  },
+  "evolution_stats": {
+    "tools_created": 0,
+    "tools_evolved": 3,
+    "patches_added": 0,
+    "total_tools": 2,
+    "total_patches": 0
+  },
+
+  "vanilla_results": {
+    "average_score": 0.7934,
+    "completion_rate": 0.94,
+    "task_goal_completion": 0.36,
+    "tasks_completed": 47,
+    "total_tasks": 50
+  },
+  "evolved_results": {
+    "average_score": 0.8998492063492063,
+    "completion_rate": 0.94,
+    "task_goal_completion": 0.62,
+    "tasks_completed": 47,
+    "total_tasks": 50
+  },
+  "timestamp": "2026-02-19T04:28:04.870257"
+}

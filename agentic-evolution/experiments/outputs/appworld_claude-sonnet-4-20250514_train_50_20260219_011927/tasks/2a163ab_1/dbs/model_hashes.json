@@ -1,0 +1,9 @@
+{
+    "venmo": {
+        "Transaction": 1,
+        "TransactionLike": 1
+    },
+    "supervisor": {
+        "Task": 1
+    }
+}

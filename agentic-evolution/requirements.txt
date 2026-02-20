@@ -1,0 +1,12 @@
+# Core LLM providers
+anthropic>=0.40.0
+openai>=1.50.0
+boto3>=1.35.0
+
+# Benchmark
+appworld>=0.1.0
+
+# Note: google-genai is incompatible with appworld (pydantic v2 vs v1 conflict).
+# Install separately if needed for Gemini experiments:
+#   pip install google-genai
+# This will break appworld. Use a separate conda env for Gemini.

@@ -1,0 +1,40 @@
+{"method": "get", "url": "/supervisor/profile", "data": {}}
+{"method": "get", "url": "/api_docs/app_descriptions", "data": {}}
+{"method": "get", "url": "/api_docs/api_descriptions", "data": {"app_name": "spotify"}}
+{"method": "get", "url": "/spotify/music_player/current_song", "data": {}}
+{"method": "get", "url": "/api_docs/api_descriptions", "data": {"app_name": "supervisor"}}
+{"method": "get", "url": "/supervisor/account_passwords", "data": {}}
+{"method": "post", "url": "/spotify/auth/token", "data": {"email": "an-harrison@gmail.com", "password": "=oskMku"}}
+{"method": "get", "url": "/api_docs/api_doc", "data": {"app_name": "spotify", "api_name": "login"}}
+{"method": "post", "url": "/spotify/auth/token", "data": {"username": "an-harrison@gmail.com", "password": "=oskMku"}}
+{"method": "get", "url": "/spotify/liked_songs", "data": {}}
+{"method": "get", "url": "/spotify/music_player/current_song", "data": {}}
+{"method": "get", "url": "/spotify/liked_songs", "data": {}}
+{"method": "post", "url": "/spotify/auth/token", "data": {"username": "an-harrison@gmail.com", "password": "=oskMku"}}
+{"method": "get", "url": "/spotify/account", "data": {}}
+{"method": "post", "url": "/spotify/send_verification_code", "data": {}}
+{"method": "get", "url": "/api_docs/api_doc", "data": {"app_name": "spotify", "api_name": "send_verification_code"}}
+{"method": "post", "url": "/spotify/send_verification_code", "data": {"email": "an-harrison@gmail.com"}}
+{"method": "get", "url": "/spotify/music_player/song_queue", "data": {}}
+{"method": "get", "url": "/spotify/recommendations", "data": {}}
+{"method": "post", "url": "/spotify/auth/logout", "data": {}}
+{"method": "post", "url": "/spotify/auth/token", "data": {"username": "an-harrison@gmail.com", "password": "=oskMku"}}
+{"method": "get", "url": "/spotify/account", "data": {}}
+{"method": "get", "url": "/spotify/profile", "data": {"user_id": "an-harrison@gmail.com"}}
+{"method": "get", "url": "/api_docs/api_doc", "data": {"app_name": "spotify", "api_name": "show_profile"}}
+{"method": "get", "url": "/spotify/profile", "data": {"email": "an-harrison@gmail.com"}}
+{"method": "get", "url": "/spotify/songs", "data": {"query": "popular"}}
+{"method": "get", "url": "/spotify/liked_songs", "data": {}}
+{"method": "post", "url": "/spotify/music_player/play", "data": {"song_id": 1}}
+{"method": "get", "url": "/api_docs/api_doc", "data": {"app_name": "spotify", "api_name": "signup"}}
+{"method": "get", "url": "/spotify/premium/plans", "data": {}}
+{"method": "get", "url": "/spotify/premium/subscriptions", "data": {}}
+{"method": "get", "url": "/spotify/payment_cards", "data": {}}
+{"method": "get", "url": "/supervisor/payment_cards", "data": {}}
+{"method": "delete", "url": "/spotify/account", "data": {}}
+{"method": "post", "url": "/spotify/account", "data": {"first_name": "Anthony", "last_name": "Harrison", "email": "an-harrison@gmail.com", "password": "=oskMku"}}
+{"method": "post", "url": "/spotify/auth/token", "data": {"username": "an-harrison@gmail.com", "password": "=oskMku"}}
+{"method": "get", "url": "/spotify/liked_songs", "data": {}}
+{"method": "get", "url": "/spotify/music_player/current_song", "data": {}}
+{"method": "get", "url": "/spotify/music_player/song_queue", "data": {}}
+{"method": "post", "url": "/supervisor/message", "data": {"status": "fail"}}

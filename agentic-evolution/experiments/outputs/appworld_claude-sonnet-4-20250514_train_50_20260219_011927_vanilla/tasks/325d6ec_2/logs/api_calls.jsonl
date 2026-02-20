@@ -1,0 +1,30 @@
+{"method": "get", "url": "/supervisor/profile", "data": {}}
+{"method": "get", "url": "/api_docs/app_descriptions", "data": {}}
+{"method": "get", "url": "/api_docs/api_descriptions", "data": {"app_name": "spotify"}}
+{"method": "get", "url": "/api_docs/api_descriptions", "data": {"app_name": "supervisor"}}
+{"method": "get", "url": "/supervisor/account_passwords", "data": {}}
+{"method": "get", "url": "/spotify/music_player/current_song", "data": {}}
+{"method": "post", "url": "/spotify/auth/token", "data": {"email": "carbrown@gmail.com", "password": "3a-m^o6"}}
+{"method": "get", "url": "/api_docs/api_doc", "data": {"app_name": "spotify", "api_name": "login"}}
+{"method": "post", "url": "/spotify/auth/token", "data": {"username": "carbrown@gmail.com", "password": "3a-m^o6"}}
+{"method": "get", "url": "/spotify/downloaded_songs", "data": {}}
+{"method": "get", "url": "/spotify/music_player/current_song", "data": {}}
+{"method": "post", "url": "/spotify/auth/token", "data": {"username": "carbrown@gmail.com", "password": "3a-m^o6"}}
+{"method": "get", "url": "/spotify/downloaded_songs", "data": {}}
+{"method": "get", "url": "/spotify/account", "data": {}}
+{"method": "post", "url": "/spotify/send_verification_code", "data": {}}
+{"method": "get", "url": "/spotify/profile", "data": {"user_id": "carbrown@gmail.com"}}
+{"method": "get", "url": "/api_docs/api_doc", "data": {"app_name": "spotify", "api_name": "signup"}}
+{"method": "post", "url": "/spotify/account", "data": {"first_name": "Carl", "last_name": "Brown", "email": "carbrown@gmail.com", "password": "3a-m^o6"}}
+{"method": "get", "url": "/api_docs/api_doc", "data": {"app_name": "spotify", "api_name": "send_verification_code"}}
+{"method": "post", "url": "/spotify/send_verification_code", "data": {"email": "carbrown@gmail.com"}}
+{"method": "post", "url": "/spotify/send_password_reset_code", "data": {"email": "carbrown@gmail.com"}}
+{"method": "get", "url": "/api_docs/api_descriptions", "data": {"app_name": "gmail"}}
+{"method": "post", "url": "/gmail/auth/token", "data": {"username": "carbrown@gmail.com", "password": "#x}}5n5"}}
+{"method": "get", "url": "/gmail/email_threads/category/inbox", "data": {"limit": 10}}
+{"method": "post", "url": "/spotify/auth/token", "data": {"username": "carbrown@gmail.com", "password": "3a-m^o6"}}
+{"method": "get", "url": "/spotify/downloaded_songs", "data": {}}
+{"method": "get", "url": "/spotify/genres", "data": {}}
+{"method": "get", "url": "/spotify/songs", "data": {"query": "test", "limit": 1}}
+{"method": "get", "url": "/spotify/songs", "data": {"query": "test", "limit": 1}}
+{"method": "post", "url": "/supervisor/message", "data": {"status": "fail"}}

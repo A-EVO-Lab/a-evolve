@@ -1,0 +1,19 @@
+{"method": "get", "url": "/supervisor/profile", "data": {}}
+{"method": "get", "url": "/api_docs/app_descriptions", "data": {}}
+{"method": "get", "url": "/api_docs/api_descriptions", "data": {"app_name": "simple_note"}}
+{"method": "get", "url": "/api_docs/api_descriptions", "data": {"app_name": "phone"}}
+{"method": "get", "url": "/api_docs/api_doc", "data": {"app_name": "supervisor", "api_name": "show_account_passwords"}}
+{"method": "get", "url": "/supervisor/account_passwords", "data": {}}
+{"method": "post", "url": "/simple_note/auth/token", "data": {"email": "gl.moore@gmail.com", "password": "aVfy)Rr"}}
+{"method": "get", "url": "/api_docs/api_doc", "data": {"app_name": "simple_note", "api_name": "login"}}
+{"method": "post", "url": "/simple_note/auth/token", "data": {"username": "gl.moore@gmail.com", "password": "aVfy)Rr"}}
+{"method": "get", "url": "/simple_note/notes", "data": {"access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJzaW1wbGVfbm90ZStnbC5tb29yZUBnbWFpbC5jb20iLCJleHAiOjE2ODQ0MTIwOTh9.4N3-gAMhJZOc9-oXaFfJugUPnIytNIdQd3vqPcYOCSA"}}
+{"method": "get", "url": "/api_docs/api_doc", "data": {"app_name": "simple_note", "api_name": "search_notes"}}
+{"method": "get", "url": "/simple_note/notes", "data": {"access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJzaW1wbGVfbm90ZStnbC5tb29yZUBnbWFpbC5jb20iLCJleHAiOjE2ODQ0MTIwOTh9.4N3-gAMhJZOc9-oXaFfJugUPnIytNIdQd3vqPcYOCSA", "query": "movie", "page_limit": 20}}
+{"method": "get", "url": "/simple_note/notes/1556", "data": {"access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJzaW1wbGVfbm90ZStnbC5tb29yZUBnbWFpbC5jb20iLCJleHAiOjE2ODQ0MTIwOTh9.4N3-gAMhJZOc9-oXaFfJugUPnIytNIdQd3vqPcYOCSA"}}
+{"method": "post", "url": "/phone/auth/token", "data": {"username": "gl.moore@gmail.com", "password": "2I1#6ld"}}
+{"method": "get", "url": "/api_docs/api_doc", "data": {"app_name": "phone", "api_name": "login"}}
+{"method": "post", "url": "/phone/auth/token", "data": {"username": "8346699249", "password": "2I1#6ld"}}
+{"method": "get", "url": "/phone/contacts", "data": {"access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJwaG9uZSs4MzQ2Njk5MjQ5IiwiZXhwIjoxNjg0NDEyNzQxfQ.JEphpxe1fqynsS8I4dHFxxTG8HsIW7x4g1-NVu-zUgk", "query": "Laura"}}
+{"method": "post", "url": "/phone/messages/text/2873148336", "data": {"access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJwaG9uZSs4MzQ2Njk5MjQ5IiwiZXhwIjoxNjg0NDEyNzQxfQ.JEphpxe1fqynsS8I4dHFxxTG8HsIW7x4g1-NVu-zUgk", "message": "Interstellar, Inception, Black Swan, The Shawshank Redemption, The Wolf of Wall Street, Drive, Her, The Dark Knight Rises, The Big Lebowski, The Dark Knight, Django Unchained, Gladiator, Fight Club, The Revenant, Pulp Fiction, Good Will Hunting, Avatar, Spirited Away, Forrest Gump, A Beautiful Mind, The Green Mile"}}
+{"method": "post", "url": "/supervisor/message", "data": {}}

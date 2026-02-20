@@ -1,0 +1,33 @@
+{"method": "get", "url": "/supervisor/profile", "data": {}}
+{"method": "get", "url": "/api_docs/app_descriptions", "data": {}}
+{"method": "get", "url": "/api_docs/api_descriptions", "data": {"app_name": "simple_note"}}
+{"method": "get", "url": "/simple_note/notes", "data": {}}
+{"method": "get", "url": "/api_docs/api_descriptions", "data": {"app_name": "supervisor"}}
+{"method": "get", "url": "/supervisor/account_passwords", "data": {}}
+{"method": "post", "url": "/simple_note/auth/token", "data": {"email": "la-mcco@gmail.com", "password": "Cq2M9XO"}}
+{"method": "get", "url": "/api_docs/api_doc", "data": {"app_name": "simple_note", "api_name": "login"}}
+{"method": "post", "url": "/simple_note/auth/token", "data": {"username": "la-mcco@gmail.com", "password": "Cq2M9XO"}}
+{"method": "get", "url": "/simple_note/notes", "data": {}}
+{"method": "get", "url": "/api_docs/api_doc", "data": {"app_name": "simple_note", "api_name": "search_notes"}}
+{"method": "get", "url": "/simple_note/notes", "data": {"access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJzaW1wbGVfbm90ZStsYS1tY2NvQGdtYWlsLmNvbSIsImV4cCI6MTY4NDQxMjA5OH0.0cgTSxd68Bsa43SNRiUB67OYAU5kShK3WQ8l1FtT-fQ"}}
+{"method": "get", "url": "/simple_note/notes/3084", "data": {"access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJzaW1wbGVfbm90ZStsYS1tY2NvQGdtYWlsLmNvbSIsImV4cCI6MTY4NDQxMjA5OH0.0cgTSxd68Bsa43SNRiUB67OYAU5kShK3WQ8l1FtT-fQ"}}
+{"method": "get", "url": "/api_docs/api_descriptions", "data": {"app_name": "spotify"}}
+{"method": "post", "url": "/spotify/auth/token", "data": {"username": "la-mcco@gmail.com", "password": "wjhPa4l"}}
+{"method": "get", "url": "/api_docs/api_doc", "data": {"app_name": "spotify", "api_name": "search_songs"}}
+{"method": "get", "url": "/spotify/songs", "data": {"query": "Tangled Lies Ava Morgan", "page_limit": 5}}
+{"method": "get", "url": "/spotify/songs", "data": {"query": "Tangled Lies Ava Morgan", "page_limit": 10}}
+{"method": "get", "url": "/spotify/songs", "data": {"query": "Lost in the Wilderness of Love Lily Moon", "page_limit": 10}}
+{"method": "get", "url": "/spotify/songs", "data": {"query": "Whispers of a Forgotten Love Lily Moon", "page_limit": 10}}
+{"method": "get", "url": "/spotify/songs", "data": {"query": "Lost in the Twilight of Hope Felix Blackwood", "page_limit": 10}}
+{"method": "get", "url": "/spotify/songs", "data": {"query": "The Distance Between Two Hearts Jasper Skye", "page_limit": 10}}
+{"method": "get", "url": "/spotify/songs", "data": {"query": "When All Hope Seems Lost Seraphina Dawn", "page_limit": 10}}
+{"method": "get", "url": "/spotify/songs", "data": {"query": "The Forgotten Pages of Time Luna Starlight", "page_limit": 10}}
+{"method": "get", "url": "/spotify/songs", "data": {"query": "Summer's End Ethan Wallace", "page_limit": 10}}
+{"method": "get", "url": "/spotify/songs", "data": {"query": "A Tale of Unspoken Longing Emily Rivers", "page_limit": 10}}
+{"method": "get", "url": "/spotify/songs", "data": {"query": "Cracks in the Facade of Love Velvet Echo", "page_limit": 10}}
+{"method": "get", "url": "/spotify/songs", "data": {"query": "A Fading Reflection in Water Lucas Grey", "page_limit": 10}}
+{"method": "get", "url": "/spotify/songs", "data": {"query": "Trapped in a Daydream Nova Harmony", "page_limit": 10}}
+{"method": "get", "url": "/spotify/songs", "data": {"query": "Mystic Voyage to Avalon Nova Harmony", "page_limit": 10}}
+{"method": "patch", "url": "/simple_note/notes/3084", "data": {"access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJzaW1wbGVfbm90ZStsYS1tY2NvQGdtYWlsLmNvbSIsImV4cCI6MTY4NDQxMjA5OH0.0cgTSxd68Bsa43SNRiUB67OYAU5kShK3WQ8l1FtT-fQ", "content": "# Liked Songs\n- Haunted Memories BY Apollo Serenade, Phoenix Rivers RELEASED_AT 11/2022\n- Gone Astray BY Aria Sterling RELEASED_AT 06/2021\n- Heartstrings Symphony BY Ava Morgan RELEASED_AT 12/2022\n- Tangled Lies BY Ava Morgan RELEASED_AT 12/2022\n- Lost in the Wilderness of Love BY Lily Moon, Zoey James RELEASED_AT 02/2022\n- Whispers of a Forgotten Love BY Lily Moon, Zoey James RELEASED_AT 02/2022\n- Lost in the Twilight of Hope BY Felix Blackwood RELEASED_AT 07/2022\n- The Distance Between Two Hearts BY Jasper Skye RELEASED_AT 11/2018\n- When All Hope Seems Lost BY Seraphina Dawn RELEASED_AT 04/2022\n- The Forgotten Pages of Time BY Luna Starlight RELEASED_AT 09/2020\n- Summer's End BY Ethan Wallace RELEASED_AT 04/2022\n- A Tale of Unspoken Longing BY Emily Rivers RELEASED_AT 02/2022\n- Cracks in the Facade of Love BY Velvet Echo RELEASED_AT 07/2020\n- A Fading Reflection in Water BY Lucas Grey RELEASED_AT 07/2020\n- Trapped in a Daydream BY Nova Harmony RELEASED_AT 04/2021\n- Mystic Voyage to Avalon BY Nova Harmony RELEASED_AT 08/2020\n"}}
+{"method": "get", "url": "/simple_note/notes/3084", "data": {"access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJzaW1wbGVfbm90ZStsYS1tY2NvQGdtYWlsLmNvbSIsImV4cCI6MTY4NDQxMjA5OH0.0cgTSxd68Bsa43SNRiUB67OYAU5kShK3WQ8l1FtT-fQ"}}
+{"method": "post", "url": "/supervisor/message", "data": {}}

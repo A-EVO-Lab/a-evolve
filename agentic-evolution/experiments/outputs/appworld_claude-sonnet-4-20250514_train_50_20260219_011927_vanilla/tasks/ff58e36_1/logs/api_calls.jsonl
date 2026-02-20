@@ -1,0 +1,40 @@
+{"method": "get", "url": "/supervisor/profile", "data": {}}
+{"method": "get", "url": "/api_docs/app_descriptions", "data": {}}
+{"method": "get", "url": "/api_docs/api_descriptions", "data": {"app_name": "venmo"}}
+{"method": "get", "url": "/api_docs/api_descriptions", "data": {"app_name": "phone"}}
+{"method": "get", "url": "/api_docs/api_descriptions", "data": {"app_name": "supervisor"}}
+{"method": "get", "url": "/supervisor/account_passwords", "data": {}}
+{"method": "post", "url": "/venmo/auth/token", "data": {"email": "nan_ritt@gmail.com", "password": "OzVS[j5"}}
+{"method": "get", "url": "/api_docs/api_doc", "data": {"app_name": "venmo", "api_name": "login"}}
+{"method": "post", "url": "/venmo/auth/token", "data": {"username": "nan_ritt@gmail.com", "password": "OzVS[j5"}}
+{"method": "post", "url": "/phone/auth/token", "data": {"username": "nan_ritt@gmail.com", "password": "!5VAxgi"}}
+{"method": "get", "url": "/api_docs/api_doc", "data": {"app_name": "phone", "api_name": "login"}}
+{"method": "post", "url": "/phone/auth/token", "data": {"username": "2307354647", "password": "!5VAxgi"}}
+{"method": "get", "url": "/phone/contact_relationships", "data": {}}
+{"method": "get", "url": "/api_docs/api_doc", "data": {"app_name": "phone", "api_name": "show_contact_relationships"}}
+{"method": "get", "url": "/phone/contact_relationships", "data": {"access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJwaG9uZSsyMzA3MzU0NjQ3IiwiZXhwIjoxNjg0NDEyNzQxfQ.b-sDdvFOafKBAOniy9yN3fKopwG0RAi8nXABAfEcCtE"}}
+{"method": "get", "url": "/api_docs/api_doc", "data": {"app_name": "phone", "api_name": "search_contacts"}}
+{"method": "get", "url": "/phone/contacts", "data": {"access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJwaG9uZSsyMzA3MzU0NjQ3IiwiZXhwIjoxNjg0NDEyNzQxfQ.b-sDdvFOafKBAOniy9yN3fKopwG0RAi8nXABAfEcCtE", "relationship": "friend", "page_limit": 20}}
+{"method": "get", "url": "/phone/contacts", "data": {"access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJwaG9uZSsyMzA3MzU0NjQ3IiwiZXhwIjoxNjg0NDEyNzQxfQ.b-sDdvFOafKBAOniy9yN3fKopwG0RAi8nXABAfEcCtE", "relationship": "roommate", "page_limit": 20}}
+{"method": "get", "url": "/api_docs/api_doc", "data": {"app_name": "venmo", "api_name": "search_users"}}
+{"method": "get", "url": "/api_docs/api_doc", "data": {"app_name": "venmo", "api_name": "add_friend"}}
+{"method": "get", "url": "/venmo/users", "data": {"access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ2ZW5tbytuYW5fcml0dEBnbWFpbC5jb20iLCJleHAiOjE2ODQ0MTIwOTh9.Hb6XM_sfWFrFryqPNdGauBJxCLXAmiIk9p9Se3_DUB0", "query": "alexander-ridd@gmail.com"}}
+{"method": "post", "url": "/venmo/friends/alexander-ridd@gmail.com", "data": {"access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ2ZW5tbytuYW5fcml0dEBnbWFpbC5jb20iLCJleHAiOjE2ODQ0MTIwOTh9.Hb6XM_sfWFrFryqPNdGauBJxCLXAmiIk9p9Se3_DUB0"}}
+{"method": "get", "url": "/venmo/users", "data": {"access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ2ZW5tbytuYW5fcml0dEBnbWFpbC5jb20iLCJleHAiOjE2ODQ0MTIwOTh9.Hb6XM_sfWFrFryqPNdGauBJxCLXAmiIk9p9Se3_DUB0", "query": "andrew_brow@gmail.com"}}
+{"method": "post", "url": "/venmo/friends/andrew_brow@gmail.com", "data": {"access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ2ZW5tbytuYW5fcml0dEBnbWFpbC5jb20iLCJleHAiOjE2ODQ0MTIwOTh9.Hb6XM_sfWFrFryqPNdGauBJxCLXAmiIk9p9Se3_DUB0"}}
+{"method": "get", "url": "/venmo/users", "data": {"access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ2ZW5tbytuYW5fcml0dEBnbWFpbC5jb20iLCJleHAiOjE2ODQ0MTIwOTh9.Hb6XM_sfWFrFryqPNdGauBJxCLXAmiIk9p9Se3_DUB0", "query": "bradley_ball@gmail.com"}}
+{"method": "get", "url": "/venmo/users", "data": {"access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ2ZW5tbytuYW5fcml0dEBnbWFpbC5jb20iLCJleHAiOjE2ODQ0MTIwOTh9.Hb6XM_sfWFrFryqPNdGauBJxCLXAmiIk9p9Se3_DUB0", "query": "chelsea-burch@gmail.com"}}
+{"method": "post", "url": "/venmo/friends/chelsea-burch@gmail.com", "data": {"access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ2ZW5tbytuYW5fcml0dEBnbWFpbC5jb20iLCJleHAiOjE2ODQ0MTIwOTh9.Hb6XM_sfWFrFryqPNdGauBJxCLXAmiIk9p9Se3_DUB0"}}
+{"method": "get", "url": "/venmo/users", "data": {"access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ2ZW5tbytuYW5fcml0dEBnbWFpbC5jb20iLCJleHAiOjE2ODQ0MTIwOTh9.Hb6XM_sfWFrFryqPNdGauBJxCLXAmiIk9p9Se3_DUB0", "query": "clmiller@gmail.com"}}
+{"method": "get", "url": "/venmo/users", "data": {"access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ2ZW5tbytuYW5fcml0dEBnbWFpbC5jb20iLCJleHAiOjE2ODQ0MTIwOTh9.Hb6XM_sfWFrFryqPNdGauBJxCLXAmiIk9p9Se3_DUB0", "query": "corwils@gmail.com"}}
+{"method": "get", "url": "/venmo/users", "data": {"access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ2ZW5tbytuYW5fcml0dEBnbWFpbC5jb20iLCJleHAiOjE2ODQ0MTIwOTh9.Hb6XM_sfWFrFryqPNdGauBJxCLXAmiIk9p9Se3_DUB0", "query": "erikabail@gmail.com"}}
+{"method": "get", "url": "/venmo/users", "data": {"access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ2ZW5tbytuYW5fcml0dEBnbWFpbC5jb20iLCJleHAiOjE2ODQ0MTIwOTh9.Hb6XM_sfWFrFryqPNdGauBJxCLXAmiIk9p9Se3_DUB0", "query": "jefsmith@gmail.com"}}
+{"method": "post", "url": "/venmo/friends/jefsmith@gmail.com", "data": {"access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ2ZW5tbytuYW5fcml0dEBnbWFpbC5jb20iLCJleHAiOjE2ODQ0MTIwOTh9.Hb6XM_sfWFrFryqPNdGauBJxCLXAmiIk9p9Se3_DUB0"}}
+{"method": "get", "url": "/venmo/users", "data": {"access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ2ZW5tbytuYW5fcml0dEBnbWFpbC5jb20iLCJleHAiOjE2ODQ0MTIwOTh9.Hb6XM_sfWFrFryqPNdGauBJxCLXAmiIk9p9Se3_DUB0", "query": "morgan-harrison@gmail.com"}}
+{"method": "post", "url": "/venmo/friends/morgan-harrison@gmail.com", "data": {"access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ2ZW5tbytuYW5fcml0dEBnbWFpbC5jb20iLCJleHAiOjE2ODQ0MTIwOTh9.Hb6XM_sfWFrFryqPNdGauBJxCLXAmiIk9p9Se3_DUB0"}}
+{"method": "get", "url": "/venmo/users", "data": {"access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ2ZW5tbytuYW5fcml0dEBnbWFpbC5jb20iLCJleHAiOjE2ODQ0MTIwOTh9.Hb6XM_sfWFrFryqPNdGauBJxCLXAmiIk9p9Se3_DUB0", "query": "nicholas.weber@gmail.com"}}
+{"method": "get", "url": "/venmo/users", "data": {"access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ2ZW5tbytuYW5fcml0dEBnbWFpbC5jb20iLCJleHAiOjE2ODQ0MTIwOTh9.Hb6XM_sfWFrFryqPNdGauBJxCLXAmiIk9p9Se3_DUB0", "query": "jo-harr@gmail.com"}}
+{"method": "post", "url": "/venmo/friends/jo-harr@gmail.com", "data": {"access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ2ZW5tbytuYW5fcml0dEBnbWFpbC5jb20iLCJleHAiOjE2ODQ0MTIwOTh9.Hb6XM_sfWFrFryqPNdGauBJxCLXAmiIk9p9Se3_DUB0"}}
+{"method": "get", "url": "/venmo/users", "data": {"access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ2ZW5tbytuYW5fcml0dEBnbWFpbC5jb20iLCJleHAiOjE2ODQ0MTIwOTh9.Hb6XM_sfWFrFryqPNdGauBJxCLXAmiIk9p9Se3_DUB0", "query": "kathrynmaldonado@gmail.com"}}
+{"method": "get", "url": "/venmo/users", "data": {"access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ2ZW5tbytuYW5fcml0dEBnbWFpbC5jb20iLCJleHAiOjE2ODQ0MTIwOTh9.Hb6XM_sfWFrFryqPNdGauBJxCLXAmiIk9p9Se3_DUB0", "query": "tr_solo@gmail.com"}}
+{"method": "post", "url": "/supervisor/message", "data": {"answer": "Successfully added 6 friends and roommates to Venmo. All 13 contacts are now friends on Venmo (6 newly added, 7 were already friends)."}}

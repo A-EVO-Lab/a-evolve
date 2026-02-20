@@ -1,0 +1,9 @@
+{
+    "file_system": {
+        "Directory": 8,
+        "File": 84
+    },
+    "supervisor": {
+        "Task": 1
+    }
+}

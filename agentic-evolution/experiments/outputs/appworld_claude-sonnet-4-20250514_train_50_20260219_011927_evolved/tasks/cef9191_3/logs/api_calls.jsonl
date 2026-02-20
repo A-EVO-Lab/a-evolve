@@ -1,0 +1,8 @@
+{"method": "get", "url": "/supervisor/profile", "data": {}}
+{"method": "get", "url": "/api_docs/app_descriptions", "data": {}}
+{"method": "get", "url": "/api_docs/api_descriptions", "data": {"app_name": "spotify"}}
+{"method": "get", "url": "/api_docs/api_doc", "data": {"app_name": "spotify", "api_name": "login"}}
+{"method": "get", "url": "/supervisor/account_passwords", "data": {}}
+{"method": "post", "url": "/spotify/auth/token", "data": {"username": "ch-burch@gmail.com", "password": "99W1c[K"}}
+{"method": "get", "url": "/spotify/following_artists", "data": {"access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJzcG90aWZ5K2NoLWJ1cmNoQGdtYWlsLmNvbSIsImV4cCI6MTY4NDQxMjA5OH0.p4jMC84at7BtJtgi1dsGHKvyyfmOxF6DXtNAs6-PNuA"}}
+{"method": "post", "url": "/supervisor/message", "data": {"answer": "Zoey James"}}
