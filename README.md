@@ -9,6 +9,10 @@ This monorepo contains the core framework and a web UI for running and visualizi
 - `agentic-evolution/`: core A-EVOLVE framework and experiment runners
 - `a-evolve-ui/`: React UI + FastAPI backend for session inspection and evolve controls
 
+
+https://github.com/user-attachments/assets/6d3060b3-f163-4812-8de9-e6974d18bd04
+
+
 ## Citation
 
 If you find this work useful, please cite our paper:
