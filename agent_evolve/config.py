@@ -40,6 +40,13 @@ class EvolveConfig:
     # Evolver LLM
     evolver_model: str = "us.anthropic.claude-opus-4-6-v1"
     evolver_max_tokens: int = 16384
+    # Local OpenAI-compatible endpoint (Ollama, LM Studio, vLLM, …).
+    # When set, all evolver LLM calls are routed to this URL instead of the
+    # cloud provider inferred from evolver_model.
+    # Example: evolver_base_url: "http://localhost:11434/v1"
+    evolver_base_url: str | None = None
+    # Optional API key for the local endpoint (default: "local").
+    evolver_api_key: str | None = None
 
     # Convergence
     egl_threshold: float = 0.05

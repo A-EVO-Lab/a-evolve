@@ -50,8 +50,23 @@ def make_workspace_bash(workspace_root: str | Path):
 
 
 def create_default_llm(config: EvolveConfig) -> LLMProvider:
-    """Create the default LLM provider based on the evolver_model config string."""
+    """Create the default LLM provider based on the evolver_model config string.
+
+    When ``config.evolver_base_url`` is set all calls are routed to that local
+    OpenAI-compatible endpoint regardless of the model name, so you can use any
+    locally-served model (Ollama, LM Studio, vLLM, LocalAI, …).
+    """
     model = config.evolver_model
+
+    # Local OpenAI-compatible endpoint takes priority over cloud providers.
+    if config.evolver_base_url:
+        from ...llm.openai import OpenAIProvider
+
+        return OpenAIProvider(
+            model=model,
+            base_url=config.evolver_base_url,
+            api_key=config.evolver_api_key,
+        )
 
     if "." in model and ("anthropic" in model or "amazon" in model or "meta" in model):
         from ...llm.bedrock import BedrockProvider

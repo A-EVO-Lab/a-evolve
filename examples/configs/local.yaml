@@ -1,0 +1,31 @@
+batch_size: 8
+max_cycles: 15
+holdout_ratio: 0.2
+
+evolve_prompts: true
+evolve_skills: true
+evolve_memory: true
+evolve_tools: false
+
+# Name of the model as exposed by your local server.
+# For Ollama: the tag name (e.g. "llama3", "mistral", "qwen2.5-coder").
+# For vLLM / LM Studio: the model id shown in /v1/models.
+evolver_model: llama3
+
+# Base URL of your local OpenAI-compatible server.
+# Common defaults:
+#   Ollama       → http://localhost:11434/v1
+#   LM Studio    → http://localhost:1234/v1
+#   vLLM         → http://localhost:8000/v1
+#   LocalAI      → http://localhost:8080/v1
+evolver_base_url: http://localhost:11434/v1
+
+# API key sent in the Authorization header.
+# Most local servers accept any non-empty string.
+# Leave blank to use the default value "local".
+# evolver_api_key: local
+
+evolver_max_tokens: 8192
+
+egl_threshold: 0.05
+egl_window: 3

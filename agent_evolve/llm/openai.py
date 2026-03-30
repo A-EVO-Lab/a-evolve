@@ -1,4 +1,4 @@
-"""OpenAI GPT LLM provider."""
+"""OpenAI GPT LLM provider (also supports local OpenAI-compatible endpoints)."""
 
 from __future__ import annotations
 
@@ -8,16 +8,30 @@ from .base import LLMMessage, LLMProvider, LLMResponse
 
 
 class OpenAIProvider(LLMProvider):
-    """LLM provider using the OpenAI API (GPT / o-series models)."""
+    """LLM provider using the OpenAI API or any local OpenAI-compatible endpoint.
 
-    def __init__(self, model: str = "gpt-4o", api_key: str | None = None):
+    To point at a local server (Ollama, LM Studio, vLLM, LocalAI, …) pass
+    ``base_url`` with the server's base URL, e.g.::
+
+        OpenAIProvider(model="llama3", base_url="http://localhost:11434/v1", api_key="ollama")
+    """
+
+    def __init__(
+        self,
+        model: str = "gpt-4o",
+        api_key: str | None = None,
+        base_url: str | None = None,
+    ):
         try:
             import openai
         except ImportError:
             raise ImportError("pip install openai  (or: pip install agent-evolve[openai])")
 
         self.model = model
-        self.client = openai.OpenAI(api_key=api_key) if api_key else openai.OpenAI()
+        self.client = openai.OpenAI(
+            api_key=api_key or ("local" if base_url else None),
+            base_url=base_url,
+        )
 
     def complete(
         self,
