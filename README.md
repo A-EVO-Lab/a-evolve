@@ -146,7 +146,7 @@ print(f"Final score: {results.final_score:.3f}")
 print(f"Converged:   {results.converged}")
 ```
 
-A-Evolve ships with built-in seed workspaces (`swe`, `mcp`, `terminal`, `skillbench`) and benchmark adapters (`swe-verified`, `mcp-atlas`, `terminal-bench`, `skill-bench`). Point `agent=` at any of them — or at your own workspace directory.
+A-Evolve ships with built-in seed workspaces (`swe`, `mcp`, `terminal`, `skillbench`) and benchmark adapters (`swe-verified`, `mcp-atlas`, `terminal-bench 2.0`, `skill-bench`). Point `agent=` at any of them — or at your own workspace directory.
 
 ### 3. Bring Your Own Agent (BYOA)
 
@@ -305,12 +305,11 @@ Implement `BenchmarkAdapter` to plug any new evaluation domain into A-Evolve. Th
 If you use A-Evolve in your research, please cite our position paper:
 
 ```bibtex
-@article{a-evolve2026,
-    title   = {Position: Agentic Evolution is the Path to Evolving LLMs},
-    author  = {Minhua Lin, Hanqing Lu, Zhan Shi, Bing He, Rui Mao, Zhiwei Zhang, Zongyu Wu, Xianfeng Tang, Hui Liu, Zhenwei Dai, Xiang Zhang, Suhang Wang, Benoit Dumoulin, Jian Pei},
-    journal = {arXiv preprint arXiv:2602.00359},
-    year    = {2026},
-    url     = {https://arxiv.org/abs/2602.00359}
+@article{lin2026position,
+  title={Position: Agentic Evolution is the Path to Evolving LLMs},
+  author={Lin, Minhua and Lu, Hanqing and Shi, Zhan and He, Bing and Mao, Rui and Zhang, Zhiwei and Wu, Zongyu and Tang, Xianfeng and Liu, Hui and Dai, Zhenwei and others},
+  journal={arXiv preprint arXiv:2602.00359},
+  year={2026}
 }
 ```
 
