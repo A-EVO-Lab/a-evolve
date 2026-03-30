@@ -248,20 +248,33 @@ def judge_trajectories(
     logs: list[dict[str, Any]],
     model_id: str = "us.anthropic.claude-opus-4-6-v1",
     region: str = "us-west-2",
+    base_url: str | None = None,
+    api_key: str | None = None,
 ) -> list[dict[str, Any]]:
     """Use an LLM to score each trajectory as a proxy for success/failure.
 
     Returns a list of judge verdicts, one per log entry.
     Each verdict has: score (0-10), category, outcome, failure_reason.
-    """
-    try:
-        from ...llm.bedrock import BedrockProvider
-        from ...llm.base import LLMMessage
-    except ImportError:
-        logger.warning("BedrockProvider not available, skipping judge")
-        return [{"score": -1, "category": "unknown", "outcome": "judge unavailable", "failure_reason": ""} for _ in logs]
 
-    llm = BedrockProvider(model_id=model_id, region=region)
+    When *base_url* is provided, all requests go to that local
+    OpenAI-compatible endpoint instead of AWS Bedrock.
+    """
+    from ...llm.base import LLMMessage
+
+    if base_url:
+        try:
+            from ...llm.openai import OpenAIProvider
+            llm = OpenAIProvider(model=model_id, base_url=base_url, api_key=api_key)
+        except ImportError:
+            logger.warning("OpenAIProvider not available, skipping judge")
+            return [{"score": -1, "category": "unknown", "outcome": "judge unavailable", "failure_reason": ""} for _ in logs]
+    else:
+        try:
+            from ...llm.bedrock import BedrockProvider
+        except ImportError:
+            logger.warning("BedrockProvider not available, skipping judge")
+            return [{"score": -1, "category": "unknown", "outcome": "judge unavailable", "failure_reason": ""} for _ in logs]
+        llm = BedrockProvider(model_id=model_id, region=region)
     verdicts = []
 
     for log in logs:

@@ -46,6 +46,8 @@ class McpAgent(BaseAgent):
         docker_image: str | None = None,
         key_registry: KeyRegistry | None = None,
         shared_client: McpClientWrapper | None = None,
+        model_base_url: str | None = None,
+        model_api_key: str | None = None,
     ):
         super().__init__(workspace_dir)
         self.model_id = model_id
@@ -54,6 +56,8 @@ class McpAgent(BaseAgent):
         self.docker_image = docker_image
         self.key_registry = key_registry
         self.shared_client = shared_client
+        self.model_base_url = model_base_url
+        self.model_api_key = model_api_key
 
     def _build_system_prompt(self, task_prompt: str | None = None) -> str:
         """Assemble the full system prompt from workspace files.
@@ -145,17 +149,28 @@ class McpAgent(BaseAgent):
         return selected
 
     def _build_strands_agent(self, tools: list, task_prompt: str | None = None) -> Agent:
-        """Create a strands Agent with BedrockModel and the given tools.
+        """Create a strands Agent with BedrockModel (or local OpenAI-compatible) and the given tools.
 
         Args:
             tools: List of tool wrappers
             task_prompt: Optional task input for skill selection
         """
-        model = BedrockModel(
-            model_id=self.model_id,
-            region_name=self.region,
-            max_tokens=self.max_tokens,
-        )
+        if self.model_base_url:
+            from strands.models.litellm import LiteLLMModel
+            model = LiteLLMModel(
+                model_id=f"openai/{self.model_id}",
+                params={
+                    "api_base": self.model_base_url,
+                    "api_key": self.model_api_key or "local",
+                    "max_tokens": self.max_tokens,
+                },
+            )
+        else:
+            model = BedrockModel(
+                model_id=self.model_id,
+                region_name=self.region,
+                max_tokens=self.max_tokens,
+            )
         system_prompt = self._build_system_prompt(task_prompt=task_prompt)
         return Agent(
             model=model,

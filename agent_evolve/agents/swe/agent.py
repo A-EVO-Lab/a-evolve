@@ -45,6 +45,8 @@ class SweAgent(BaseAgent):
         window_size: int = 40,
         verification_focus: bool = False,
         efficiency_prompt: bool = False,
+        model_base_url: str | None = None,
+        model_api_key: str | None = None,
     ):
         super().__init__(workspace_dir)
         self.model_id = model_id
@@ -54,6 +56,8 @@ class SweAgent(BaseAgent):
         self.window_size = window_size
         self.efficiency_prompt = efficiency_prompt
         self.verification_focus = verification_focus
+        self.model_base_url = model_base_url
+        self.model_api_key = model_api_key
 
     def _load_tools_from_workspace(self) -> tuple[list, list]:
         """Load tool functions from the workspace tools/registry.yaml.
@@ -134,11 +138,22 @@ class SweAgent(BaseAgent):
         Returns:
             A tuple of (Agent, tool_modules) so the caller can reset modules.
         """
-        model = BedrockModel(
-            model_id=self.model_id,
-            region_name=self.region,
-            max_tokens=self.max_tokens,
-        )
+        if self.model_base_url:
+            from strands.models.litellm import LiteLLMModel
+            model = LiteLLMModel(
+                model_id=f"openai/{self.model_id}",
+                params={
+                    "api_base": self.model_base_url,
+                    "api_key": self.model_api_key or "local",
+                    "max_tokens": self.max_tokens,
+                },
+            )
+        else:
+            model = BedrockModel(
+                model_id=self.model_id,
+                region_name=self.region,
+                max_tokens=self.max_tokens,
+            )
 
         system_prompt = self._build_system_prompt()
         tools, modules = self._load_tools_from_workspace()

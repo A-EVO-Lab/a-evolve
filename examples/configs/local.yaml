@@ -29,3 +29,18 @@ evolver_max_tokens: 8192
 
 egl_threshold: 0.05
 egl_window: 3
+
+# ── Agent (task-solving) LLM ─────────────────────────────────────────────────
+# These are passed directly to the agent constructor (TerminalAgent, McpAgent,
+# SweAgent, SkillBenchAgent) — they are NOT read from EvolveConfig automatically.
+# Use them in your own instantiation code:
+#
+#   agent = TerminalAgent(
+#       workspace_dir=...,
+#       model_id="llama3",
+#       model_base_url="http://localhost:11434/v1",
+#       model_api_key="ollama",  # optional
+#   )
+#
+# The agent uses strands-agents + litellm under the hood, so the model_id should
+# match whatever name your local server exposes (e.g. "llama3", "mistral").

@@ -81,6 +81,15 @@ def _make_workspace_bash(workspace_root: str | Path):
 def _create_default_llm(config: EvolveConfig) -> LLMProvider:
     """Create default LLM provider based on config."""
     model = config.evolver_model
+
+    if config.evolver_base_url:
+        from ...llm.openai import OpenAIProvider
+        return OpenAIProvider(
+            model=model,
+            base_url=config.evolver_base_url,
+            api_key=config.evolver_api_key,
+        )
+
     if "." in model and ("anthropic" in model or "amazon" in model or "meta" in model):
         from ...llm.bedrock import BedrockProvider
         return BedrockProvider(model_id=model, region=config.extra.get("region", "us-west-2"))

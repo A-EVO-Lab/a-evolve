@@ -73,12 +73,16 @@ class SkillBenchAgent(BaseAgent):
         retry_max_wait_sec: float = 120.0,
         write_episodic_memory: bool = False,
         skill_select_limit: int = 0,
+        model_base_url: str | None = None,
+        model_api_key: str | None = None,
     ):
         super().__init__(workspace_dir)
         self.skill_select_limit = skill_select_limit
         self.model_id = model_id
         self.region = region
         self.max_tokens = max_tokens
+        self.model_base_url = model_base_url
+        self.model_api_key = model_api_key
         self.tasks_dir = tasks_dir
         self.execution_mode = execution_mode
         self.harbor_repo = (
@@ -151,16 +155,27 @@ class SkillBenchAgent(BaseAgent):
         return "\n".join(parts)
 
     def _build_strands_agent(self, tools: list) -> Agent:
-        """Create a strands Agent with BedrockModel and container tools."""
-        if BedrockModel is None:
-            raise ModuleNotFoundError(
-                "SkillBenchAgent requires optional dependency 'strands-agents' for native execution."
-            ) from _STRANDS_IMPORT_ERROR
-        model = BedrockModel(
-            model_id=self.model_id,
-            region_name=self.region,
-            max_tokens=self.max_tokens,
-        )
+        """Create a strands Agent with BedrockModel (or local OpenAI-compatible) and container tools."""
+        if self.model_base_url:
+            from strands.models.litellm import LiteLLMModel
+            model = LiteLLMModel(
+                model_id=f"openai/{self.model_id}",
+                params={
+                    "api_base": self.model_base_url,
+                    "api_key": self.model_api_key or "local",
+                    "max_tokens": self.max_tokens,
+                },
+            )
+        else:
+            if BedrockModel is None:
+                raise ModuleNotFoundError(
+                    "SkillBenchAgent requires optional dependency 'strands-agents' for native execution."
+                ) from _STRANDS_IMPORT_ERROR
+            model = BedrockModel(
+                model_id=self.model_id,
+                region_name=self.region,
+                max_tokens=self.max_tokens,
+            )
         return Agent(
             model=model,
             system_prompt=self._build_system_prompt(),

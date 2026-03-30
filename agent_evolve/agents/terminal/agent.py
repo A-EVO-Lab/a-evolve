@@ -44,19 +44,34 @@ class TerminalAgent(BaseAgent):
         model_id: str = "us.anthropic.claude-sonnet-4-20250514-v1:0",
         region: str = "us-west-2",
         max_tokens: int = 16384,
+        model_base_url: str | None = None,
+        model_api_key: str | None = None,
     ):
         super().__init__(workspace_dir)
         self.model_id = model_id
         self.region = region
         self.max_tokens = max_tokens
+        self.model_base_url = model_base_url
+        self.model_api_key = model_api_key
 
     def _build_strands_agent(self) -> Agent:
         """Create a strands Agent wired with the workspace's current state."""
-        model = BedrockModel(
-            model_id=self.model_id,
-            region_name=self.region,
-            max_tokens=self.max_tokens,
-        )
+        if self.model_base_url:
+            from strands.models.litellm import LiteLLMModel
+            model = LiteLLMModel(
+                model_id=f"openai/{self.model_id}",
+                params={
+                    "api_base": self.model_base_url,
+                    "api_key": self.model_api_key or "local",
+                    "max_tokens": self.max_tokens,
+                },
+            )
+        else:
+            model = BedrockModel(
+                model_id=self.model_id,
+                region_name=self.region,
+                max_tokens=self.max_tokens,
+            )
 
         system_prompt = self._build_system_prompt()
         tools = [bash, python, submit]
