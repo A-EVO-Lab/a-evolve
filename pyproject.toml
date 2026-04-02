@@ -1,5 +1,5 @@
 [project]
-name = "agent-evolve"
+name = "a-evolve"
 version = "0.1.0"
 description = "Evolve any agent across any domain using any evolution algorithm — with zero human intervention"
 readme = "README.md"

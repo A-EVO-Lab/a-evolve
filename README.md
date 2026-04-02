@@ -124,9 +124,16 @@ mcp_agent/
 ## Quick Start
 
 ### 1. Install
-Install from source with all dependencies:
 
 ```bash
+# PyPI (recommended)
+pip install a-evolve              # core
+pip install a-evolve[anthropic]   # Claude support
+pip install a-evolve[mcp]         # MCP-Atlas benchmark
+pip install a-evolve[swe]         # SWE-bench benchmark
+pip install a-evolve[all]         # everything
+
+# From source (for development)
 git clone https://github.com/A-EVO-Lab/a-evolve.git && cd a-evolve
 pip install -e ".[all,dev]"
 ```
