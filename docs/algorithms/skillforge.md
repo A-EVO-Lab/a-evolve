@@ -6,7 +6,7 @@ The SkillBench evolution algorithm. It follows a **grind** pattern -- solve a ta
 
 ## How It Works
 
-The agent workspace (prompts, skills, memory) is a directory on disk, seeded from one of two starting points: `skillbench` (with a handful of bootstrap skills) or `skillbench_zero` (empty skill library). The grind script processes tasks in batches. For each task, it runs a **solve-fail-evolve-retry** loop: the solver agent works inside a Docker container, and on failure the evolver LLM analyzes the observation and mutates workspace files. Every evolution step is git-tagged for reproducibility.
+The agent workspace (prompts, skills, memory) is a directory on disk, seeded from the bundled `skillbench` workspace. The grind script processes tasks in batches. For each task, it runs a **solve-fail-evolve-retry** loop: the solver agent works inside a Docker container, and on failure the evolver LLM analyzes the observation and mutates workspace files. Every evolution step is git-tagged for reproducibility.
 
 ### The Grind Cycle
 
@@ -364,7 +364,7 @@ High-level facade that wires agent, benchmark, and engine together for programma
 from agent_evolve.agents.skillbench.evolver import SkillBenchEvolver
 
 evolver = SkillBenchEvolver(
-    seed_workspace="seed_workspaces/skillbench_zero",
+    seed_workspace="seed_workspaces/skillbench",
     work_dir="./evolution_workdir/skillbench",
     model_id="us.anthropic.claude-sonnet-4-20250514-v1:0",
     region="us-west-2",
@@ -377,21 +377,7 @@ print(result.final_score, result.converged)
 
 ## Seed Workspaces
 
-Two seed workspaces are provided:
-
-### `seed_workspaces/skillbench_zero`
-
-The strict zero-skill baseline. Contains only the system prompt and empty skill/memory directories. Used to measure pure evolution capability from scratch.
-
-```
-skillbench_zero/
-  manifest.yaml
-  prompts/system.md        # Full system prompt (skill discovery + approach + tips)
-  skills/.gitkeep          # Empty -- all skills must be evolved
-  memory/memories.jsonl    # Empty
-```
-
-### `seed_workspaces/skillbench`
+The bundled seed workspace is `seed_workspaces/skillbench`:
 
 The bootstrap workspace. Contains the same system prompt plus four starter skills:
 
@@ -453,7 +439,7 @@ SUCCESS_MODE=gated_promotion \
 from agent_evolve.agents.skillbench.evolver import SkillBenchEvolver
 
 evolver = SkillBenchEvolver(
-    seed_workspace="seed_workspaces/skillbench_zero",
+    seed_workspace="seed_workspaces/skillbench",
     model_id="us.anthropic.claude-opus-4-5-20251101-v1:0",
     execution_mode="native",
     native_profile="terminus2",
@@ -517,7 +503,7 @@ result = evolver.run(cycles=10)
 | `--evolver-model-id` | (same as solver) | Evolver model (can be different) |
 | `--native-profile` | `terminus2` | Solver profile: `strands`, `terminus2`, `terminus2_legacy` |
 | `--score-mode` | `dual` | Scoring: `reward` (partial), `binary` (0/1), `dual` (max of both) |
-| `--seed-workspace` | `seed_workspaces/skillbench_zero` | Starting workspace directory |
+| `--seed-workspace` | `seed_workspaces/skillbench` | Starting workspace directory |
 
 ---
 

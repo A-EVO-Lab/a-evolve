@@ -8,11 +8,15 @@ Feedback: test.sh pass/fail via reward.txt (binary 0/1)
 from __future__ import annotations
 
 import logging
-import os
 import random
 from pathlib import Path
 from typing import Any, Literal
 
+from ...agents.skillbench.repo import (
+    SkillBenchPaths,
+    resolve_skillbench_paths,
+    validate_skillbench_paths,
+)
 from ...types import Feedback, Task, Trajectory
 from ..base import BenchmarkAdapter
 
@@ -22,23 +26,6 @@ SkillBenchExecutionMode = Literal["native", "harbor", "dual"]
 SkillBenchNativeProfile = Literal["strands", "terminus2", "terminus2_legacy"]
 SkillBenchScoreMode = Literal["reward", "binary", "dual"]
 SkillBenchFeedbackLevel = Literal["none", "score", "tests", "masked", "full"]
-
-DEFAULT_TASKS_WITH_SKILLS_DIR = os.environ.get(
-    "SKILLBENCH_TASKS_DIR",
-    "/home/ubuntu/fsx/linminh/project-evolution/skillsbench/tasks",
-)
-
-_default_without = os.environ.get("SKILLBENCH_TASKS_NO_SKILLS_DIR")
-if _default_without:
-    DEFAULT_TASKS_WITHOUT_SKILLS_DIR = _default_without
-elif DEFAULT_TASKS_WITH_SKILLS_DIR.endswith("/tasks"):
-    DEFAULT_TASKS_WITHOUT_SKILLS_DIR = (
-        DEFAULT_TASKS_WITH_SKILLS_DIR[:-len("/tasks")] + "/tasks-no-skills"
-    )
-else:
-    DEFAULT_TASKS_WITHOUT_SKILLS_DIR = (
-        "/home/ubuntu/fsx/linminh/project-evolution/skillsbench/tasks-no-skills"
-    )
 
 
 class SkillBenchBenchmark(BenchmarkAdapter):
@@ -77,12 +64,6 @@ class SkillBenchBenchmark(BenchmarkAdapter):
         retry_min_wait_sec: float = 1.0,
         retry_max_wait_sec: float = 120.0,
     ):
-        self.tasks_with_skills_dir = (
-            tasks_with_skills_dir or tasks_dir or DEFAULT_TASKS_WITH_SKILLS_DIR
-        )
-        self.tasks_without_skills_dir = (
-            tasks_without_skills_dir or DEFAULT_TASKS_WITHOUT_SKILLS_DIR
-        )
         self.task_filter = task_filter
         self.category_filter = category_filter
         self.difficulty_filter = difficulty_filter
@@ -95,7 +76,6 @@ class SkillBenchBenchmark(BenchmarkAdapter):
                 f"Invalid execution_mode={execution_mode!r}; expected native|harbor|dual"
             )
         self.execution_mode: SkillBenchExecutionMode = execution_mode
-        self.harbor_repo = harbor_repo
         self.harbor_config_template = harbor_config_template
         self.harbor_agent_import_path = harbor_agent_import_path
         self.harbor_model_name = harbor_model_name
@@ -115,11 +95,23 @@ class SkillBenchBenchmark(BenchmarkAdapter):
         self.retry_max = int(retry_max)
         self.retry_min_wait_sec = float(retry_min_wait_sec)
         self.retry_max_wait_sec = float(retry_max_wait_sec)
-        self.tasks_dir = (
-            self.tasks_with_skills_dir
-            if self.use_skills
-            else self.tasks_without_skills_dir
+
+        resolved_paths = resolve_skillbench_paths(
+            tasks_dir=tasks_dir,
+            tasks_with_skills_dir=tasks_with_skills_dir,
+            tasks_without_skills_dir=tasks_without_skills_dir,
+            harbor_repo=harbor_repo,
         )
+        validate_skillbench_paths(
+            resolved_paths,
+            use_skills=self.use_skills,
+            execution_mode=self.execution_mode,
+        )
+        self.skillbench_paths: SkillBenchPaths = resolved_paths
+        self.tasks_with_skills_dir = str(resolved_paths.tasks_with_skills_dir)
+        self.tasks_without_skills_dir = str(resolved_paths.tasks_without_skills_dir)
+        self.harbor_repo = str(resolved_paths.harbor_repo)
+        self.tasks_dir = str(resolved_paths.selected_tasks_dir(use_skills=self.use_skills))
         self._cache: dict[str, list[dict[str, Any]]] = {}
         self._split_done = False
 
@@ -440,13 +432,13 @@ class SkillBenchBenchmark(BenchmarkAdapter):
                 + (f" (partial score: {partial:.2f})" if total > 0 else "")
             )
 
-        if feedback_level in ("tests", "masked", "full"):
-            if test_info["failed_names"]:
-                parts.append("Failed tests:")
-                parts.extend(f"- {name}" for name in test_info["failed_names"])
-            if test_info["passed_names"]:
-                parts.append("Passed tests:")
-                parts.extend(f"- {name}" for name in test_info["passed_names"])
+            if feedback_level in ("tests", "masked", "full"):
+                if test_info["failed_names"]:
+                    parts.append("Failed tests:")
+                    parts.extend(f"- {name}" for name in test_info["failed_names"])
+                if test_info["passed_names"]:
+                    parts.append("Passed tests:")
+                    parts.extend(f"- {name}" for name in test_info["passed_names"])
 
         if feedback_level == "masked":
             parts.append("Verifier output (values masked):")
@@ -509,6 +501,12 @@ class SkillBenchBenchmark(BenchmarkAdapter):
         n_holdout = max(1, int(len(rows) * self.holdout_ratio))
         self._cache["holdout"] = rows[:n_holdout]
         self._cache["train"] = rows[n_holdout:]
+        if not self._cache["train"]:
+            logger.warning(
+                "SkillBench train split is empty (total tasks=%d, holdout=%d). "
+                "All tasks were assigned to the holdout set.",
+                len(rows), n_holdout,
+            )
         self._cache["test"] = rows
 
         self._split_done = True

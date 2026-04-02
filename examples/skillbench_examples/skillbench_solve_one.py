@@ -12,9 +12,17 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 
-from agent_evolve.benchmarks.skill_bench import SkillBenchBenchmark
 from agent_evolve.agents.skillbench import SkillBenchAgent
 from agent_evolve.agents.skillbench.artifacts import export_skillbench_artifacts
+from agent_evolve.agents.skillbench.paths import (
+    resolve_skillbench_relative_path as resolve_runtime_path,
+    resolve_skillbench_seed_workspaces_root,
+)
+from agent_evolve.agents.skillbench.repo import (
+    SkillBenchSetupError,
+    resolve_skillbench_paths,
+)
+from agent_evolve.benchmarks.skill_bench import SkillBenchBenchmark
 
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 
@@ -30,18 +38,9 @@ def _parse_bool(value: str) -> bool:
 
 def _resolve_repo_relative_path(path_value: str | None) -> Path | None:
     """Resolve a path robustly when scripts are run from different cwd values."""
-    if path_value is None:
-        return None
+    return resolve_runtime_path(path_value, repo_root=REPO_ROOT)
 
-    raw = Path(path_value).expanduser()
-    if raw.is_absolute():
-        return raw.resolve()
 
-    cwd_candidate = (Path.cwd() / raw).resolve()
-    if cwd_candidate.exists():
-        return cwd_candidate
-
-    return (REPO_ROOT / raw).resolve()
 def main():
     p = argparse.ArgumentParser(description="Solve a single SkillBench task")
     p.add_argument("--task-id", type=str, default=None,
@@ -65,9 +64,9 @@ def main():
                     help="Path to SkillBench tasks/ directory")
     p.add_argument("--use-skills", type=_parse_bool, default=True,
                     help="Use tasks with skills (true/false).")
-    p.add_argument("--tasks-dir-with-skills", type=str, default='/home/ubuntu/fsx/linminh/project-evolution/skillsbench/tasks',
+    p.add_argument("--tasks-dir-with-skills", type=str, default=None,
                     help="Path to SkillBench tasks/ directory (with skills).")
-    p.add_argument("--tasks-dir-without-skills", type=str, default='/home/ubuntu/fsx/linminh/project-evolution/skillsbench/tasks-no-skills',
+    p.add_argument("--tasks-dir-without-skills", type=str, default=None,
                     help="Path to SkillBench tasks-no-skills/ directory.")
     p.add_argument("--split-seed", type=int, default=42,
                     help="Deterministic seed for task split/order.")
@@ -81,15 +80,14 @@ def main():
     p.add_argument("--difficulty", type=str, default=None,
                     help="Filter tasks by difficulty (easy/medium/hard)")
     p.add_argument("--seed-workspace", type=str,
-                    default="seed_workspaces/skillbench_zero",
-                    help="Seed workspace directory (default: strict zero-skill baseline)")
+                    default=str(resolve_skillbench_seed_workspaces_root() / "skillbench"),
+                    help="Seed workspace directory (default: bundled skillbench workspace)")
     p.add_argument("--artifacts-dir", type=str, default=".",
                     help="Directory for output_sb_* and conversation_sb_* artifacts.")
     p.add_argument("--provider", type=str, default="bedrock",
                     choices=["bedrock", "anthropic"],
                     help="LLM provider (default: bedrock)")
-    p.add_argument("--harbor-repo", type=str,
-                    default="/home/ubuntu/fsx/linminh/project-evolution/skillsbench",
+    p.add_argument("--harbor-repo", type=str, default=None,
                     help="Path to Harbor-capable SkillsBench repository.")
     p.add_argument("--harbor-config-template", type=str, default=None,
                     help="Optional Harbor YAML config template.")
@@ -129,34 +127,6 @@ def main():
             args.provider,
         )
 
-    tasks_dir = _resolve_repo_relative_path(args.tasks_dir)
-    if args.tasks_dir and (tasks_dir is None or not tasks_dir.exists()):
-        print(f"tasks dir not found: {args.tasks_dir}")
-        sys.exit(1)
-
-    tasks_with_skills_dir = (
-        _resolve_repo_relative_path(args.tasks_dir_with_skills)
-        if args.tasks_dir_with_skills
-        else tasks_dir
-    )
-    if args.tasks_dir_with_skills and (
-        tasks_with_skills_dir is None or not tasks_with_skills_dir.exists()
-    ):
-        print(f"tasks-with-skills dir not found: {args.tasks_dir_with_skills}")
-        sys.exit(1)
-
-    tasks_without_skills_dir = _resolve_repo_relative_path(args.tasks_dir_without_skills)
-    if args.tasks_dir_without_skills and (
-        tasks_without_skills_dir is None or not tasks_without_skills_dir.exists()
-    ):
-        print(f"tasks-without-skills dir not found: {args.tasks_dir_without_skills}")
-        sys.exit(1)
-
-    harbor_repo = _resolve_repo_relative_path(args.harbor_repo)
-    if args.mode == "harbor" and (harbor_repo is None or not harbor_repo.exists()):
-        print(f"harbor repo not found: {args.harbor_repo}")
-        sys.exit(1)
-
     harbor_config_template = _resolve_repo_relative_path(args.harbor_config_template)
     if args.harbor_config_template and (
         harbor_config_template is None or not harbor_config_template.exists()
@@ -170,6 +140,20 @@ def main():
         sys.exit(1)
 
     effective_harbor_model = args.harbor_model_name or args.model_id
+    try:
+        resolved_skillbench = resolve_skillbench_paths(
+            tasks_dir=args.tasks_dir,
+            tasks_with_skills_dir=args.tasks_dir_with_skills,
+            tasks_without_skills_dir=args.tasks_dir_without_skills,
+            harbor_repo=args.harbor_repo,
+        )
+    except SkillBenchSetupError as exc:
+        print(str(exc))
+        sys.exit(1)
+
+    tasks_with_skills_dir = resolved_skillbench.tasks_with_skills_dir
+    tasks_without_skills_dir = resolved_skillbench.tasks_without_skills_dir
+    harbor_repo = resolved_skillbench.harbor_repo
 
     bm = SkillBenchBenchmark(
         tasks_with_skills_dir=(
@@ -227,6 +211,12 @@ def main():
         args.split_seed,
     )
     log.info(
+        "SkillBench source: %s | repo=%s | ref=%s",
+        resolved_skillbench.source,
+        resolved_skillbench.repo_dir,
+        resolved_skillbench.repo_ref,
+    )
+    log.info(
         "Native profile: %s | Score mode: %s | Retry: max=%d wait=[%.1f, %.1f]",
         args.native_profile,
         args.score_mode,
@@ -252,7 +242,7 @@ def main():
         print(
             f"Seed workspace not found: {workspace_dir}\n"
             "Tip: run from repo root or pass --seed-workspace "
-            f"'{REPO_ROOT / 'seed_workspaces' / 'skillbench'}'"
+            f"'{resolve_skillbench_seed_workspaces_root() / 'skillbench'}'"
         )
         sys.exit(1)
 

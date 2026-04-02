@@ -24,6 +24,7 @@ except Exception as exc:  # pragma: no cover - optional runtime dependency
 
 from ...protocol.base_agent import BaseAgent
 from ...types import Task, Trajectory
+from .repo import resolve_skillbench_paths
 from .backends import (
     HarborSkillBenchBackend,
     NativeSkillBenchBackend,
@@ -81,11 +82,7 @@ class SkillBenchAgent(BaseAgent):
         self.max_tokens = max_tokens
         self.tasks_dir = tasks_dir
         self.execution_mode = execution_mode
-        self.harbor_repo = (
-            harbor_repo
-            or os.environ.get("SKILLBENCH_HARBOR_REPO")
-            or "/home/ubuntu/fsx/linminh/project-evolution/skillsbench"
-        )
+        self.harbor_repo = harbor_repo or os.environ.get("SKILLBENCH_HARBOR_REPO")
         self.harbor_config_template = harbor_config_template
         self.harbor_agent_import_path = harbor_agent_import_path
         self.harbor_model_name = harbor_model_name
@@ -228,8 +225,11 @@ class SkillBenchAgent(BaseAgent):
                 skill_select_limit=self.skill_select_limit,
             )
         if backend == "harbor":
+            resolved_harbor_repo = self.harbor_repo
+            if not resolved_harbor_repo:
+                resolved_harbor_repo = str(resolve_skillbench_paths().harbor_repo)
             return HarborSkillBenchBackend(
-                harbor_repo=self.harbor_repo,
+                harbor_repo=resolved_harbor_repo,
                 harbor_config_template=self.harbor_config_template,
                 harbor_agent_import_path=self.harbor_agent_import_path,
                 harbor_model_name=self.harbor_model_name,

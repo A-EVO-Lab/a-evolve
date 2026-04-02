@@ -1,11 +1,8 @@
-from .backends import HarborSkillBenchBackend, NativeSkillBenchBackend
-from .evolver import SkillBenchEvolver
-from .loop import SkillBenchEvolutionLoop
+"""Public exports for the SkillBench agent package."""
 
-try:
-    from .agent import SkillBenchAgent
-except Exception:  # pragma: no cover - optional runtime dependency (strands)
-    SkillBenchAgent = None
+from __future__ import annotations
+
+from typing import Any
 
 __all__ = [
     "SkillBenchAgent",
@@ -14,3 +11,27 @@ __all__ = [
     "NativeSkillBenchBackend",
     "HarborSkillBenchBackend",
 ]
+
+
+def __getattr__(name: str) -> Any:
+    if name == "SkillBenchAgent":
+        from .agent import SkillBenchAgent
+
+        return SkillBenchAgent
+    if name == "SkillBenchEvolver":
+        from .evolver import SkillBenchEvolver
+
+        return SkillBenchEvolver
+    if name == "SkillBenchEvolutionLoop":
+        from .loop import SkillBenchEvolutionLoop
+
+        return SkillBenchEvolutionLoop
+    if name == "NativeSkillBenchBackend":
+        from .backends import NativeSkillBenchBackend
+
+        return NativeSkillBenchBackend
+    if name == "HarborSkillBenchBackend":
+        from .backends import HarborSkillBenchBackend
+
+        return HarborSkillBenchBackend
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

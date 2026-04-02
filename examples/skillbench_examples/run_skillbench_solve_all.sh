@@ -19,18 +19,16 @@ RETRY_MAX_WAIT_SEC="${RETRY_MAX_WAIT_SEC:-150.0}"
 MODEL_ID="${MODEL_ID:-us.anthropic.claude-opus-4-5-20251101-v1:0}"
 REGION="${REGION:-us-west-2}"
 MAX_TOKENS="${MAX_TOKENS:-64000}"
-# Default to the strict zero-skill baseline workspace. Override SEED_WORKSPACE
-# explicitly if you want the legacy helper-skill seed instead.
-# SEED_WORKSPACE="${SEED_WORKSPACE:-${REPO_ROOT}/seed_workspaces/skillbench_zero}"
+# Default to the bundled skillbench workspace.
 SEED_WORKSPACE="${SEED_WORKSPACE:-${REPO_ROOT}/seed_workspaces/skillbench}"
 
-TASKS_DIR_WITH_SKILLS="${TASKS_DIR_WITH_SKILLS:-/home/ubuntu/fsx/linminh/project-evolution/skillsbench/tasks}"
-TASKS_DIR_WITHOUT_SKILLS="${TASKS_DIR_WITHOUT_SKILLS:-/home/ubuntu/fsx/linminh/project-evolution/skillsbench/tasks-no-skills}"
+TASKS_DIR_WITH_SKILLS="${TASKS_DIR_WITH_SKILLS:-}"
+TASKS_DIR_WITHOUT_SKILLS="${TASKS_DIR_WITHOUT_SKILLS:-}"
 
 # Backward-compatible override: TASKS_DIR wins if set.
 TASKS_DIR="${TASKS_DIR:-}"
 
-HARBOR_REPO="${HARBOR_REPO:-/home/ubuntu/fsx/linminh/project-evolution/skillsbench}"
+HARBOR_REPO="${HARBOR_REPO:-}"
 HARBOR_CONFIG_TEMPLATE="${HARBOR_CONFIG_TEMPLATE:-}"
 HARBOR_AGENT_IMPORT_PATH="${HARBOR_AGENT_IMPORT_PATH:-libs.terminus_agent.agents.terminus_2.harbor_terminus_2_skills:HarborTerminus2WithSkills}"
 HARBOR_MODEL_NAME="${HARBOR_MODEL_NAME:-}"  # empty -> follows --model-id in skillbench_solve_one.py
@@ -106,21 +104,27 @@ if ! [[ "${MAX_WORKERS}" =~ ^[1-9][0-9]*$ ]]; then
   exit 1
 fi
 
-if [[ -n "${TASKS_DIR}" ]]; then
-  SELECTED_TASKS_DIR="${TASKS_DIR}"
-elif [[ "${USE_SKILLS_LC}" == "true" ]]; then
-  SELECTED_TASKS_DIR="${TASKS_DIR_WITH_SKILLS}"
-else
-  SELECTED_TASKS_DIR="${TASKS_DIR_WITHOUT_SKILLS}"
-fi
+SELECTED_TASKS_DIR="$(TASKS_DIR="${TASKS_DIR}" TASKS_DIR_WITH_SKILLS="${TASKS_DIR_WITH_SKILLS}" TASKS_DIR_WITHOUT_SKILLS="${TASKS_DIR_WITHOUT_SKILLS}" HARBOR_REPO="${HARBOR_REPO}" USE_SKILLS_LC="${USE_SKILLS_LC}" PYTHONPATH="${REPO_ROOT}:${PYTHONPATH:-}" python - <<'PY'
+from agent_evolve.agents.skillbench.repo import SkillBenchSetupError, resolve_skillbench_paths
+import os
+import sys
+
+try:
+    paths = resolve_skillbench_paths(
+        tasks_dir=os.environ.get("TASKS_DIR") or None,
+        tasks_with_skills_dir=os.environ.get("TASKS_DIR_WITH_SKILLS") or None,
+        tasks_without_skills_dir=os.environ.get("TASKS_DIR_WITHOUT_SKILLS") or None,
+        harbor_repo=os.environ.get("HARBOR_REPO") or None,
+    )
+except SkillBenchSetupError as exc:
+    print(str(exc), file=sys.stderr)
+    raise SystemExit(1)
+print(paths.selected_tasks_dir(use_skills=os.environ.get("USE_SKILLS_LC", "true") == "true"))
+PY
+)"
 
 if [[ ! -d "${SELECTED_TASKS_DIR}" ]]; then
-  echo "Tasks dir not found: ${SELECTED_TASKS_DIR}" >&2
-  exit 1
-fi
-
-if [[ "${MODE_LC}" == "harbor" && ! -d "${HARBOR_REPO}" ]]; then
-  echo "Harbor repo not found: ${HARBOR_REPO}" >&2
+  echo "Resolved tasks dir not found: ${SELECTED_TASKS_DIR}" >&2
   exit 1
 fi
 
@@ -136,8 +140,8 @@ echo "Run dir: ${RUN_DIR}"
 echo "Mode: ${MODE_LC}"
 echo "Use skills: ${USE_SKILLS_LC}"
 echo "Tasks dir (selected): ${SELECTED_TASKS_DIR}"
-echo "Tasks dir (with skills): ${TASKS_DIR_WITH_SKILLS}"
-echo "Tasks dir (without skills): ${TASKS_DIR_WITHOUT_SKILLS}"
+echo "Tasks dir (with skills): ${TASKS_DIR_WITH_SKILLS:-<auto>}"
+echo "Tasks dir (without skills): ${TASKS_DIR_WITHOUT_SKILLS:-<auto>}"
 echo "Split seed: ${SPLIT_SEED}"
 echo "Native profile: ${NATIVE_PROFILE}"
 echo "Score mode: ${SCORE_MODE}"
@@ -150,7 +154,7 @@ echo "Seed workspace: ${SEED_WORKSPACE}"
 echo "Artifacts dir: ${ARTIFACTS_DIR}"
 echo "SkillBench run id base: ${SKILLBENCH_RUN_ID_BASE}"
 if [[ "${MODE_LC}" == "harbor" ]]; then
-  echo "Harbor repo: ${HARBOR_REPO}"
+  echo "Harbor repo: ${HARBOR_REPO:-<auto>}"
   echo "Harbor agent import path: ${HARBOR_AGENT_IMPORT_PATH}"
   if [[ -n "${HARBOR_MODEL_NAME}" ]]; then
     echo "Harbor model name: ${HARBOR_MODEL_NAME}"
@@ -176,8 +180,6 @@ run_one_task() {
     --task-id "${task}"
     --mode "${MODE_LC}"
     --use-skills "${USE_SKILLS_LC}"
-    --tasks-dir-with-skills "${TASKS_DIR_WITH_SKILLS}"
-    --tasks-dir-without-skills "${TASKS_DIR_WITHOUT_SKILLS}"
     --split-seed "${SPLIT_SEED}"
     --native-profile "${NATIVE_PROFILE}"
     --score-mode "${SCORE_MODE}"
@@ -191,14 +193,18 @@ run_one_task() {
     --max-tokens "${MAX_TOKENS}"
   )
 
+  [[ -n "${TASKS_DIR}" ]] && cmd+=(--tasks-dir "${TASKS_DIR}")
+  [[ -n "${TASKS_DIR_WITH_SKILLS}" ]] && cmd+=(--tasks-dir-with-skills "${TASKS_DIR_WITH_SKILLS}")
+  [[ -n "${TASKS_DIR_WITHOUT_SKILLS}" ]] && cmd+=(--tasks-dir-without-skills "${TASKS_DIR_WITHOUT_SKILLS}")
+
   if [[ "${MODE_LC}" == "harbor" ]]; then
     cmd+=(
-      --harbor-repo "${HARBOR_REPO}"
       --harbor-agent-import-path "${HARBOR_AGENT_IMPORT_PATH}"
       --harbor-jobs-dir "${HARBOR_JOBS_DIR}"
       --harbor-timeout-sec "${HARBOR_TIMEOUT_SEC}"
       --harbor-uv-cmd "${HARBOR_UV_CMD}"
     )
+    [[ -n "${HARBOR_REPO}" ]] && cmd+=(--harbor-repo "${HARBOR_REPO}")
     if [[ -n "${HARBOR_CONFIG_TEMPLATE}" ]]; then
       cmd+=(--harbor-config-template "${HARBOR_CONFIG_TEMPLATE}")
     fi

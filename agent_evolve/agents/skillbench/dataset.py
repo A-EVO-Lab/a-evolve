@@ -9,18 +9,14 @@ lightweight dataclass objects the benchmark adapter can convert to
 from __future__ import annotations
 
 import logging
-import os
 import tomllib
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-logger = logging.getLogger(__name__)
+from .repo import resolve_skillbench_paths, validate_skillbench_paths
 
-DEFAULT_TASKS_DIR = os.environ.get(
-    "SKILLBENCH_TASKS_DIR",
-    "/home/ubuntu/fsx/linminh/project-evolution/skillsbench/tasks",
-)
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -41,10 +37,14 @@ def load_all_tasks(tasks_dir: str | None = None) -> list[SBTask]:
     A valid task folder must contain ``instruction.md`` and
     ``environment/Dockerfile``.
     """
-    root = Path(tasks_dir or DEFAULT_TASKS_DIR)
-    if not root.is_dir():
-        logger.warning("Tasks directory does not exist: %s", root)
-        return []
+    if tasks_dir is None:
+        resolved = resolve_skillbench_paths()
+        validate_skillbench_paths(resolved, use_skills=True, execution_mode="native")
+        root = resolved.tasks_with_skills_dir
+    else:
+        root = Path(tasks_dir).expanduser().resolve()
+        if not root.is_dir():
+            raise FileNotFoundError(f"SkillBench tasks directory does not exist: {root}")
 
     tasks: list[SBTask] = []
     for task_dir in sorted(root.iterdir()):

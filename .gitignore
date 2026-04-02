@@ -47,8 +47,12 @@ inspect_evals/
 # Logs
 *.log
 /logs/
-/docs/
-/tests/
+!/docs/
+/docs/*
+!/docs/skillbench-setup.md
+!/tests/
+/tests/*
+!/tests/test_skillbench_setup.py
 
 # Root-level artifacts
 /*.json

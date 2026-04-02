@@ -37,6 +37,14 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 
 from agent_evolve.agents.skillbench import SkillBenchAgent
 from agent_evolve.agents.skillbench.artifacts import export_skillbench_artifacts
+from agent_evolve.agents.skillbench.paths import (
+    resolve_skillbench_relative_path as resolve_runtime_path,
+    resolve_skillbench_seed_workspaces_root,
+)
+from agent_evolve.agents.skillbench.repo import (
+    SkillBenchSetupError,
+    resolve_skillbench_paths,
+)
 from agent_evolve.agents.skillbench.dataset import load_all_tasks
 from agent_evolve.benchmarks.skill_bench import SkillBenchBenchmark
 from agent_evolve.config import EvolveConfig
@@ -75,15 +83,7 @@ def _parse_skill_select_limit(value: str) -> int:
 
 
 def _resolve_path(path_value: str | None) -> Path | None:
-    if path_value is None:
-        return None
-    raw = Path(path_value).expanduser()
-    if raw.is_absolute():
-        return raw.resolve()
-    cwd_candidate = (Path.cwd() / raw).resolve()
-    if cwd_candidate.exists():
-        return cwd_candidate
-    return (REPO_ROOT / raw).resolve()
+    return resolve_runtime_path(path_value, repo_root=REPO_ROOT)
 
 
 def _write_trace(workspace_root: Path, trace_name: str, content: str) -> Path:
@@ -893,10 +893,8 @@ def main() -> int:
 
     # Tasks
     p.add_argument("--use-skills", type=_parse_bool, default=False)
-    p.add_argument("--tasks-dir-with-skills", type=str,
-                   default="/home/ubuntu/fsx/linminh/project-evolution/skillsbench/tasks")
-    p.add_argument("--tasks-dir-without-skills", type=str,
-                   default="/home/ubuntu/fsx/linminh/project-evolution/skillsbench/tasks-no-skills")
+    p.add_argument("--tasks-dir-with-skills", type=str, default=None)
+    p.add_argument("--tasks-dir-without-skills", type=str, default=None)
     p.add_argument("--split-seed", type=int, default=42)
     p.add_argument("--category", type=str, default=None)
     p.add_argument("--difficulty", type=str, default=None)
@@ -931,8 +929,8 @@ def main() -> int:
     p.add_argument(
         "--seed-workspace",
         type=str,
-        default="seed_workspaces/skillbench_zero",
-        help="Seed workspace directory (default: strict zero-skill baseline)",
+        default=str(resolve_skillbench_seed_workspaces_root() / "skillbench"),
+        help="Seed workspace directory (default: bundled skillbench workspace)",
     )
     p.add_argument("--work-dir", type=str, default=None,
                    help="Workspace dir (default: <run-dir>/workspace)")
@@ -943,8 +941,7 @@ def main() -> int:
                    help="Run directory (default: logs/grind_run_<timestamp>)")
 
     # Harbor
-    p.add_argument("--harbor-repo", type=str,
-                   default="/home/ubuntu/fsx/linminh/project-evolution/skillsbench")
+    p.add_argument("--harbor-repo", type=str, default=None)
     p.add_argument("--harbor-agent-import-path", type=str,
                    default="libs.terminus_agent.agents.terminus_2."
                            "harbor_terminus_2_skills:HarborTerminus2WithSkills")
@@ -1008,21 +1005,6 @@ def main() -> int:
         logging.getLogger(n).setLevel(logging.WARNING)
     log = logging.getLogger("skillbench_grind")
 
-    # ── Paths ─────────────────────────────────────────────────────
-    tasks_dir: Path
-    if args.use_skills:
-        tasks_dir = _resolve_path(args.tasks_dir_with_skills) or Path(".")
-    else:
-        tasks_dir = _resolve_path(args.tasks_dir_without_skills) or Path(".")
-    if not tasks_dir.exists():
-        print(f"Tasks dir not found: {tasks_dir}")
-        return 1
-
-    seed_dir = _resolve_path(args.seed_workspace)
-    if seed_dir is None or not seed_dir.exists():
-        print(f"Seed workspace not found: {seed_dir}")
-        return 1
-
     run_dir = Path(args.run_dir) if args.run_dir else Path(
         f"logs/grind_run_{time.strftime('%Y%m%d_%H%M%S')}_pid{os.getpid()}"
     )
@@ -1042,6 +1024,22 @@ def main() -> int:
         metrics = _compute_metrics(output_path)
         print(json.dumps(metrics, indent=2))
         return 0
+
+    try:
+        resolved_skillbench = resolve_skillbench_paths(
+            tasks_with_skills_dir=args.tasks_dir_with_skills,
+            tasks_without_skills_dir=args.tasks_dir_without_skills,
+            harbor_repo=args.harbor_repo,
+        )
+    except SkillBenchSetupError as exc:
+        print(str(exc))
+        return 1
+
+    tasks_dir = resolved_skillbench.selected_tasks_dir(use_skills=args.use_skills)
+    seed_dir = _resolve_path(args.seed_workspace)
+    if seed_dir is None or not seed_dir.exists():
+        print(f"Seed workspace not found: {seed_dir}")
+        return 1
 
     # ── Load tasks ────────────────────────────────────────────────
     all_sb_tasks = load_all_tasks(str(tasks_dir))
@@ -1069,6 +1067,9 @@ def main() -> int:
     log.info("  Model:          %s", args.model_id)
     log.info("  Evolver model:  %s", args.evolver_model_id or args.model_id)
     log.info("  Run dir:        %s", run_dir)
+    log.info("  SkillBench src: %s", resolved_skillbench.source)
+    log.info("  SkillBench repo:%s", resolved_skillbench.repo_dir)
+    log.info("  SkillBench ref: %s", resolved_skillbench.repo_ref)
     if args.task_skill_mode == "pre_generate_and_retry":
         log.info(
             "  Note: cycle-1 passes may include pre-generated task-specific skills, "
@@ -1083,18 +1084,18 @@ def main() -> int:
         log.info("Copied seed workspace %s -> %s", seed_dir, work_dir)
 
     # ── Create benchmark + agent + evolver ────────────────────────
-    harbor_repo = _resolve_path(args.harbor_repo)
+    harbor_repo = resolved_skillbench.harbor_repo
     harbor_jobs_dir = _resolve_path(args.harbor_jobs_dir)
     effective_harbor_model = args.harbor_model_name or args.model_id
 
     bm = SkillBenchBenchmark(
-        tasks_with_skills_dir=str(_resolve_path(args.tasks_dir_with_skills) or ""),
-        tasks_without_skills_dir=str(_resolve_path(args.tasks_dir_without_skills) or ""),
+        tasks_with_skills_dir=str(resolved_skillbench.tasks_with_skills_dir),
+        tasks_without_skills_dir=str(resolved_skillbench.tasks_without_skills_dir),
         use_skills=args.use_skills,
         split_seed=args.split_seed,
         execution_mode=args.mode,
         shuffle=False,
-        harbor_repo=str(harbor_repo) if harbor_repo else None,
+        harbor_repo=str(harbor_repo),
         harbor_agent_import_path=args.harbor_agent_import_path,
         harbor_model_name=effective_harbor_model,
         harbor_jobs_dir=str(harbor_jobs_dir) if harbor_jobs_dir else None,
@@ -1114,7 +1115,7 @@ def main() -> int:
         max_tokens=args.max_tokens,
         tasks_dir=str(tasks_dir),
         execution_mode=args.mode,
-        harbor_repo=str(harbor_repo) if harbor_repo else None,
+        harbor_repo=str(harbor_repo),
         harbor_agent_import_path=args.harbor_agent_import_path,
         harbor_model_name=effective_harbor_model,
         harbor_jobs_dir=str(harbor_jobs_dir) if harbor_jobs_dir else None,

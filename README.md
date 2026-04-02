@@ -170,7 +170,7 @@ results = evolver.run(cycles=10)
 
 Your agent's evolvable state (prompts, skills, memory) lives as a standard directory — the [Agent Workspace](#the-agent-workspace-a-file-system-contract). A-Evolve mutates these files; your agent reloads. See [Architecture & Design](#architecture--design) for the full picture.
 
-For benchmark-specific walkthroughs, see [SWE-bench Demo Guide](docs/swe-bench-demo.md) and [MCP-Atlas Demo Guide](docs/mcp-atlas-demo.md).
+For benchmark-specific walkthroughs, see [SWE-bench Demo Guide](docs/swe-bench-demo.md), [MCP-Atlas Demo Guide](docs/mcp-atlas-demo.md), and [SkillBench Setup Guide](docs/skillbench-setup.md).
 
 ---
 
@@ -220,7 +220,7 @@ A-Evolve ships with ready-to-use benchmark adapters and seed workspaces:
 | [`swe-verified`](docs/swe-bench-demo.md) | Real-world GitHub issues (Python repos) | `seed_workspaces/swe/` | **76.8%** (~#5) |
 | [`mcp-atlas`](docs/mcp-atlas-demo.md) | Tool-calling via MCP (16+ servers) | `seed_workspaces/mcp/` | **79.4%** (🥇 #1) |
 | [`terminal-bench`](docs/terminal-bench-demo.md) | Terminal/CLI ops in Docker | `seed_workspaces/terminal/` | **76.5%** (~#7) |
-| [`skill-bench`](docs/skill-bench-demo.md) | Agentic skill discovery | `seed_workspaces/reasoning/` | **34.9%** (~#2)|
+| [`skill-bench`](docs/skillbench-setup.md) | Agentic skill discovery | `seed_workspaces/skillbench/` | **34.9%** (~#2)|
 
 ### Pluggability: Bring Your Own Everything
 

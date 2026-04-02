@@ -2,7 +2,7 @@
 
 This directory vendors selected files from SkillsBench for native Terminus2 parity.
 
-- Upstream repository: `/home/ubuntu/fsx/linminh/project-evolution/skillsbench`
+- Upstream repository: `https://github.com/benchflow-ai/skillsbench`
 - Upstream commit: `828bb921fb94dc065bfefd6bac4e8938be3f71e0`
 
 ## Vendored files and hashes

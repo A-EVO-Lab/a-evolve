@@ -44,17 +44,15 @@ REGION="${REGION:-us-west-2}"
 MAX_TOKENS="${MAX_TOKENS:-64000}"
 
 # Workspace
-# Default to the strict zero-skill baseline workspace. Override SEED_WORKSPACE
-# explicitly if you want the legacy helper-skill seed instead.
-# SEED_WORKSPACE="${SEED_WORKSPACE:-${REPO_ROOT}/seed_workspaces/skillbench_zero}"
+# Default to the bundled skillbench workspace.
 SEED_WORKSPACE="${SEED_WORKSPACE:-${REPO_ROOT}/seed_workspaces/skillbench}"
 
 # Tasks
-TASKS_DIR_WITH_SKILLS="${TASKS_DIR_WITH_SKILLS:-/home/ubuntu/fsx/linminh/project-evolution/skillsbench/tasks}"
-TASKS_DIR_WITHOUT_SKILLS="${TASKS_DIR_WITHOUT_SKILLS:-/home/ubuntu/fsx/linminh/project-evolution/skillsbench/tasks-no-skills}"
+TASKS_DIR_WITH_SKILLS="${TASKS_DIR_WITH_SKILLS:-}"
+TASKS_DIR_WITHOUT_SKILLS="${TASKS_DIR_WITHOUT_SKILLS:-}"
 
 # Harbor
-HARBOR_REPO="${HARBOR_REPO:-/home/ubuntu/fsx/linminh/project-evolution/skillsbench}"
+HARBOR_REPO="${HARBOR_REPO:-}"
 HARBOR_AGENT_IMPORT_PATH="${HARBOR_AGENT_IMPORT_PATH:-libs.terminus_agent.agents.terminus_2.harbor_terminus_2_skills:HarborTerminus2WithSkills}"
 HARBOR_MODEL_NAME="${HARBOR_MODEL_NAME:-}"
 HARBOR_JOBS_DIR="${HARBOR_JOBS_DIR:-/tmp/aevolve-skillbench-harbor-jobs}"
@@ -65,8 +63,6 @@ HARBOR_UV_CMD="${HARBOR_UV_CMD:-uv run harbor run}"
 MODE_LC="$(echo "${MODE}" | tr '[:upper:]' '[:lower:]')"
 USE_SKILLS_LC="$(echo "${USE_SKILLS}" | tr '[:upper:]' '[:lower:]')"
 RUN_ID="${RUN_ID:-$(date -u +%Y%m%d_%H%M%S)_pid$$}"
-# RUN_ID="${RUN_ID:-20260324_044452_pid3166356}" #  run_skillbench_evolve_0323_pregen_try_sucess_prompt_v3
-# RUN_ID="${RUN_ID:-20260324_090123_pid1226473}"  # run_skillbench_evolve_0324_pregen_try_sucess_prompt_v1
 RUN_DIR="${RUN_DIR:-${REPO_ROOT}/logs/grind_run_${MODE_LC}_skills-${USE_SKILLS_LC}_${RUN_ID}}"
 
 mkdir -p "${RUN_DIR}"
@@ -101,6 +97,8 @@ echo ""
 echo "--- SkillBench ---"
 echo "Mode:              ${MODE_LC}"
 echo "Use skills:        ${USE_SKILLS_LC}"
+echo "Tasks dir (with):  ${TASKS_DIR_WITH_SKILLS:-<auto>}"
+echo "Tasks dir (without): ${TASKS_DIR_WITHOUT_SKILLS:-<auto>}"
 echo "Native profile:    ${NATIVE_PROFILE}"
 echo "Score mode:        ${SCORE_MODE}"
 echo "Split seed:        ${SPLIT_SEED}"
@@ -117,6 +115,7 @@ echo "Model ID:          ${MODEL_ID}"
 echo "Evolver model:     ${EVOLVER_MODEL_ID:-<same as MODEL_ID>}"
 echo "Region:            ${REGION}"
 echo "Max tokens:        ${MAX_TOKENS}"
+echo "Harbor repo:       ${HARBOR_REPO:-<auto>}"
 echo ""
 
 # ------------------------------------------------------------------------------
@@ -130,8 +129,6 @@ cmd=(
   --max-workers "${MAX_WORKERS}"
   --mode "${MODE_LC}"
   --use-skills "${USE_SKILLS_LC}"
-  --tasks-dir-with-skills "${TASKS_DIR_WITH_SKILLS}"
-  --tasks-dir-without-skills "${TASKS_DIR_WITHOUT_SKILLS}"
   --split-seed "${SPLIT_SEED}"
   --native-profile "${NATIVE_PROFILE}"
   --score-mode "${SCORE_MODE}"
@@ -155,7 +152,6 @@ cmd=(
   --seed-workspace "${SEED_WORKSPACE}"
   --run-dir "${RUN_DIR}"
   --output "${RUN_DIR}/results.jsonl"
-  --harbor-repo "${HARBOR_REPO}"
   --harbor-agent-import-path "${HARBOR_AGENT_IMPORT_PATH}"
   --harbor-jobs-dir "${HARBOR_JOBS_DIR}"
   --harbor-timeout-sec "${HARBOR_TIMEOUT_SEC}"
@@ -163,6 +159,9 @@ cmd=(
   -v
 )
 
+[[ -n "${TASKS_DIR_WITH_SKILLS}" ]] && cmd+=(--tasks-dir-with-skills "${TASKS_DIR_WITH_SKILLS}")
+[[ -n "${TASKS_DIR_WITHOUT_SKILLS}" ]] && cmd+=(--tasks-dir-without-skills "${TASKS_DIR_WITHOUT_SKILLS}")
+[[ -n "${HARBOR_REPO}" ]] && cmd+=(--harbor-repo "${HARBOR_REPO}")
 [[ -n "${EVOLVER_MODEL_ID}" ]] && cmd+=(--evolver-model-id "${EVOLVER_MODEL_ID}")
 [[ -n "${CATEGORY}" ]] && cmd+=(--category "${CATEGORY}")
 [[ -n "${DIFFICULTY}" ]] && cmd+=(--difficulty "${DIFFICULTY}")

@@ -16,11 +16,15 @@ from ...types import EvolutionResult
 from ...benchmarks.skill_bench import SkillBenchBenchmark
 from .agent import SkillBenchAgent
 from .loop import SkillBenchEvolutionLoop
+from .paths import (
+    resolve_skillbench_relative_path,
+    resolve_skillbench_seed_workspaces_root,
+)
 
 logger = logging.getLogger(__name__)
 
 _REPO_ROOT = Path(__file__).resolve().parents[3]
-_DEFAULT_SEED_WORKSPACE = _REPO_ROOT / "seed_workspaces" / "skillbench_zero"
+_DEFAULT_SEED_WORKSPACE = resolve_skillbench_seed_workspaces_root() / "skillbench"
 _DEFAULT_WORK_DIR = Path("./evolution_workdir/skillbench")
 
 
@@ -146,14 +150,10 @@ class SkillBenchEvolver:
 
     @staticmethod
     def _resolve_path(path_value: str | Path) -> Path:
-        raw = Path(path_value).expanduser()
-        if raw.is_absolute():
-            return raw.resolve()
-        cwd_candidate = (Path.cwd() / raw).resolve()
-        repo_candidate = (_REPO_ROOT / raw).resolve()
-        if cwd_candidate.exists() or not repo_candidate.exists():
-            return cwd_candidate
-        return repo_candidate
+        return (
+            resolve_skillbench_relative_path(path_value, repo_root=_REPO_ROOT)
+            or Path(path_value).expanduser().resolve()
+        )
 
     def _prepare_workspace(self, seed_workspace: str | Path | None, work_dir: str | Path) -> Path:
         seed_dir = self._resolve_path(seed_workspace or _DEFAULT_SEED_WORKSPACE)

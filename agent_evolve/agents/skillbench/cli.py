@@ -8,6 +8,7 @@ from pathlib import Path
 
 from ...config import EvolveConfig
 from .evolver import SkillBenchEvolver
+from .paths import resolve_skillbench_seed_workspaces_root
 
 
 def _parse_bool(value: str) -> bool:
@@ -26,8 +27,8 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--config", default=None, help="Path to YAML evolve config.")
     parser.add_argument(
         "--seed-workspace",
-        default="seed_workspaces/skillbench_zero",
-        help="Seed workspace path (default: strict zero-skill baseline).",
+        default=str(resolve_skillbench_seed_workspaces_root() / "skillbench"),
+        help="Seed workspace path (default: bundled skillbench workspace).",
     )
     parser.add_argument(
         "--work-dir",
