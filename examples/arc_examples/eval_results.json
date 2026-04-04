@@ -1,0 +1,42 @@
+[
+  {
+    "game_id": "sb26-7fbdac44",
+    "title": "SB26",
+    "game_completed": false,
+    "levels_completed": 0,
+    "total_levels": 8,
+    "total_actions": 150,
+    "per_level_actions": [
+      150
+    ],
+    "score": 0.0,
+    "elapsed_sec": 683.542863368988,
+    "usage": {
+      "input_tokens": 1648209,
+      "output_tokens": 15598,
+      "total_tokens": 1663807
+    },
+    "feedback_score": 0.0,
+    "feedback_success": false
+  },
+  {
+    "game_id": "r11l-aa269680",
+    "title": "R11L",
+    "game_completed": false,
+    "levels_completed": 0,
+    "total_levels": 6,
+    "total_actions": 150,
+    "per_level_actions": [
+      150
+    ],
+    "score": 0.0,
+    "elapsed_sec": 536.9977161884308,
+    "usage": {
+      "input_tokens": 1586262,
+      "output_tokens": 11738,
+      "total_tokens": 1598000
+    },
+    "feedback_score": 0.0,
+    "feedback_success": false
+  }
+]
