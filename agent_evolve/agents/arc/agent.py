@@ -2,14 +2,12 @@
 
 Adapted from arcprize/ARC-AGI-3-Agents and symbolica-ai/ARC-AGI-3-Agents.
 
-Architecture follows the upstream design:
-- Code-driven game loop (game_loop.py) calls choose_action() per step
-- LLM is called ONCE per action to decide the next move
-- Frame helpers provide rich grid analysis (diff, color counts, etc.)
-- Workspace provides evolvable prompts/skills/memory
-
-This avoids the LLM-driven tool loop problem where the LLM can stop
-playing at any time. The code loop guarantees all actions are used.
+Architecture follows the Symbolica Arcgentica design:
+- Orchestrator manages game-level strategy across levels
+- Sub-agents (explorer, solver) get bounded action budgets
+- Shared Memories persist insights across all agents
+- Fresh agents prevent context rot (no single conversation grows unbounded)
+- Code-driven game loop guarantees all actions are used
 """
 
 from __future__ import annotations
@@ -18,6 +16,7 @@ import json
 import logging
 import os
 import re
+import time
 from pathlib import Path
 from typing import Any
 
@@ -142,56 +141,135 @@ class ArcAgent(BaseAgent):
         }
 
     def _run_game_loop(self, env: Any, game_id: str, max_actions: int) -> Any:
-        """Core game loop shared by solve() and play_game_on_env().
+        """Play a full game using the orchestrator + sub-agent pattern.
 
-        Follows arcprize/ARC-AGI-3-Agents Agent.main() pattern:
-        code-driven while loop, one LLM call per action.
+        Architecture (adapted from Symbolica's Arcgentica):
+        - Orchestrator manages game-level strategy across levels
+        - Sub-agents (explorer, solver) get bounded action budgets
+        - Shared Memories persist insights across all agents
+        - Fresh agents prevent context rot
         """
         from arcengine import GameAction
 
-        from .game_loop import run_game
+        from .game_loop import GameResult, convert_frame_data
+        from .orchestrator import Orchestrator
 
-        system_prompt = self._build_system_prompt()
+        client = self._get_client()
+        workspace_prompt = self._build_system_prompt()
 
-        # Closure: choose_action called once per game step
-        def choose_action(
-            frames: list[Frame], latest_frame: Frame, meta: dict[str, Any]
-        ) -> GameAction:
-            state = meta.get("state", "")
+        orch = Orchestrator(
+            client=client,
+            model_id=self.model_id,
+            max_tokens=self.max_tokens,
+            workspace_prompt=workspace_prompt,
+        )
 
-            # Auto-reset on NOT_PLAYED or GAME_OVER
-            if "NOT_PLAYED" in state or "GAME_OVER" in state:
-                return GameAction.RESET
+        # Initial reset
+        raw = env.reset()
+        frame, meta = convert_frame_data(raw)
+        frames: list[Frame] = [frame]
 
-            observation = self._format_observation(frames, latest_frame, meta)
-            action_str, reasoning = self._call_llm(system_prompt, observation, meta)
-            action = self._parse_action(action_str, meta)
+        total_actions = 0
+        per_level_actions: list[int] = []
+        t0 = time.time()
 
-            if hasattr(action, "reasoning"):
-                action.reasoning = reasoning
+        # Create env_step closure for the orchestrator
+        def env_step(action_name: str, x: int = -1, y: int = -1) -> tuple[Frame, dict[str, Any]]:
+            action = self._parse_action(action_name, meta)
+            if action_name == "ACTION6" and x >= 0 and y >= 0:
+                action.set_data({"x": min(x, 63), "y": min(y, 63)})
 
-            return action
+            raw_result = env.step(action)
+            if isinstance(raw_result, tuple):
+                raw_result = raw_result[0]
+            new_frame, new_meta = convert_frame_data(raw_result)
+            meta.update(new_meta)
+            return new_frame, meta
 
-        # Closure: is_done
-        def is_done(
-            frames: list[Frame], latest_frame: Frame, meta: dict[str, Any]
-        ) -> bool:
+        # Play through levels
+        win_levels = meta.get("win_levels", 0)
+        current_level = 0
+
+        while total_actions < max_actions:
+            # Check if game is won
+            if current_level >= win_levels > 0:
+                break
             state = meta.get("state", "")
             if "WIN" in state:
-                return True
-            win_levels = meta.get("win_levels", 0)
-            levels = meta.get("levels_completed", 0)
-            if win_levels > 0 and levels >= win_levels:
-                return True
-            return False
+                break
 
-        return run_game(
-            env=env,
-            game_id=game_id,
-            choose_action=choose_action,
-            is_done=is_done,
-            max_actions=max_actions,
+            # Budget per level: distribute remaining budget, with more for early levels
+            remaining = max_actions - total_actions
+            if win_levels > 0:
+                levels_left = win_levels - current_level
+                level_budget = min(remaining, max(20, remaining // max(1, levels_left)))
+            else:
+                level_budget = remaining
+
+            logger.info(
+                "Level %d/%d: budget=%d actions, memories=%d",
+                current_level, win_levels, level_budget, len(orch.memories),
+            )
+
+            # Play this level via orchestrator
+            frames, meta, actions_used = orch.play_level(
+                env_step=env_step,
+                frames=frames,
+                meta=meta,
+                budget=level_budget,
+                level=current_level,
+            )
+            total_actions += actions_used
+            per_level_actions.append(actions_used)
+
+            # Check if level advanced
+            new_level = meta.get("levels_completed", 0)
+            if new_level > current_level:
+                logger.info(
+                    "Level %d completed in %d actions! (memories: %d)",
+                    current_level, actions_used, len(orch.memories),
+                )
+                current_level = new_level
+            else:
+                logger.info(
+                    "Level %d not completed after %d actions",
+                    current_level, actions_used,
+                )
+                # Move on to avoid infinite loop -- level didn't complete
+                break
+
+        elapsed = time.time() - t0
+
+        # Collect token usage from orchestrator
+        self._total_input_tokens += orch.total_input_tokens
+        self._total_output_tokens += orch.total_output_tokens
+
+        # Build result
+        levels_completed = meta.get("levels_completed", 0)
+        game_completed = (
+            levels_completed > 0
+            and (meta.get("state", "") == "GameState.WIN"
+                 or (win_levels > 0 and levels_completed >= win_levels))
         )
+
+        result = GameResult(
+            game_id=game_id,
+            game_completed=game_completed,
+            levels_completed=levels_completed,
+            total_levels=win_levels,
+            total_actions=total_actions,
+            per_level_actions=per_level_actions,
+            frames=frames,
+            elapsed_sec=elapsed,
+        )
+
+        logger.info(
+            "Game %s done: %d actions, %d/%d levels, %.1fs, %d memories",
+            game_id, total_actions, levels_completed, win_levels,
+            elapsed, len(orch.memories),
+        )
+
+        return result
 
     def _play_game(self, task: Task, game_id: str, max_actions: int) -> Trajectory:
         """Run the code-driven game loop with per-action LLM calls."""

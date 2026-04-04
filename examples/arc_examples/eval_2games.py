@@ -54,7 +54,7 @@ def main():
         workspace_dir=WORKSPACE,
         model_id=MODEL_ID,
         region=REGION,
-        max_tokens=2048,  # small -- we just need a JSON action per turn
+        max_tokens=8000,
         max_actions=MAX_ACTIONS,
     )
 
