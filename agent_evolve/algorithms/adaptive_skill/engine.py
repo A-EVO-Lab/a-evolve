@@ -17,7 +17,7 @@ from ...engine.base import EvolutionEngine
 from ...engine.versioning import VersionControl
 from ...llm.base import LLMMessage, LLMProvider
 from ...types import Observation, StepResult
-from .prompts import DEFAULT_EVOLVER_SYSTEM_PROMPT, build_evolution_prompt
+from .prompts import DEFAULT_EVOLVER_SYSTEM_PROMPT, BRAIDED_EVOLVER_SYSTEM_PROMPT, build_evolution_prompt
 from .tools import BASH_TOOL_SPEC, create_default_llm, make_workspace_bash
 
 logger = logging.getLogger(__name__)
@@ -29,6 +29,14 @@ class AdaptiveSkillEngine(EvolutionEngine):
     def __init__(self, config: EvolveConfig, llm: LLMProvider | None = None):
         self.config = config
         self._llm = llm
+
+    @property
+    def _system_prompt(self) -> str:
+        """Select evolution system prompt based on config."""
+        style = self.config.extra.get("evolver_style", "default")
+        if style == "braided":
+            return BRAIDED_EVOLVER_SYSTEM_PROMPT
+        return DEFAULT_EVOLVER_SYSTEM_PROMPT
 
     @property
     def llm(self) -> LLMProvider:
@@ -159,7 +167,7 @@ class AdaptiveSkillEngine(EvolutionEngine):
 
             if isinstance(self.llm, BedrockProvider):
                 response = self.llm.converse_loop(
-                    system_prompt=DEFAULT_EVOLVER_SYSTEM_PROMPT,
+                    system_prompt=self._system_prompt,
                     user_message=prompt,
                     tools=[BASH_TOOL_SPEC],
                     tool_executor={"workspace_bash": lambda command: bash_fn(command)},
@@ -173,7 +181,7 @@ class AdaptiveSkillEngine(EvolutionEngine):
             pass
 
         messages = [
-            LLMMessage(role="system", content=DEFAULT_EVOLVER_SYSTEM_PROMPT),
+            LLMMessage(role="system", content=self._system_prompt),
             LLMMessage(role="user", content=prompt),
         ]
         response = self.llm.complete(
