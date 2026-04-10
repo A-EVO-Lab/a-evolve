@@ -30,6 +30,16 @@ class TrialRunner:
         self._agent = agent
         self._benchmark = benchmark
 
+    @property
+    def agent(self) -> BaseAgent:
+        """The agent instance used for solving tasks."""
+        return self._agent
+
+    @property
+    def benchmark(self) -> BenchmarkAdapter:
+        """The benchmark adapter used for evaluation."""
+        return self._benchmark
+
     def run_tasks(self, tasks: list[Task]) -> list[Observation]:
         """Run the agent on *tasks* and return observations."""
         results: list[Observation] = []
