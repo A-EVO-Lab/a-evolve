@@ -45,6 +45,7 @@ litellm = ["litellm>=1.0.0"]
 swe = ["strands-agents>=0.1.0", "datasets>=4.5.0", "boto3>=1.34", "swebench>=3.0.0"]
 mcp = ["mcp>=1.0.0", "strands-agents>=0.1.0", "datasets>=4.5.0", "boto3>=1.34", "litellm>=1.0.0"]
 skillbench = ["strands-agents>=0.1.0", "boto3>=1.34"]
+gepa = ["gepa>=0.1.0"]
 all = [
     "anthropic>=0.30",
     "openai>=1.30",
@@ -54,6 +55,7 @@ all = [
     "mcp>=1.0.0",
     "litellm>=1.0.0",
     "swebench>=3.0.0",
+    "gepa>=0.1.0",
 ]
 dev = ["pytest>=8.0", "ruff>=0.5", "hypothesis>=6.0"]
 

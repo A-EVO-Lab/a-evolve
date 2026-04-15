@@ -60,6 +60,7 @@ class StepResult:
     mutated: bool
     summary: str
     metadata: dict[str, Any] = field(default_factory=dict)
+    stop: bool = False
 
 
 @dataclass

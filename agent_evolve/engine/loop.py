@@ -78,27 +78,32 @@ class EvolutionLoop:
             cycle_num = cycle + 1
             logger.info("=== Evolution Cycle %d/%d ===", cycle_num, max_cycles)
 
-            # 1. SOLVE
-            tasks = self.benchmark.get_tasks(split="train", limit=self.config.batch_size)
-            observations: list[Observation] = []
+            # 1. SOLVE + 2. OBSERVE
+            if self.engine.manages_own_evaluation:
+                observations: list[Observation] = []
+                self.agent.export_to_fs()
+                batch_path = self.observer.collect(observations)
+                cycle_score = 0.0
+            else:
+                tasks = self.benchmark.get_tasks(split="train", limit=self.config.batch_size)
+                observations: list[Observation] = []
 
-            for task in tasks:
-                try:
-                    trajectory = self.agent.solve(task)
-                    feedback = self.benchmark.evaluate(task, trajectory)
-                    observations.append(Observation(task=task, trajectory=trajectory, feedback=feedback))
-                except Exception as e:
-                    logger.error("Error solving task %s: %s", task.id, e)
+                for task in tasks:
+                    try:
+                        trajectory = self.agent.solve(task)
+                        feedback = self.benchmark.evaluate(task, trajectory)
+                        observations.append(Observation(task=task, trajectory=trajectory, feedback=feedback))
+                    except Exception as e:
+                        logger.error("Error solving task %s: %s", task.id, e)
 
-            # 2. OBSERVE
-            self.agent.export_to_fs()
-            batch_path = self.observer.collect(observations)
+                self.agent.export_to_fs()
+                batch_path = self.observer.collect(observations)
 
-            cycle_score = (
-                sum(o.feedback.score for o in observations) / len(observations)
-                if observations
-                else 0.0
-            )
+                cycle_score = (
+                    sum(o.feedback.score for o in observations) / len(observations)
+                    if observations
+                    else 0.0
+                )
             score_history.append(cycle_score)
             logger.info("Cycle %d score: %.3f", cycle_num, cycle_score)
 
@@ -143,6 +148,18 @@ class EvolutionLoop:
             # 7. RELOAD
             self.agent.reload_from_fs()
             self.engine.on_cycle_end(accepted=step_result.mutated, score=cycle_score)
+
+            # 7b. STOP CHECK
+            if step_result.stop:
+                logger.info("Engine requested early stop after cycle %d.", cycle_num)
+                self._append_history(evolution_dir, cycle_num, cycle_score, step_result.mutated)
+                self._write_metrics(evolution_dir, score_history)
+                return EvolutionResult(
+                    cycles_completed=cycle_num,
+                    final_score=cycle_score,
+                    score_history=score_history,
+                    converged=True,
+                )
 
             # 8. LOGGING
             self._append_history(evolution_dir, cycle_num, cycle_score, step_result.mutated)

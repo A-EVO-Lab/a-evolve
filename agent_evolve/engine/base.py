@@ -47,6 +47,16 @@ class EvolutionEngine(ABC):
             A ``StepResult`` indicating whether the workspace was mutated.
         """
 
+    @property
+    def manages_own_evaluation(self) -> bool:
+        """Whether this engine handles its own evaluation internally.
+
+        When True, the loop skips its solve+evaluate batch and passes
+        empty observations to step(). The engine is expected to use
+        the TrialRunner for its own evaluation needs.
+        """
+        return False
+
     def on_cycle_end(self, accepted: bool, score: float) -> None:
         """Optional callback invoked after each cycle completes.
 
