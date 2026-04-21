@@ -54,6 +54,7 @@ inspect_evals/
 !/tests/
 /tests/*
 !/tests/test_skillbench_setup.py
+!/tests/test_unified_scaffolding.py
 !/tests/gepa/
 
 # Root-level artifacts
