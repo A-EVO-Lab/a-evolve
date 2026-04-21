@@ -61,6 +61,7 @@ inspect_evals/
 !/tests/test_unified_import_ban.py
 !/tests/test_unified_task_skills_isolation.py
 !/tests/test_unified_differential.py
+!/tests/test_unified_legacy_differential.py
 !/tests/gepa/
 
 # Root-level artifacts
