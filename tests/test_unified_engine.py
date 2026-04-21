@@ -203,18 +203,21 @@ def test_step_persists_metadata_sidecar(workspace):
     assert "unified_verdict" in record
 
 
-def test_step_persists_metadata_to_batch_pair(tmp_path):
-    """AC-7: Observer.collect() persistence target — step metadata lives
-    in the batch-paired JSONL file alongside the observations, so a
-    reader examining ``observations/`` sees both the observation batch
-    and the per-step unified_* metadata.
+def test_step_persists_metadata_to_batch_jsonl(tmp_path):
+    """AC-7: Observer.collect() persists unified_* fields to the batch JSONL.
+
+    Plan plan_v1.md:97 requires:
+      ``jq '.unified_plan.operators' batch_0001.jsonl`` returns the
+      list of operator names.
+
+    Verified here: after engine.step() runs, batch_0001.jsonl itself
+    contains a trailer JSON line carrying the unified_* metadata, tagged
+    with ``_record_type=step_metadata``. Downstream jq-style queries
+    that look for ``.unified_plan.operators`` find them.
     """
     from agent_evolve.engine.observer import Observer
 
     ws = _FakeWorkspace(tmp_path)
-    # Simulate what EvolutionLoop does: seed the batch file first by
-    # calling Observer.collect() on a dummy obs list, then run the
-    # engine step — it must append step metadata to the paired file.
     evolution_dir = tmp_path / "evolution"
     evolution_dir.mkdir(parents=True, exist_ok=True)
     observer = Observer(evolution_dir)
@@ -240,27 +243,26 @@ def test_step_persists_metadata_to_batch_pair(tmp_path):
     obs = [_Obs(_FakeTask("t"), _FakeTrajectory(), _FakeFeedback(True, 1.0, "ok"))]
     engine.step(workspace=ws, observations=obs, history=_Hist(observer), trial=None)
 
-    # The engine must have appended to batch_0001_step.jsonl (sibling).
-    step_file = evolution_dir / "observations" / "batch_0001_step.jsonl"
-    assert step_file.exists(), (
-        f"Expected step-metadata file at {step_file}; "
-        f"observations dir: {list((evolution_dir/'observations').iterdir())}"
+    # The unified_* metadata must live in batch_0001.jsonl itself.
+    batch_file = evolution_dir / "observations" / "batch_0001.jsonl"
+    assert batch_file.exists()
+    lines = [
+        json.loads(l) for l in batch_file.read_text().splitlines() if l.strip()
+    ]
+    step_records = [r for r in lines if r.get("_record_type") == "step_metadata"]
+    assert len(step_records) == 1, (
+        f"Expected exactly one step_metadata trailer in batch_0001.jsonl, "
+        f"found {len(step_records)} in {lines!r}"
     )
-    lines = step_file.read_text().strip().splitlines()
-    assert len(lines) == 1
-    rec = json.loads(lines[0])
-    assert rec["_record_type"] == "step_metadata"
+    rec = step_records[0]
     assert "unified_plan" in rec
     assert "unified_regime" in rec
     assert "unified_reports" in rec
     assert "unified_verdict" in rec
-
-    # The original batch_0001.jsonl must remain pure observation records
-    # (empty in this case because we passed []).
-    batch_file = evolution_dir / "observations" / "batch_0001.jsonl"
-    assert batch_file.exists()
-    batch_lines = batch_file.read_text().strip().splitlines()
-    assert batch_lines == []  # empty obs list
+    # Observation records have no _record_type tag (legacy schema
+    # unchanged). Since we passed empty obs, only the trailer is present.
+    obs_records = [r for r in lines if r.get("_record_type") != "step_metadata"]
+    assert obs_records == []
 
 
 def test_step_records_reports_in_operator_order(workspace):
@@ -381,6 +383,84 @@ def test_recipe_stable_by_construction_under_flag_fluctuation():
             p = controller.plan(r, FeedbackCapability(), _config)
             plans_default.add((p.readers, p.operators, p.verifier))
     assert len(plans_default) == 1
+
+
+def test_step_continue_on_error_skips_failing_operator(workspace):
+    """AC-5 (continue_on_error): a failing operator doesn't prevent
+    later operators from running when ``config.continue_on_error=True``
+    (plan_v1.md:76).
+
+    Without the flag, the exception must propagate (fail-fast default).
+    """
+    from agent_evolve.algorithms.unified.registry import (
+        register_operator, OPERATORS,
+    )
+    from agent_evolve.algorithms.unified.types import MutationReport, Plan
+
+    class _RaiseOp:
+        WRITES = frozenset({"skills"})
+
+        def apply(self, workspace, context, scope, state):
+            raise RuntimeError("synthetic failure")
+
+    class _CountOp:
+        WRITES = frozenset({"skills"})
+        calls: list[int] = []
+
+        def apply(self, workspace, context, scope, state):
+            _CountOp.calls.append(1)
+            return MutationReport(operator_name="_CountOp", count=0)
+
+    if "_RaiseOp" not in OPERATORS:
+        register_operator("_RaiseOp")(_RaiseOp)
+    if "_CountOp" not in OPERATORS:
+        register_operator("_CountOp")(_CountOp)
+
+    cap = FeedbackCapability(has_pass_fail=True)
+
+    # --- continue_on_error=False (default): exception propagates ---
+    class _StrictConfig:
+        trajectory_only = False
+        continue_on_error = False
+
+    engine = UnifiedEngine(_StrictConfig(), _Bench(cap))
+    engine.controller.plan = lambda regime, capability, config: Plan(
+        readers=("PassFailReader",),
+        operators=("_RaiseOp", "_CountOp"),
+        verifier="NoVerify",
+        artifact_scope={"skills": "rw"},
+        reason_trace=("test",),
+    )
+    _CountOp.calls = []
+    obs = [_Obs(_FakeTask("t"), _FakeTrajectory(), _FakeFeedback(True, 1.0, "ok"))]
+    with pytest.raises(RuntimeError, match="synthetic failure"):
+        engine.step(workspace=workspace, observations=obs, history=_FakeHistory(), trial=None)
+    assert _CountOp.calls == [], "CountOp should NOT run when continue_on_error=False"
+
+    # --- continue_on_error=True: exception swallowed, next op runs ---
+    class _LenientConfig:
+        trajectory_only = False
+        continue_on_error = True
+
+    engine = UnifiedEngine(_LenientConfig(), _Bench(cap))
+    engine.controller.plan = lambda regime, capability, config: Plan(
+        readers=("PassFailReader",),
+        operators=("_RaiseOp", "_CountOp"),
+        verifier="NoVerify",
+        artifact_scope={"skills": "rw"},
+        reason_trace=("test",),
+    )
+    _CountOp.calls = []
+    result = engine.step(workspace=workspace, observations=obs, history=_FakeHistory(), trial=None)
+    assert _CountOp.calls == [1], (
+        f"CountOp MUST run after _RaiseOp failed when continue_on_error=True; "
+        f"got {_CountOp.calls}"
+    )
+    # The failed operator appears in reports with its error recorded.
+    report_names = [r["operator_name"] for r in result.metadata["unified_reports"]]
+    assert report_names == ["_RaiseOp", "_CountOp"]
+    raise_report = result.metadata["unified_reports"][0]
+    assert "error" in (raise_report.get("details") or {})
 
 
 def test_step_calls_history_rollback_when_verdict_requests(workspace):

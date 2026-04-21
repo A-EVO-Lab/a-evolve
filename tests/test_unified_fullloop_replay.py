@@ -124,13 +124,15 @@ def _git_diff(
 ) -> str:
     """Return the `git diff from..to` between two refs.
 
-    ``exclude_pathspecs`` is a tuple of git pathspecs (e.g. ``":(exclude)evolution/unified_steps.jsonl"``)
-    removed from the diff so AC-8's "modulo unified_* fields" rule can be
-    applied at the filesystem level — the unified engine writes
-    ``evolution/unified_steps.jsonl`` (an AC-7 sidecar persisting the
-    ``unified_*`` metadata), and that file is therefore a unified_*
-    artifact by name and must be excluded from the workspace diff
-    comparison.
+    ``exclude_pathspecs`` removes whole files from the diff. Additionally
+    any added line in ``batch_*.jsonl`` that carries ``_record_type":
+    "step_metadata"`` is filtered out — those are AC-7 trailer records
+    carrying unified_* metadata, and AC-8's "modulo unified_* fields"
+    rule excludes them from legacy-vs-unified parity at the record
+    level. The remaining hunk markers (``@@``, ``diff --git``, etc.) are
+    also suppressed when they only surround removed step_metadata lines
+    so the final diff is an honest "what non-unified content changed"
+    view.
     """
     import subprocess
 
@@ -138,7 +140,48 @@ def _git_diff(
     if exclude_pathspecs:
         cmd.extend(["--"] + [":(top)"] + list(exclude_pathspecs))
     out = subprocess.run(cmd, check=True, capture_output=True, text=True)
-    return out.stdout
+    return _strip_step_metadata_diff_lines(out.stdout)
+
+
+def _strip_step_metadata_diff_lines(diff_text: str) -> str:
+    """Remove ``+``/``-`` lines that are step_metadata trailer records.
+
+    A line like ``+{"_record_type": "step_metadata", ...}`` is an AC-7
+    sidecar record and AC-8 excludes it from parity. If the only
+    remaining change in a file hunk is step_metadata, also collapse the
+    surrounding ``diff --git`` / ``index`` / ``---`` / ``+++`` / ``@@``
+    headers so they don't show as spurious deltas.
+    """
+    lines = diff_text.splitlines(keepends=True)
+    filtered: list[str] = []
+    current_file_block: list[str] = []
+    current_file_has_real_change = False
+
+    def flush_block():
+        nonlocal current_file_block, current_file_has_real_change
+        if current_file_has_real_change:
+            filtered.extend(current_file_block)
+        current_file_block = []
+        current_file_has_real_change = False
+
+    for line in lines:
+        if line.startswith("diff --git "):
+            flush_block()
+            current_file_block = [line]
+            current_file_has_real_change = False
+            continue
+        if current_file_block:
+            # inside a file block
+            if line.startswith(("+", "-")) and not line.startswith(("+++", "---")):
+                stripped = line[1:].strip()
+                if '"_record_type": "step_metadata"' in stripped:
+                    continue  # drop this line, it's a unified_* trailer
+                current_file_has_real_change = True
+            current_file_block.append(line)
+        else:
+            filtered.append(line)
+    flush_block()
+    return "".join(filtered)
 
 
 # Paths that are unified_*-named artifacts on disk. These are excluded
@@ -149,13 +192,11 @@ def _git_diff(
 _UNIFIED_PATHSPECS_TO_EXCLUDE: tuple[str, ...] = (
     # Legacy sidecar file written by UnifiedEngine for jq/debug inspection.
     ":(exclude)evolution/unified_steps.jsonl",
-    # AC-7 persistence target: UnifiedEngine writes step metadata to a
-    # batch-paired file via Observer.append_step_metadata. By naming
-    # convention batch_<N>_step.jsonl, these are unified_*-prefixed
-    # artifacts at the path level and AC-8 excludes them from the
-    # legacy-vs-unified batch-entry parity comparison.
-    ":(exclude)evolution/observations/batch_*_step.jsonl",
 )
+# Note: AC-7's trailer records live INSIDE batch_*.jsonl alongside the
+# observations. We don't exclude the whole file (that would hide real
+# observation deltas); instead ``_git_diff`` post-processes the diff to
+# drop only the + lines marked as step_metadata.
 
 
 def _read_history(evolution_dir: Path) -> list[dict[str, Any]]:
@@ -170,16 +211,17 @@ def _read_history(evolution_dir: Path) -> list[dict[str, Any]]:
 def _read_batch(evolution_dir: Path, batch_id: int = 1) -> list[dict[str, Any]]:
     """Return observation records from the batch JSONL.
 
-    Observer.collect() writes only observation records to
-    ``batch_<N>.jsonl``. Engine step metadata (AC-7) is written to the
-    sibling ``batch_<N>_step.jsonl`` via
-    ``Observer.append_step_metadata``, so the batch file itself is pure
-    and this helper needs no filtering.
+    AC-7 writes step-metadata trailer records (tagged with
+    ``_record_type=step_metadata``) to the same batch file as the
+    observations. We filter them out here so the returned list contains
+    only observation records — preserving AC-8's "modulo unified_*
+    fields" rule at the record level.
     """
     path = evolution_dir / "observations" / f"batch_{batch_id:04d}.jsonl"
-    return [
+    records = [
         json.loads(line) for line in path.read_text().splitlines() if line.strip()
     ]
+    return [r for r in records if r.get("_record_type") != "step_metadata"]
 
 
 # Fields that AC-8 implicitly authorizes as volatile across runs. AC-8 text

@@ -128,11 +128,33 @@ class UnifiedEngine(EvolutionEngine):
                 regime = replace(regime, pass_rate=float(judge_proxy))
 
         reports = []
+        # AC-5: "A failing operator (e.g., raises) does not prevent later
+        # operators from running if continue_on_error=True is configured;
+        # otherwise the exception propagates." Read the flag from the
+        # config object (defaults to False for safety — preserves
+        # fail-fast behaviour from earlier rounds).
+        continue_on_error = bool(getattr(self.config, "continue_on_error", False))
+        from .types import MutationReport
         for name in plan.operators:
             op = get_operator(name)
             slot = self._operator_state.setdefault(name, {})
             _enforce_scope(op, plan.artifact_scope, name)
-            report = op.apply(workspace, context, plan.artifact_scope, slot)
+            try:
+                report = op.apply(workspace, context, plan.artifact_scope, slot)
+            except Exception as exc:  # noqa: BLE001
+                if continue_on_error:
+                    logger.error(
+                        "Operator %s raised %s; continue_on_error=True, "
+                        "skipping this operator and moving on.",
+                        name, exc,
+                    )
+                    report = MutationReport(
+                        operator_name=name,
+                        count=0,
+                        details={"error": str(exc)[:200]},
+                    )
+                else:
+                    raise
             reports.append(report)
 
         verifier = get_verifier(plan.verifier)

@@ -82,43 +82,36 @@ class Observer:
         return batch_file
 
     def append_step_metadata(self, metadata: dict[str, Any]) -> Path | None:
-        """Persist engine step metadata to a batch-paired JSONL file.
+        """Append a step-metadata trailer record to the latest batch JSONL.
 
         Engines (e.g. ``UnifiedEngine``) call this from their ``step()``
         immediately after computing ``StepResult.metadata``. The
-        ``unified_*`` keys are written to a sibling file
-        ``batch_<N>_step.jsonl`` alongside ``batch_<N>.jsonl`` so the
-        observation records stay pure (only produced by
-        ``Observer.collect()``) while still living in the same
-        ``observations/`` directory — satisfying AC-7's "Observer.collect()
-        persists these to the batch JSONL" contract at the batch-pair
-        level.
+        ``unified_*`` keys are appended as one JSON line to the same
+        ``batch_<N>.jsonl`` file that ``Observer.collect()`` wrote the
+        observations to. This literally satisfies AC-7's "Observer.collect()
+        persists these to the batch JSONL" — the unified fields are in
+        the batch JSONL itself, so ``jq '.unified_plan.operators'
+        batch_0001.jsonl`` returns the expected list (plan_v1.md:97).
 
-        The file naming (``batch_*_step.jsonl``) is a unified_* artifact
-        by convention; AC-8 differential tests exclude it from
-        legacy-vs-unified parity comparisons.
+        The trailer record is tagged ``"_record_type": "step_metadata"``
+        so downstream readers can tell observation rows from
+        step-metadata rows. AC-8's differential tests filter these out
+        via the record tag or via the git-diff unified_*-line exclusion.
 
-        Returns the step-metadata file path, or ``None`` if no batch
-        file exists yet (e.g., engine called this before
-        ``Observer.collect()`` ran).
+        Returns the batch file path the trailer was appended to, or
+        ``None`` if no batch file exists yet.
         """
         batch_files = sorted(self.observations_dir.glob("batch_[0-9]*.jsonl"))
-        # Filter out pre-existing step files so we pair with the latest
-        # observation batch.
-        batch_files = [
-            bf for bf in batch_files if not bf.stem.endswith("_step")
-        ]
         if not batch_files:
             logger.debug(
                 "append_step_metadata: no batch_*.jsonl yet; skipping"
             )
             return None
-        target_stem = batch_files[-1].stem  # e.g. "batch_0001"
-        target = self.observations_dir / f"{target_stem}_step.jsonl"
+        target = batch_files[-1]
         record = {"_record_type": "step_metadata", **metadata}
         with open(target, "a") as f:
             f.write(json.dumps(record, default=str) + "\n")
-        logger.debug("Wrote step metadata to %s", target.name)
+        logger.debug("Appended step_metadata trailer to %s", target.name)
         return target
 
     def get_recent_logs(self, n_batches: int = 3) -> list[dict[str, Any]]:
