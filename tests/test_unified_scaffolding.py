@@ -217,37 +217,102 @@ def test_scope_violation_error_is_runtime_error_subclass():
 # ── Benchmark capability declarations (lightweight check) ─────
 
 
+def _extract_feedback_capability_kwargs(source_path: str) -> dict[str, Any]:
+    """Parse a benchmark adapter source file and extract the kwargs passed
+    to ``FeedbackCapability(...)`` inside its ``feedback_capability`` property.
+
+    This is a static AST walk — it does NOT import the module. That lets
+    AC-1 positive tests verify capability declarations on adapters whose
+    module-level imports pull in heavy optional deps (``strands`` for
+    MCP-Atlas, ``swebench`` for SWE-bench) without requiring those deps
+    to be installed.
+
+    The assertion surface is still meaningful: the declarations are what
+    AC-1 requires (``has_per_claim=True``, ``solver_may_propose=True``, etc.).
+    If a future change renames or removes a capability flag in source, the
+    AST walk picks it up immediately.
+
+    Discharges Codex Round 7 finding #3 ("eliminate or discharge the two
+    skipped adapter tests before claiming full completion").
+    """
+    import ast
+
+    with open(source_path) as f:
+        tree = ast.parse(f.read())
+
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.FunctionDef) or node.name != "feedback_capability":
+            continue
+        # Find `return FeedbackCapability(...)` inside the body.
+        for sub in ast.walk(node):
+            if not isinstance(sub, ast.Return) or not isinstance(sub.value, ast.Call):
+                continue
+            call = sub.value
+            func_name = (
+                call.func.id if isinstance(call.func, ast.Name)
+                else getattr(call.func, "attr", None)
+            )
+            if func_name != "FeedbackCapability":
+                continue
+            return {
+                kw.arg: ast.literal_eval(kw.value)
+                for kw in call.keywords
+                if kw.arg is not None
+            }
+    raise AssertionError(
+        f"Could not find `return FeedbackCapability(...)` in "
+        f"`feedback_capability` property of {source_path}"
+    )
+
+
+def _adapter_source_path(rel_path: str) -> str:
+    """Resolve a path under ``agent_evolve/`` without importing anything.
+
+    ``importlib.util.find_spec`` triggers parent-package ``__init__``
+    loading, which can fail when the parent pulls heavy deps. We resolve
+    purely from ``agent_evolve.__file__`` (already imported by the test
+    module header) and treat the rest as a filesystem walk.
+    """
+    import os
+    import agent_evolve
+
+    root = os.path.dirname(os.path.abspath(agent_evolve.__file__))
+    full = os.path.join(root, rel_path)
+    assert os.path.isfile(full), f"adapter source not found: {full}"
+    return full
+
+
 def test_mcp_atlas_capability_declares_per_claim_and_no_proposal():
-    """Heavy-dep guard: MCP-Atlas adapter pulls ``strands`` at module load."""
-    pytest.importorskip("strands")
-    from agent_evolve.benchmarks.mcp_atlas.mcp_atlas import McpAtlasBenchmark
+    """AC-1 positive test for MCP-Atlas capability declaration.
 
-    prop = McpAtlasBenchmark.__dict__["feedback_capability"]
-
-    class _Stub:
-        pass
-
-    cap = prop.fget(_Stub())
-    assert cap.has_per_claim is True
-    assert cap.solver_may_propose is False
-    assert cap.judge_available is True
+    Verifies the capability declaration via AST source inspection so the
+    assertion runs without requiring the heavy-dep chain
+    (``strands``/``strands.models``) that the adapter's module-level
+    imports pull in. This replaces the earlier ``importorskip`` guard
+    which caused the test to be silently skipped when those deps weren't
+    installed.
+    """
+    src = _adapter_source_path("benchmarks/mcp_atlas/mcp_atlas.py")
+    kwargs = _extract_feedback_capability_kwargs(src)
+    assert kwargs.get("has_per_claim") is True
+    assert kwargs.get("solver_may_propose", False) is False
+    assert kwargs.get("judge_available") is True
+    assert kwargs.get("has_pass_fail") is True
 
 
 def test_swe_capability_declares_per_test_and_solver_proposes():
-    """Heavy-dep guard: SWE-bench adapter pulls ``swebench`` at module load."""
-    pytest.importorskip("swebench")
-    from agent_evolve.benchmarks.swe_verified_mini.benchmark import (
-        SweVerifiedMiniBenchmark,
-    )
+    """AC-1 positive test for SWE-bench capability declaration.
 
-    prop = SweVerifiedMiniBenchmark.__dict__["feedback_capability"]
-
-    class _Stub:
-        pass
-
-    cap = prop.fget(_Stub())
-    assert cap.has_per_test is True
-    assert cap.solver_may_propose is True
+    Verifies the declaration via AST source inspection — see
+    :func:`test_mcp_atlas_capability_declares_per_claim_and_no_proposal`
+    for the rationale.
+    """
+    src = _adapter_source_path("benchmarks/swe_verified_mini/benchmark.py")
+    kwargs = _extract_feedback_capability_kwargs(src)
+    assert kwargs.get("has_per_test") is True
+    assert kwargs.get("solver_may_propose") is True
+    assert kwargs.get("has_pass_fail") is True
+    assert kwargs.get("judge_available") is True
 
 
 def test_skillbench_capability_declares_partial_score():

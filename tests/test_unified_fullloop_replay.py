@@ -116,6 +116,41 @@ def _git_tags(repo_root: Path) -> list[str]:
     return sorted(line.strip() for line in out.stdout.splitlines() if line.strip())
 
 
+def _git_diff(
+    repo_root: Path,
+    from_ref: str,
+    to_ref: str,
+    exclude_pathspecs: tuple[str, ...] = (),
+) -> str:
+    """Return the `git diff from..to` between two refs.
+
+    ``exclude_pathspecs`` is a tuple of git pathspecs (e.g. ``":(exclude)evolution/unified_steps.jsonl"``)
+    removed from the diff so AC-8's "modulo unified_* fields" rule can be
+    applied at the filesystem level — the unified engine writes
+    ``evolution/unified_steps.jsonl`` (an AC-7 sidecar persisting the
+    ``unified_*`` metadata), and that file is therefore a unified_*
+    artifact by name and must be excluded from the workspace diff
+    comparison.
+    """
+    import subprocess
+
+    cmd = ["git", "-C", str(repo_root), "diff", f"{from_ref}..{to_ref}"]
+    if exclude_pathspecs:
+        cmd.extend(["--"] + [":(top)"] + list(exclude_pathspecs))
+    out = subprocess.run(cmd, check=True, capture_output=True, text=True)
+    return out.stdout
+
+
+# Paths that are unified_*-named artifacts on disk. These are excluded
+# from the git-diff comparison per AC-8's "modulo unified_* fields" rule
+# (the rule applies at the file-content level for batch entries and at
+# the file-path level for sidecar files — a file literally named
+# `unified_steps.jsonl` is a unified_* artifact at the path level).
+_UNIFIED_PATHSPECS_TO_EXCLUDE: tuple[str, ...] = (
+    ":(exclude)evolution/unified_steps.jsonl",
+)
+
+
 def _read_history(evolution_dir: Path) -> list[dict[str, Any]]:
     path = evolution_dir / "history.jsonl"
     if not path.exists():
@@ -132,11 +167,28 @@ def _read_batch(evolution_dir: Path, batch_id: int = 1) -> list[dict[str, Any]]:
     ]
 
 
-def _strip_volatile(entries: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    """Remove fields that legitimately drift across runs (timestamps, etc.)."""
+# Fields that AC-8 implicitly authorizes as volatile across runs. AC-8 text
+# does not name these explicitly, but both `history.jsonl` and `batch_*.jsonl`
+# include wall-clock timestamps (`datetime.now().isoformat()` in
+# `EvolutionLoop._append_history` and `Observer.collect()`), which cannot be
+# byte-equal across two sequential loop runs. Stripping only `timestamp` is
+# the minimal waiver — every other field must be byte-equal between the
+# unified and legacy run. The waiver is enumerated here so readers can see
+# exactly what is removed, addressing Codex Round 7 finding #1.
+_AUTHORIZED_VOLATILE_FIELDS = frozenset({"timestamp"})
+
+
+def _strip_authorized_volatile_fields(
+    entries: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    """Remove only the fields in :data:`_AUTHORIZED_VOLATILE_FIELDS`.
+
+    Every other field must match byte-for-byte between unified and legacy
+    runs. This replaces the earlier, less explicit ``_strip_volatile`` helper.
+    """
     cleaned: list[dict[str, Any]] = []
     for e in entries:
-        c = {k: v for k, v in e.items() if k != "timestamp"}
+        c = {k: v for k, v in e.items() if k not in _AUTHORIZED_VOLATILE_FIELDS}
         cleaned.append(c)
     return cleaned
 
@@ -199,11 +251,19 @@ def test_full_loop_replay_parity(tmp_path):
     assert result_a.cycles_completed == result_b.cycles_completed == 1
     assert abs(result_a.final_score - result_b.final_score) < 1e-6
 
-    # 2. batch_0001.jsonl byte-equal (modulo timestamps).
     evo_a = ws_a / "evolution"
     evo_b = ws_b / "evolution"
-    batch_a = _strip_volatile(_read_batch(evo_a))
-    batch_b = _strip_volatile(_read_batch(evo_b))
+
+    # 2. batch_0001.jsonl FULL-CONTENT parity, modulo only
+    # _AUTHORIZED_VOLATILE_FIELDS (timestamp). Every other field must be
+    # byte-equal. Observer.collect() is engine-independent (reads only
+    # from Observation, never from StepResult.metadata), so this is the
+    # strongest form of AC-8's "batch_XXXX.jsonl content (modulo unified_*
+    # fields)" requirement — the batch entry never contains unified_*
+    # keys in the first place, and the only other time-varying field is
+    # the explicitly-waived `timestamp`.
+    batch_a = _strip_authorized_volatile_fields(_read_batch(evo_a))
+    batch_b = _strip_authorized_volatile_fields(_read_batch(evo_b))
     assert batch_a == batch_b, (
         f"batch_0001.jsonl diverged between unified and legacy runs: "
         f"unified={batch_a!r} legacy={batch_b!r}"
@@ -211,24 +271,60 @@ def test_full_loop_replay_parity(tmp_path):
     # Exactly one observation was recorded in each.
     assert len(batch_a) == 1
 
-    # 3. history.jsonl parity on the (cycle, score, mutated) triple.
-    hist_a = _strip_volatile(_read_history(evo_a))
-    hist_b = _strip_volatile(_read_history(evo_b))
+    # 3. history.jsonl FULL-CONTENT parity, modulo only
+    # _AUTHORIZED_VOLATILE_FIELDS. Stronger than the previous
+    # field-subset assertion — every field (`cycle`, `score`, `mutated`,
+    # plus any future additions by EvolutionLoop._append_history) must
+    # agree between unified and legacy runs. AC-8 text: "produces the
+    # same history.jsonl".
+    hist_a = _strip_authorized_volatile_fields(_read_history(evo_a))
+    hist_b = _strip_authorized_volatile_fields(_read_history(evo_b))
     assert len(hist_a) == len(hist_b) == 1
-    for field in ("cycle", "score", "mutated"):
-        assert hist_a[0][field] == hist_b[0][field], (
-            f"history.jsonl {field} diverged: "
-            f"unified={hist_a[0][field]} legacy={hist_b[0][field]}"
-        )
+    assert hist_a == hist_b, (
+        f"history.jsonl full-content diverged: "
+        f"unified={hist_a!r} legacy={hist_b!r}"
+    )
 
-    # 4. Git tag set parity. Both runs create the same set of tags:
-    #    {evo-0 (initial), pre-evo-1, evo-1}. The tag NAMES must match.
+    # 4. Git tag parity: both the tag SET and the DIFF between
+    # pre-evo-1 and evo-1 must match. AC-8 text: "same git tags".
+    # The tag-diff check catches the case where both runs have the
+    # same tag names but the commits those tags point to differ in
+    # content (e.g., one engine mutates workspace files the other
+    # doesn't).
     tags_a = _git_tags(ws_a)
     tags_b = _git_tags(ws_b)
     assert tags_a == tags_b, (
         f"git tag sets diverged: unified={tags_a} legacy={tags_b}"
     )
     assert {"evo-0", "pre-evo-1", "evo-1"}.issubset(set(tags_a))
+
+    # Unified side excludes the unified_steps.jsonl sidecar from the
+    # diff per AC-8's "modulo unified_* fields" rule (see the comment
+    # on _UNIFIED_PATHSPECS_TO_EXCLUDE). The legacy side doesn't emit
+    # any such file so the exclusion is a no-op for it.
+    diff_a = _git_diff(
+        ws_a, "pre-evo-1", "evo-1",
+        exclude_pathspecs=_UNIFIED_PATHSPECS_TO_EXCLUDE,
+    )
+    diff_b = _git_diff(
+        ws_b, "pre-evo-1", "evo-1",
+        exclude_pathspecs=_UNIFIED_PATHSPECS_TO_EXCLUDE,
+    )
+    assert diff_a == diff_b, (
+        f"git diff pre-evo-1..evo-1 (modulo unified_* pathspecs) diverged "
+        f"between unified and legacy runs.\n"
+        f"--- unified diff ---\n{diff_a}\n"
+        f"--- legacy diff ---\n{diff_b}"
+    )
+    # Both sides took the NO_PROPOSALS no-op path, so both diffs must be
+    # empty after excluding the unified_* sidecar. This is the expected
+    # shape when no operator mutates the workspace — the legacy path in
+    # AEvolveEngine and the unified LLMBashEvolve NO_PROPOSALS branch
+    # both produce zero workspace delta.
+    assert diff_a == "", (
+        f"expected empty diff under NO_PROPOSALS (modulo unified_*), "
+        f"got: {diff_a!r}"
+    )
 
 
 def test_full_loop_replay_metadata_excludes_unified_fields(tmp_path):
