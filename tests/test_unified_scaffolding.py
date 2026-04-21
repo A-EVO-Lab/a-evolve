@@ -342,6 +342,17 @@ def _fresh_import(module_name: str, monkeypatch: pytest.MonkeyPatch) -> Any:
     return importlib.import_module(module_name)
 
 
+def _clear_mcp_atlas_env(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Clear ambient env vars that ``McpAtlasBenchmark.__init__`` reads.
+
+    Codex Round 12 review flagged that ``__init__`` reads
+    ``EVAL_USE_LITELLM`` from ``os.getenv`` at
+    ``agent_evolve/benchmarks/mcp_atlas/mcp_atlas.py:75``. Clearing it
+    makes the constructor input vector fully explicit.
+    """
+    monkeypatch.delenv("EVAL_USE_LITELLM", raising=False)
+
+
 def test_mcp_atlas_capability_runtime(monkeypatch):
     """AC-1 positive: runtime constructor + attribute access on MCP-Atlas.
 
@@ -349,15 +360,16 @@ def test_mcp_atlas_capability_runtime(monkeypatch):
     constructor call:
       ``McpAtlasBenchmark().feedback_capability.has_per_claim == True``
 
-    The adapter's heavy-dep chain (strands/strands.models) is stubbed
-    via sys.modules for the duration of the test so the import resolves
-    without installing those deps. ``McpAtlasBenchmark()`` itself runs
-    the real ``__init__`` body (attribute assignment + env-var check +
-    logging) — we verify the constructor path does not mutate or wire
-    the capability object away from its declaration, which was the
-    exact gap Codex Round 9 review flagged.
+    Hermeticity in R13:
+    - Heavy-dep chain (strands/strands.models/…) is stubbed via
+      sys.modules for the duration of the test.
+    - ``EVAL_USE_LITELLM`` is cleared via ``monkeypatch.delenv`` so the
+      constructor does not pick up ambient env state (Codex R12 finding).
+    - The constructor runs the real ``__init__`` body (attribute
+      assignment + env-var check + logging) under controlled inputs.
     """
     _install_mcp_atlas_stubs(monkeypatch)
+    _clear_mcp_atlas_env(monkeypatch)
     mod = _fresh_import(
         "agent_evolve.benchmarks.mcp_atlas.mcp_atlas", monkeypatch
     )
@@ -417,6 +429,7 @@ def test_mcp_atlas_constructor_does_not_mutate_capability(monkeypatch):
     test would fail.
     """
     _install_mcp_atlas_stubs(monkeypatch)
+    _clear_mcp_atlas_env(monkeypatch)
     mod = _fresh_import(
         "agent_evolve.benchmarks.mcp_atlas.mcp_atlas", monkeypatch
     )
@@ -646,21 +659,45 @@ def test_skillbench_constructor_variance_does_not_mutate_capability(tmp_path, mo
     assert cap.solver_may_propose is False
 
 
-def test_terminal_capability_runtime():
+def _make_tb2_challenges_tree(root: Path) -> Path:
+    """Build a minimal Terminal-Bench 2.0 challenges layout under ``root``.
+
+    Terminal2Benchmark reads this path during ``__init__`` (via
+    ``self.challenges_dir = challenges_dir or DEFAULT_CHALLENGES_DIR``)
+    but doesn't require task content at construction time — only the
+    directory itself needs to exist.
+    """
+    root.mkdir(parents=True, exist_ok=True)
+    return root
+
+
+def test_terminal_capability_runtime(tmp_path, monkeypatch):
     """AC-1 positive: runtime constructor + attribute access on Terminal2.
 
     Matches the plan text verbatim, including the parenthesised
     constructor call:
       ``Terminal2Benchmark().feedback_capability.solver_may_propose == True``
 
-    Terminal2Benchmark imports only from stdlib + the project's own
-    ``types``/``base`` modules; no heavy optional deps — so no sys.modules
-    stubbing is needed. ``__init__`` runs to completion with default
-    arguments.
+    Hermeticity in R13 (Codex R12 finding #2):
+    - ``DEFAULT_CHALLENGES_DIR`` in ``agent_evolve/benchmarks/tb2/terminal2.py``
+      is computed at module import time from ``os.environ.get("TB2_CHALLENGES_DIR", ...)``
+      so a bare ``Terminal2Benchmark()`` would fall through to the
+      checkout-relative default (or an ambient ``TB2_CHALLENGES_DIR``).
+    - R13 fixes this by (a) clearing ``TB2_CHALLENGES_DIR`` via
+      ``monkeypatch.delenv`` before import, (b) building a temp
+      challenges tree under ``tmp_path``, (c) passing it explicitly
+      via ``challenges_dir=`` so no fallback path is reached.
     """
+    monkeypatch.delenv("TB2_CHALLENGES_DIR", raising=False)
+    challenges = _make_tb2_challenges_tree(tmp_path / "tb2-challenges")
+
     from agent_evolve.benchmarks.tb2.terminal2 import Terminal2Benchmark
 
-    benchmark = Terminal2Benchmark()  # real constructor — runs __init__ body
+    # Real constructor — runs __init__ body. Pass challenges_dir
+    # explicitly so the ``or DEFAULT_CHALLENGES_DIR`` branch never
+    # fires, even if DEFAULT_CHALLENGES_DIR was bound to an ambient
+    # env-derived value at module import time.
+    benchmark = Terminal2Benchmark(challenges_dir=str(challenges))
     cap = benchmark.feedback_capability
 
     assert cap.solver_may_propose is True  # plan_v1.md AC-1 positive test
@@ -670,17 +707,22 @@ def test_terminal_capability_runtime():
         cap.solver_may_propose = False  # type: ignore[misc]
 
 
-def test_terminal_constructor_variance_does_not_mutate_capability():
+def test_terminal_constructor_variance_does_not_mutate_capability(tmp_path, monkeypatch):
     """AC-1: constructing ``Terminal2Benchmark`` with non-default args
     does not mutate the declared capability.
 
-    Same scope as the SkillBench constructor-variance test: one vector,
-    not a proof of full branch coverage.
+    Single counter-example: one non-default argument vector is checked.
+    Does not claim full branch coverage of ``__init__``.
+    Uses the same temp-challenges + env-var isolation as
+    ``test_terminal_capability_runtime`` so no ambient state can leak in.
     """
+    monkeypatch.delenv("TB2_CHALLENGES_DIR", raising=False)
+    challenges = _make_tb2_challenges_tree(tmp_path / "tb2-challenges")
+
     from agent_evolve.benchmarks.tb2.terminal2 import Terminal2Benchmark
 
     benchmark = Terminal2Benchmark(
-        challenges_dir="/tmp/nonexistent-challenges",
+        challenges_dir=str(challenges),
         task_filter="specific-task",
         category_filter="sysadmin",
         difficulty_filter="hard",
