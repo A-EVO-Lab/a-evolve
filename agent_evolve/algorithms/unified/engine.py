@@ -18,6 +18,8 @@ from typing import TYPE_CHECKING, Any
 
 from ...engine.base import EvolutionEngine
 from ...types import StepResult
+from dataclasses import replace
+
 from .controller import RuleBasedController
 from .regimes import detect_regime
 from .registry import get_operator, get_reader, get_verifier
@@ -80,10 +82,17 @@ class UnifiedEngine(EvolutionEngine):
         plan = self.controller.plan(regime, self.capability, self.config)
 
         if self._last_plan is not None and self._last_plan != plan:
+            # AC-9: "If recipe instability is nevertheless observed,
+            # UnifiedEngine emits a warning with both recipes printed."
+            # Print both full Plan dataclasses (readers + operators +
+            # verifier + scope + reason_trace) rather than only the
+            # operator tuple, so the drift is fully auditable.
             logger.warning(
-                "Recipe drift: prev=%s new=%s",
-                self._last_plan.operators,
-                plan.operators,
+                "Recipe drift across cycles; both plans printed below.\n"
+                "  prev plan: %s\n"
+                "  new plan:  %s",
+                asdict(self._last_plan),
+                asdict(plan),
             )
         self._last_plan = plan
 
@@ -103,6 +112,20 @@ class UnifiedEngine(EvolutionEngine):
                 logger.error("Reader %s raised: %s", name, exc)
                 out = {"_error": str(exc)[:200]}
             context.entries[name] = out
+
+        # AC-2 + AC-10: "Under masking, regime.pass_rate=None unless
+        # LLMJudgeReader ran and produced a proxy; in that case
+        # pass_rate is the judge proxy." The first detect_regime call
+        # above runs before any reader, so pass_rate starts as None
+        # under masking. If LLMJudgeReader is now in the context with a
+        # proxy value, upgrade regime.pass_rate to that proxy so the
+        # persisted unified_regime metadata and downstream operators
+        # see the proxy.
+        if regime.pass_rate is None:
+            judge_out = context.entries.get("LLMJudgeReader", {}) or {}
+            judge_proxy = judge_out.get("pass_rate")
+            if isinstance(judge_proxy, (int, float)):
+                regime = replace(regime, pass_rate=float(judge_proxy))
 
         reports = []
         for name in plan.operators:

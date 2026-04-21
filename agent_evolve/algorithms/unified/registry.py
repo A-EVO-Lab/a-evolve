@@ -16,6 +16,7 @@ controller's rule table can be corrected quickly.
 
 from __future__ import annotations
 
+import inspect
 from typing import TYPE_CHECKING, Callable, TypeVar
 
 from .interfaces import Operator, Reader, Verifier
@@ -30,6 +31,61 @@ VERIFIERS: dict[str, Verifier] = {}
 
 
 _R = TypeVar("_R")
+
+
+# AC-3 (plan_v1.md:55): "An atom class that does not match its protocol
+# signature is registered without error (should raise at registration
+# time via typing.runtime_checkable check)."
+#
+# ``@runtime_checkable`` on typing.Protocol only validates method
+# *existence*, not signatures — so a class with ``def read(self)`` passes
+# an ``isinstance(x, Reader)`` check despite omitting 5 required
+# parameters. We close that gap with an explicit signature comparison:
+# for each protocol method declared on the Protocol class, verify that
+# the instance's bound method has the same non-self parameter names.
+#
+# This is stricter than Python's runtime_checkable but does exactly
+# what the plan requires: bad signatures raise at registration.
+_PROTOCOL_METHOD: dict[type, str] = {
+    Reader: "read",
+    Operator: "apply",
+    Verifier: "check",
+}
+
+
+def _expected_param_names(protocol: type, method_name: str) -> list[str]:
+    proto_method = getattr(protocol, method_name)
+    sig = inspect.signature(proto_method)
+    # Drop ``self`` — the Protocol's own method is unbound.
+    return [p for p in sig.parameters if p != "self"]
+
+
+def _assert_signature_matches(
+    kind: str, protocol: type, name: str, instance: object
+) -> None:
+    method_name = _PROTOCOL_METHOD.get(protocol)
+    if method_name is None:
+        return  # no declared method mapping; fall back to isinstance only
+
+    bound = getattr(instance, method_name, None)
+    if not callable(bound):
+        raise TypeError(
+            f"{kind} {name!r} has no callable {method_name!r} attribute"
+        )
+    try:
+        actual_params = list(inspect.signature(bound).parameters)
+    except (TypeError, ValueError) as exc:
+        raise TypeError(
+            f"{kind} {name!r}.{method_name}() has an un-inspectable "
+            f"signature: {exc}"
+        ) from exc
+
+    expected = _expected_param_names(protocol, method_name)
+    if actual_params != expected:
+        raise TypeError(
+            f"{kind} {name!r}.{method_name}() signature drift: "
+            f"expected parameters {expected}, got {actual_params}"
+        )
 
 
 def _register(
@@ -48,8 +104,11 @@ def _register(
     if not isinstance(instance, protocol):
         raise TypeError(
             f"{kind} {name!r} does not satisfy the {protocol.__name__} protocol. "
-            f"Check that the class implements the required method signature."
+            f"Check that the class implements the required method."
         )
+    # Stronger check (AC-3): parameter names must match the protocol's
+    # declared signature, not just the method name.
+    _assert_signature_matches(kind, protocol, name, instance)
     registry[name] = instance
     return instance
 

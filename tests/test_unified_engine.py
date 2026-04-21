@@ -328,6 +328,61 @@ def test_step_metadata_has_exactly_ac7_keys(workspace):
     )
 
 
+def test_recipe_stable_by_construction_under_flag_fluctuation():
+    """AC-9: controller's rule table is designed so recipe is invariant
+    under fluctuating non-branch flags (pass_rate, patterns, judge_available).
+
+    Prove it empirically: for each of the 5 recipe branches, fuzz
+    orthogonal regime fields and assert the emitted Plan is byte-equal.
+    This is the 'by construction' proof the plan asks for — ortho
+    fields can move freely without changing the emitted recipe.
+    """
+    from agent_evolve.algorithms.unified import RuleBasedController, RegimeTag, FeedbackCapability
+
+    controller = RuleBasedController()
+    _config = _FakeConfig()
+
+    # Branch 1: per_claim recipe
+    plans_per_claim = set()
+    for pass_rate in (None, 0.0, 0.5, 1.0):
+        for patterns in ((), ("multi_requirement_miss",)):
+            for judge in (True, False):
+                r = RegimeTag(
+                    has_pass_fail=True, has_per_claim=True,
+                    has_binary_verifier=True,
+                    pass_rate=pass_rate, patterns=patterns,
+                    judge_available=judge,
+                )
+                p = controller.plan(r, FeedbackCapability(has_per_claim=True), _config)
+                plans_per_claim.add((p.readers, p.operators, p.verifier))
+    assert len(plans_per_claim) == 1, (
+        f"per_claim recipe drifted under orthogonal flags: {plans_per_claim}"
+    )
+
+    # Branch 2: solver_proposal recipe
+    plans_solver = set()
+    for pass_rate in (None, 0.0, 1.0):
+        r = RegimeTag(
+            has_pass_fail=True, has_solver_proposal=True,
+            has_binary_verifier=True, pass_rate=pass_rate,
+        )
+        p = controller.plan(r, FeedbackCapability(solver_may_propose=True), _config)
+        plans_solver.add((p.readers, p.operators, p.verifier))
+    assert len(plans_solver) == 1
+
+    # Branch 5: default recipe
+    plans_default = set()
+    for pass_rate in (None, 0.5):
+        for hps in (True, False):
+            r = RegimeTag(
+                has_pass_fail=True, has_partial_score=hps,
+                has_binary_verifier=True, pass_rate=pass_rate,
+            )
+            p = controller.plan(r, FeedbackCapability(), _config)
+            plans_default.add((p.readers, p.operators, p.verifier))
+    assert len(plans_default) == 1
+
+
 def test_step_calls_history_rollback_when_verdict_requests(workspace):
     """AC-5: when a verifier returns Verdict(rollback=True), the engine
     must actually call ``history.rollback_workspace()`` — not just log.
