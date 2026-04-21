@@ -55,6 +55,10 @@ inspect_evals/
 /tests/*
 !/tests/test_skillbench_setup.py
 !/tests/test_unified_scaffolding.py
+!/tests/test_unified_atoms.py
+!/tests/test_unified_controller.py
+!/tests/test_unified_engine.py
+!/tests/test_unified_import_ban.py
 !/tests/gepa/
 
 # Root-level artifacts

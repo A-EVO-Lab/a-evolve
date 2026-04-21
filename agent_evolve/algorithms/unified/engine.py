@@ -1,0 +1,221 @@
+"""UnifiedEngine — recipe executor with per-atom state slots.
+
+Drops in wherever an ``EvolutionEngine`` is expected. Imports only from
+``agent_evolve/algorithms/unified/`` and the engine/contract/types base
+packages — NO import from any legacy engine module (``adaptive_evolve``,
+``adaptive_skill``, ``guided_synth``, ``skillforge``). This is enforced
+statically in ``tests/test_unified_import_ban.py``.
+"""
+
+from __future__ import annotations
+
+import json
+import logging
+from dataclasses import asdict
+from datetime import datetime
+from pathlib import Path
+from typing import TYPE_CHECKING, Any
+
+from ...engine.base import EvolutionEngine
+from ...types import StepResult
+from .controller import RuleBasedController
+from .regimes import detect_regime
+from .registry import get_operator, get_reader, get_verifier
+from .types import EvidenceContext, FeedbackCapability, Plan, RegimeTag
+
+# Triggers reader/operator/verifier registration as a side effect.
+from . import operators as _operators  # noqa: F401
+from . import readers as _readers  # noqa: F401
+from . import verifiers as _verifiers  # noqa: F401
+
+if TYPE_CHECKING:
+    from ...benchmarks.base import BenchmarkAdapter
+    from ...config import EvolveConfig
+    from ...contract.workspace import AgentWorkspace
+    from ...engine.history import EvolutionHistory
+    from ...engine.trial import TrialRunner
+    from ...types import Observation
+
+logger = logging.getLogger(__name__)
+
+
+def _scope_allows_write(scope: dict[str, str], artifact: str) -> bool:
+    return scope.get(artifact) in ("rw", "append")
+
+
+class UnifiedEngine(EvolutionEngine):
+    """Executes a :class:`Plan` emitted by :class:`RuleBasedController`.
+
+    Holds three per-atom state dicts so stateful atoms
+    (``StagnationRollback._best_pass_rate``, ``WriteEpisodicMemory._cycle_count``,
+    ``FixHallucinations._accumulated_state``) accumulate correctly across
+    cycles without sharing state with each other.
+    """
+
+    def __init__(
+        self,
+        config: "EvolveConfig",
+        benchmark: "BenchmarkAdapter",
+    ) -> None:
+        self.config = config
+        self.benchmark = benchmark
+        # Freeze capability at construction so mid-trial drift is observable.
+        self.capability: FeedbackCapability = benchmark.feedback_capability
+        self.controller = RuleBasedController()
+        self._reader_state: dict[str, dict[str, Any]] = {}
+        self._operator_state: dict[str, dict[str, Any]] = {}
+        self._verifier_state: dict[str, dict[str, Any]] = {}
+        self._last_plan: Plan | None = None
+
+    # ── EvolutionEngine interface ────────────────────────────────
+
+    def step(
+        self,
+        workspace: "AgentWorkspace",
+        observations: list["Observation"],
+        history: "EvolutionHistory",
+        trial: "TrialRunner",
+    ) -> StepResult:
+        regime = detect_regime(self.capability, observations, workspace, self.config)
+        plan = self.controller.plan(regime, self.capability, self.config)
+
+        if self._last_plan is not None and self._last_plan != plan:
+            logger.warning(
+                "Recipe drift: prev=%s new=%s",
+                self._last_plan.operators,
+                plan.operators,
+            )
+        self._last_plan = plan
+
+        context = EvidenceContext()
+        # Publish observations for operators that need them (e.g.,
+        # WriteEpisodicMemory needs raw trajectories).
+        context.entries["__observations__"] = observations
+
+        for name in plan.readers:
+            reader = get_reader(name)
+            slot = self._reader_state.setdefault(name, {})
+            try:
+                out = reader.read(
+                    observations, workspace, history, self.config, context, slot
+                )
+            except Exception as exc:  # noqa: BLE001
+                logger.error("Reader %s raised: %s", name, exc)
+                out = {"_error": str(exc)[:200]}
+            context.entries[name] = out
+
+        reports = []
+        for name in plan.operators:
+            op = get_operator(name)
+            slot = self._operator_state.setdefault(name, {})
+            _enforce_scope(op, plan.artifact_scope, name)
+            report = op.apply(workspace, context, plan.artifact_scope, slot)
+            reports.append(report)
+
+        verifier = get_verifier(plan.verifier)
+        v_slot = self._verifier_state.setdefault(plan.verifier, {})
+        verdict = verifier.check(
+            workspace, context, reports, trial, history, v_slot
+        )
+        if verdict.rollback:
+            logger.warning("Verifier %s requested rollback: %s", plan.verifier, verdict.reason)
+
+        mutated = any(r.count > 0 for r in reports) and not verdict.rollback
+
+        metadata = {
+            "unified_regime": _as_jsonable(asdict(regime)),
+            "unified_plan": _as_jsonable(asdict(plan)),
+            "unified_reports": [_as_jsonable(asdict(r)) for r in reports],
+            "unified_verdict": _as_jsonable(asdict(verdict)),
+        }
+
+        # Persist a per-cycle record to the workspace's evolution dir so that
+        # the unified routing decision is observable on disk even though the
+        # default EvolutionLoop does not forward step_result.metadata to the
+        # Observer.
+        self._persist_step_metadata(workspace, metadata, mutated)
+
+        return StepResult(
+            mutated=mutated,
+            summary=(
+                f"recipe={list(plan.operators)}, verdict={verdict.reason}"
+            ),
+            metadata=metadata,
+            stop=False,
+        )
+
+    def _persist_step_metadata(
+        self,
+        workspace: "AgentWorkspace",
+        metadata: dict[str, Any],
+        mutated: bool,
+    ) -> None:
+        """Append a JSONL record of the unified routing decision.
+
+        Writes to ``<workspace>/evolution/unified_steps.jsonl`` so runs can be
+        inspected with ``jq``. Failures here are logged but swallowed — the
+        engine must never fail a cycle because of diagnostics.
+        """
+        try:
+            evolution_dir = Path(workspace.root) / "evolution"
+            evolution_dir.mkdir(parents=True, exist_ok=True)
+            record = {
+                "timestamp": datetime.now().isoformat(),
+                "mutated": mutated,
+                **metadata,
+            }
+            with open(evolution_dir / "unified_steps.jsonl", "a") as f:
+                f.write(json.dumps(record, default=str) + "\n")
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("Could not persist unified step metadata: %s", exc)
+
+
+def _enforce_scope(op: Any, scope: dict[str, str], op_name: str) -> None:
+    """Validate that the plan grants the operator at least one write target.
+
+    ``op.WRITES`` is the set of artifacts the operator *may* write depending
+    on scope and runtime context. Strict "every-WRITES-must-be-granted"
+    semantics would be wrong for operators whose write set is conditional
+    (e.g., ``LLMBashEvolve`` is gated by per-artifact config flags). Instead
+    we require that **at least one** of the declared writes is granted; if
+    none are, the operator cannot do anything useful and this is a plan
+    configuration error.
+
+    Operators still perform fine-grained per-artifact scope checks inside
+    their ``apply()`` bodies for the artifacts they actually decide to write.
+    """
+    writes = getattr(op, "WRITES", None)
+    if not writes:
+        return
+    from .interfaces import ScopeViolationError
+
+    granted = {
+        artifact
+        for artifact in writes
+        if scope.get(artifact) in ("rw", "append")
+    }
+    if not granted:
+        raise ScopeViolationError(
+            f"Operator {op_name!r} declares WRITES={sorted(writes)} but "
+            f"plan.artifact_scope={dict(scope)} grants none of them."
+        )
+
+
+def _as_jsonable(obj: Any) -> Any:
+    """Recursively convert dataclass dicts to JSON-friendly values.
+
+    Tuples become lists; dataclass-dict leaves of dataclasses are handled
+    by the caller via :func:`dataclasses.asdict`. Objects we don't recognise
+    are coerced to strings so ``Observer.collect()`` can ``json.dumps``
+    the metadata.
+    """
+    if isinstance(obj, dict):
+        return {str(k): _as_jsonable(v) for k, v in obj.items()}
+    if isinstance(obj, (list, tuple)):
+        return [_as_jsonable(v) for v in obj]
+    if isinstance(obj, (str, int, float, bool)) or obj is None:
+        return obj
+    return str(obj)
+
+
+__all__ = ["UnifiedEngine"]

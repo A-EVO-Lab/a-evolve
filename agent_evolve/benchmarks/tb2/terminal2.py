@@ -13,8 +13,8 @@ import random
 from pathlib import Path
 from typing import Any
 
-from ..types import Feedback, Task, Trajectory
-from .base import BenchmarkAdapter
+from ...types import Feedback, Task, Trajectory
+from ..base import BenchmarkAdapter
 
 logger = logging.getLogger(__name__)
 
