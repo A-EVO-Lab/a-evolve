@@ -195,7 +195,6 @@ def _normalize_unified_metadata(md: dict, workspace: Any) -> dict:
     return {
         "total_mutations": total_count,
         "mutating_ops": sorted(set(mutating_ops)),
-        "recipe_operators": list(plan.get("operators", [])),
         "verdict_accept": bool(verdict.get("accept", True)),
         "verdict_rollback": bool(verdict.get("rollback", False)),
         "skills_on_disk": sorted(skills_on_disk),
@@ -262,9 +261,6 @@ def _normalize_legacy_metadata(
     return {
         "total_mutations": total,
         "mutating_ops": sorted(mutating_ops),
-        # Legacy engines don't expose an explicit recipe list; the unified
-        # side's recipe is asserted separately via plan parity.
-        "recipe_operators": None,
         "verdict_accept": True,
         "verdict_rollback": False,
         "skills_on_disk": sorted(skills),
@@ -349,10 +345,15 @@ def _assert_step_result_parity(
        signals extracted via engine-specific regex agree between
        unified and legacy (e.g., ``N new skills`` in legacy == the
        ``N skills_added`` count in the unified summary).
-    4. ``metadata``: normalized signal set (``total_mutations``,
-       ``mutating_ops``, ``skills_on_disk``, ``memory_rows_written``,
-       verdict flags) agrees. Legacy signals are read from workspace
-       observables rather than heuristic metadata keys.
+    4. ``metadata``: normalized signal set agrees. Both helpers return the
+       *same 6 keys* (``total_mutations``, ``mutating_ops``,
+       ``skills_on_disk``, ``memory_rows_written``, ``verdict_accept``,
+       ``verdict_rollback``) and a final full-dict assertion enforces key
+       parity — any silent addition to either normalizer becomes a test
+       failure. Legacy signals are read from workspace observables
+       rather than heuristic metadata keys. The plan's ``recipe_operators``
+       is covered separately in
+       ``test_unified_metadata_records_expected_recipe_per_fixture``.
     """
     # Field 1: mutated
     assert unified_result.mutated == legacy_result.mutated, (
@@ -453,6 +454,24 @@ def _assert_step_result_parity(
     )
     assert unified_signals["verdict_accept"] is True
     assert unified_signals["verdict_rollback"] is False
+    # Final full-dict assertion — catches any silent drift in the
+    # normalizer key set. If either helper starts returning a new key,
+    # this fires even when the per-key asserts above don't.
+    assert unified_signals == legacy_signals, (
+        f"normalized metadata dicts differ in shape or values: "
+        f"unified={unified_signals} legacy={legacy_signals}"
+    )
+    assert set(unified_signals.keys()) == {
+        "total_mutations",
+        "mutating_ops",
+        "skills_on_disk",
+        "memory_rows_written",
+        "verdict_accept",
+        "verdict_rollback",
+    }, (
+        f"normalized signal contract drift: expected exactly 6 keys, "
+        f"got {sorted(unified_signals.keys())}"
+    )
 
 
 # ── History stub ─────────────────────────────────────────────

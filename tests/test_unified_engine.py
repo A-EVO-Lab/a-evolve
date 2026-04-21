@@ -228,6 +228,46 @@ def test_step_records_reports_in_operator_order(workspace):
     assert names_in_reports == list(md["unified_plan"]["operators"])
 
 
+def test_step_metadata_has_exactly_ac7_keys(workspace):
+    """AC-7 positive: StepResult.metadata records exactly the 4 unified_* keys.
+
+    AC-7 spec (plan_v1.md line 92):
+      "Each ``step()`` call persists its routing decision and execution
+       trace into ``StepResult.metadata``: ``unified_regime``, ``unified_plan``
+       (with ``reason_trace``), ``unified_reports`` (list of
+       ``MutationReport`` dicts), and ``unified_verdict``."
+
+    Forward-compat guard: if UnifiedEngine gains a new metadata key, this
+    fires so AC-7 stays in lockstep. Downstream differential tests rely on
+    exactly this key set to determine "unified_* fields" for AC-8 exclusion.
+    """
+    cap = FeedbackCapability(has_pass_fail=True)
+    engine = UnifiedEngine(_FakeConfig(), _Bench(cap))
+    _install_mock_llm(engine)
+    obs = [_Obs(_FakeTask("t"), _FakeTrajectory(), _FakeFeedback(True, 1.0, "ok"))]
+    r = engine.step(workspace=workspace, observations=obs, history=_FakeHistory(), trial=None)
+
+    expected_keys = {
+        "unified_regime",
+        "unified_plan",
+        "unified_reports",
+        "unified_verdict",
+    }
+    assert set(r.metadata.keys()) == expected_keys, (
+        f"StepResult.metadata keys drifted from AC-7 spec: "
+        f"expected {expected_keys}, got {sorted(r.metadata.keys())}"
+    )
+    # All keys are prefixed unified_* so AC-8's "excluding the new
+    # unified_* fields" rule correctly strips to {} here (these are all
+    # additive; there are no legacy-compat keys to preserve because the
+    # legacy engines each emit different, non-overlapping key sets and
+    # no shared base contract exists at the metadata level).
+    assert all(k.startswith("unified_") for k in r.metadata), (
+        "AC-8 requires metadata additions to be prefixed unified_* so they "
+        "can be excluded by the batch-entry comparison"
+    )
+
+
 def test_step_is_recipe_stable_across_cycles(workspace):
     """AC-9: Plan byte-equal across 3 cycles on identical capability/config."""
     cap = FeedbackCapability(has_pass_fail=True)

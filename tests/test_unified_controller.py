@@ -242,6 +242,54 @@ def test_controller_never_emits_legacy_engine_field(controller):
         assert "legacy_engine" not in asdict(plan)
 
 
+def test_plan_has_exactly_ac4_fields(controller):
+    """AC-4 positive: Plan records exactly the 5 specified fields — no more, no less.
+
+    Plan spec (plan_v1.md AC-4 line 57):
+      "Each Plan records ``readers``, ``operators``, ``verifier``,
+       ``artifact_scope``, and ``reason_trace``. No ``legacy_engine`` field."
+
+    This test is a forward-compatibility guard: if any future commit adds a
+    field to ``Plan`` (e.g., a ``legacy_engine`` escape hatch, a
+    ``priority`` knob, a ``cycle_budget``), this fires, forcing the plan
+    spec to be updated in lockstep.
+    """
+    from dataclasses import asdict, fields
+
+    expected_fields = {
+        "readers",
+        "operators",
+        "verifier",
+        "artifact_scope",
+        "reason_trace",
+    }
+    # Dataclass-level check.
+    actual_fields = {f.name for f in fields(Plan)}
+    assert actual_fields == expected_fields, (
+        f"Plan fields drifted from AC-4 spec: expected {expected_fields}, "
+        f"got {actual_fields}"
+    )
+
+    # Every emitted Plan across all recipe branches produces exactly these
+    # keys in its asdict() view.
+    for cap in (
+        FeedbackCapability(has_per_claim=True),
+        FeedbackCapability(solver_may_propose=True),
+        FeedbackCapability(has_partial_score=True),
+        FeedbackCapability(),
+    ):
+        regime = RegimeTag(
+            has_pass_fail=True,
+            has_binary_verifier=True,
+            has_per_claim=cap.has_per_claim,
+            has_solver_proposal=cap.solver_may_propose,
+        )
+        plan = controller.plan(regime, cap, _FakeConfig())
+        assert set(asdict(plan).keys()) == expected_fields, (
+            f"Plan asdict() shape drifted: {sorted(asdict(plan).keys())}"
+        )
+
+
 def test_controller_is_deterministic(controller):
     regime = RegimeTag(has_pass_fail=True, has_per_claim=True, has_binary_verifier=True)
     cap = FeedbackCapability(has_per_claim=True)
