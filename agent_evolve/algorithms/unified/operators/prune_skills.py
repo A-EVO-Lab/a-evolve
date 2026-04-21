@@ -81,8 +81,8 @@ class PruneSkills:
             raw = str(mock(user_msg))
         else:
             try:
-                from ...llm.bedrock import BedrockProvider
-                from ...llm.base import LLMMessage
+                from ....llm.bedrock import BedrockProvider
+                from ....llm.base import LLMMessage
             except ImportError as e:
                 logger.warning("PruneSkills: LLM provider unavailable (%s)", e)
                 return MutationReport(

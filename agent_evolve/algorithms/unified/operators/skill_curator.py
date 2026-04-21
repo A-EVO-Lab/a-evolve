@@ -277,12 +277,45 @@ class SkillCurator:
         ctx_text = _build_curation_context(workspace, proposals)
 
         mock = state.get("mock_curator")
+        provider = state.get("llm_provider")
         if callable(mock):
             raw = str(mock(ctx_text))
+        elif provider is not None:
+            # Provider-based path — accepts any object implementing the
+            # ``complete(messages, max_tokens)`` protocol, including the
+            # fake Bedrock providers used in differential parity tests.
+            try:
+                from ....llm.base import LLMMessage
+            except ImportError as e:
+                logger.warning("SkillCurator: LLMMessage unavailable (%s)", e)
+                return MutationReport(
+                    operator_name="SkillCurator",
+                    count=0,
+                    details={"error": f"provider unavailable: {e}"},
+                )
+            prompt = (
+                VERIFICATION_CURATOR_PROMPT if verification_focus else GUIDED_SYNTHESIS_PROMPT
+            )
+            try:
+                response = provider.complete(
+                    [
+                        LLMMessage(role="system", content=prompt),
+                        LLMMessage(role="user", content=ctx_text),
+                    ],
+                    max_tokens=2048,
+                )
+                raw = response.content.strip()
+            except Exception as exc:  # noqa: BLE001
+                logger.error("SkillCurator: provider call failed: %s", exc)
+                return MutationReport(
+                    operator_name="SkillCurator",
+                    count=0,
+                    details={"error": str(exc)[:200]},
+                )
         else:
             try:
-                from ...llm.bedrock import BedrockProvider
-                from ...llm.base import LLMMessage
+                from ....llm.bedrock import BedrockProvider
+                from ....llm.base import LLMMessage
             except ImportError as e:
                 logger.warning("SkillCurator: LLM provider unavailable (%s)", e)
                 return MutationReport(

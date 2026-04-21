@@ -89,18 +89,18 @@ def _make_workspace_bash(workspace_root: str | Path):
 
 def _resolve_llm(model: str, region: str):
     if "." in model and ("anthropic" in model or "amazon" in model or "meta" in model):
-        from ...llm.bedrock import BedrockProvider
+        from ....llm.bedrock import BedrockProvider
 
         return BedrockProvider(model_id=model, region=region), "bedrock"
     if model.startswith("claude"):
-        from ...llm.anthropic import AnthropicProvider
+        from ....llm.anthropic import AnthropicProvider
 
         return AnthropicProvider(model=model), "anthropic"
     if model.startswith(("gpt-", "o1", "o3")):
-        from ...llm.openai import OpenAIProvider
+        from ....llm.openai import OpenAIProvider
 
         return OpenAIProvider(model=model), "openai"
-    from ...llm.bedrock import BedrockProvider
+    from ....llm.bedrock import BedrockProvider
 
     return BedrockProvider(model_id=model), "bedrock"
 
@@ -162,14 +162,55 @@ class LLMBashEvolve:
 
         evidence = dict(getattr(context, "entries", {}))
         user_prompt = _build_user_prompt(evidence, cycle_num)
+        max_tokens = int(state.get("max_tokens", self.DEFAULT_MAX_TOKENS))
+        bash_fn = _make_workspace_bash(workspace.root)
 
+        # Resolution priority for the LLM backend:
+        # 1. ``state["llm_provider"]`` — full provider object; if it is a
+        #    ``BedrockProvider`` subclass the legacy converse_loop + bash
+        #    tool path is used, otherwise the ``.complete()`` path.
+        # 2. ``state["mock"]`` — string-only shortcut for simple tests
+        #    that only need the LLM to return a fixed reply. No bash.
+        # 3. Real provider constructed from ``state["model_id"]``.
+        provider = state.get("llm_provider")
         mock = state.get("mock")
-        if callable(mock):
+
+        if provider is not None:
+            try:
+                from ....llm.bedrock import BedrockProvider
+
+                if isinstance(provider, BedrockProvider):
+                    response = provider.converse_loop(
+                        system_prompt=DEFAULT_EVOLVER_SYSTEM_PROMPT,
+                        user_message=user_prompt,
+                        tools=[BASH_TOOL_SPEC],
+                        tool_executor={"workspace_bash": bash_fn},
+                        max_tokens=max_tokens,
+                    )
+                    response_content = response.content
+                else:
+                    from ....llm.base import LLMMessage
+
+                    response = provider.complete(
+                        [
+                            LLMMessage(role="system", content=DEFAULT_EVOLVER_SYSTEM_PROMPT),
+                            LLMMessage(role="user", content=user_prompt),
+                        ],
+                        max_tokens=max_tokens,
+                    )
+                    response_content = response.content
+            except Exception as exc:  # noqa: BLE001
+                logger.error("LLMBashEvolve: provider call failed: %s", exc)
+                return MutationReport(
+                    operator_name="LLMBashEvolve",
+                    count=0,
+                    details={"error": str(exc)[:200]},
+                )
+        elif callable(mock):
             response_content = mock(user_prompt)
         else:
             model = state.get("model_id", self.DEFAULT_MODEL)
             region = state.get("region", self.DEFAULT_REGION)
-            max_tokens = int(state.get("max_tokens", self.DEFAULT_MAX_TOKENS))
             try:
                 llm, kind = _resolve_llm(model, region)
             except ImportError as e:
@@ -179,21 +220,20 @@ class LLMBashEvolve:
                     count=0,
                     details={"error": f"provider unavailable: {e}"},
                 )
-            bash_fn = _make_workspace_bash(workspace.root)
             try:
-                from ...llm.bedrock import BedrockProvider
+                from ....llm.bedrock import BedrockProvider
 
                 if kind == "bedrock" and isinstance(llm, BedrockProvider):
                     response = llm.converse_loop(
                         system_prompt=DEFAULT_EVOLVER_SYSTEM_PROMPT,
                         user_message=user_prompt,
                         tools=[BASH_TOOL_SPEC],
-                        tool_executor={"workspace_bash": lambda command: bash_fn(command)},
+                        tool_executor={"workspace_bash": bash_fn},
                         max_tokens=max_tokens,
                     )
                     response_content = response.content
                 else:
-                    from ...llm.base import LLMMessage
+                    from ....llm.base import LLMMessage
 
                     response = llm.complete(
                         [

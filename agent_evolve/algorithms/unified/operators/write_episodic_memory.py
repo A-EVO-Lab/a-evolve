@@ -88,8 +88,15 @@ class WriteEpisodicMemory:
                 files_in_patch[:3],
             )
 
+        # Match legacy guided_synth semantics: memory appends do NOT count
+        # toward ``StepResult.mutated``. Legacy defines mutated only via the
+        # curated-skill diff (``len(applied_names) > 0``), treating episodic
+        # memory writes as transient bookkeeping. We keep the actual row
+        # count in ``details`` for observability, but set ``count=0`` so the
+        # engine-level ``any(r.count > 0 for r in reports)`` rollup agrees
+        # with the legacy ``mutated`` boolean.
         return MutationReport(
             operator_name="WriteEpisodicMemory",
-            count=written,
-            details={"cycle": cycle, "tasks": written},
+            count=0,
+            details={"cycle": cycle, "tasks_written": written},
         )
