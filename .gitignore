@@ -144,3 +144,6 @@ examples/tb_examples/skipped/
 agent_evolve/benchmarks/tb2/challenges/
 examples/run_skillbench_solve_all_ablate.sh
 examples/skillbench_evolve_one.py
+
+# Humanize plugin artifacts (codex interaction cache)
+.humanize/skill/
