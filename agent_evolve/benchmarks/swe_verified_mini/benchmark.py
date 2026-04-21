@@ -37,6 +37,16 @@ ERROR_MARKERS = (APPLY_PATCH_FAIL, RESET_FAILED, TESTS_ERROR, TESTS_TIMEOUT,
 class SweVerifiedMiniBenchmark(BenchmarkAdapter):
     """SWE-bench adapter using the swebench package for eval and grading."""
 
+    @property
+    def feedback_capability(self):
+        from ...algorithms.unified.types import FeedbackCapability
+        return FeedbackCapability(
+            has_pass_fail=True,
+            has_per_test=True,
+            solver_may_propose=True,
+            judge_available=True,
+        )
+
     def __init__(
         self,
         dataset_name: str = "MariusHobbhahn/swe-bench-verified-mini",

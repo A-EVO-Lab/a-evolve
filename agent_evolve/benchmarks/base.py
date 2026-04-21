@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 
+from ..algorithms.unified.types import FeedbackCapability
 from ..types import Feedback, Task, Trajectory
 
 
@@ -34,3 +35,17 @@ class BenchmarkAdapter(ABC):
         Should return rich Feedback with a detailed ``detail`` field
         so the evolver can diagnose failures.
         """
+
+    @property
+    def feedback_capability(self) -> FeedbackCapability:
+        """Declare what evidence this benchmark physically provides.
+
+        The default is deliberately conservative — only ``has_pass_fail`` and
+        ``judge_available`` are True. Concrete adapters should override this
+        property to declare their richer evidence profile (per-claim,
+        per-test, partial scores, solver proposals, etc.).
+
+        The unified controller reads this once at ``UnifiedEngine`` construction
+        and never queries it mid-trial; declarations must be static.
+        """
+        return FeedbackCapability()

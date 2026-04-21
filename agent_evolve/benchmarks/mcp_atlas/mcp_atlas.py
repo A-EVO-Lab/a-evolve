@@ -30,6 +30,15 @@ class McpAtlasBenchmark(BenchmarkAdapter):
     comparison against expected output.
     """
 
+    @property
+    def feedback_capability(self):
+        from ...algorithms.unified.types import FeedbackCapability
+        return FeedbackCapability(
+            has_pass_fail=True,
+            has_per_claim=True,
+            judge_available=True,
+        )
+
     def __init__(
         self,
         dataset_name: str = "ScaleAI/MCP-Atlas",

@@ -36,6 +36,15 @@ class SkillBenchBenchmark(BenchmarkAdapter):
     trajectory by :class:`SkillBenchAgent`.
     """
 
+    @property
+    def feedback_capability(self):
+        from ...algorithms.unified.types import FeedbackCapability
+        return FeedbackCapability(
+            has_pass_fail=True,
+            has_partial_score=True,
+            judge_available=True,
+        )
+
     def __init__(
         self,
         tasks_dir: str | None = None,

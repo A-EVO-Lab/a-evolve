@@ -33,6 +33,15 @@ class Terminal2Benchmark(BenchmarkAdapter):
     and evaluates by running test.sh inside Docker containers.
     """
 
+    @property
+    def feedback_capability(self):
+        from ...algorithms.unified.types import FeedbackCapability
+        return FeedbackCapability(
+            has_pass_fail=True,
+            solver_may_propose=True,
+            judge_available=True,
+        )
+
     def __init__(
         self,
         challenges_dir: str | None = None,
