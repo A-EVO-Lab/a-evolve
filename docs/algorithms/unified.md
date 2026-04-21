@@ -207,7 +207,13 @@ No Phase 1 operator writes to `task_skills_dir`. The primitive is present so a P
 
 ## Differential test strategy (AC-8)
 
-Hermetic fixture-based parity tests under `tests/test_unified_differential.py` cover every recipe branch:
+AC-8 parity is verified at two levels:
+
+### Level 1 — Fixture-level replay
+
+Hermetic fixture-based parity tests under `tests/test_unified_differential.py` and `tests/test_unified_legacy_differential.py` cover every recipe branch.
+
+`tests/test_unified_differential.py` (9 tests) pins unified output against hand-rolled expectations per recipe:
 
 | Fixture | Profile | What it pins |
 |---|---|---|
@@ -217,33 +223,55 @@ Hermetic fixture-based parity tests under `tests/test_unified_differential.py` c
 | `_skillbench_fixture` | partial-score, no claims/drafts/proposals | `default` recipe |
 | same MCP-Atlas fixture + `trajectory_only=True` | masked MCP-Atlas | degradation to `trajectory_only` recipe |
 
-For each fixture the test asserts:
+`tests/test_unified_legacy_differential.py` (11 tests) goes further: it imports the real legacy engine classes (`AdaptiveEvolveEngine`, `AdaptiveSkillEngine`, `GuidedSynthesisEngine`, `AEvolveEngine`) and co-runs them alongside `UnifiedEngine` on shared fixtures. Both no-op (`NO_PROPOSALS`) and positive-mutation paths are exercised. For LLM-driven engines a Bedrock-compatible mock (`_FakeBedrockProvider`) is injected via `BedrockProvider.__new__(BedrockProvider)` to satisfy `isinstance` checks without loading `boto3`; its `converse_loop` invokes a real bash command (`workspace_bash`) that writes a skill, so both engines produce the same filesystem delta under a real mutation.
 
-1. **Regime detection** — every field of `RegimeTag` matches the expected values.
-2. **Plan composition** — `Plan.readers`, `Plan.operators`, `Plan.verifier`, `Plan.reason_trace` are byte-equal to the expected tuple.
-3. **Engine metadata** — `StepResult.metadata["unified_plan"]` round-trips through `asdict`, `"unified_regime"` reflects detection, `"unified_verdict"` records accept/rollback.
-4. **Operator effects** — for deterministic operators, direct filesystem assertions (e.g., the exact episodic.jsonl content after `WriteEpisodicMemory`, the exact `SKILL.md` body after `SkillCurator`). For LLM-driven operators (`LLMBashEvolve`, `SkillCurator`, `LLMJudgeReader`), deterministic `state["mock"]` / `state["mock_curator"]` hooks replace the real provider.
-5. **Sidecar persistence** — `evolution/unified_steps.jsonl` is parsed line-by-line and each record is cross-checked against `StepResult.metadata`.
-6. **Recipe stability** — repeated `step()` calls with the same capability/config produce byte-equal plans (AC-9).
-7. **No `legacy_engine` leakage** — the JSON-serialized metadata for every recipe contains no substring `"legacy_engine"`.
+`_assert_step_result_parity` covers every `StepResult` field:
 
-The tests are hermetic. They do not import `strands`, `swebench`, or any HTTP client; they do not touch the network; they stand up `AgentWorkspace` clones against `tmp_path`.
+1. `mutated` — byte-equal boolean.
+2. `stop` — byte-equal boolean (Phase 1 always `False`).
+3. `summary` — numeric signals (skills added, total mutations) extracted via engine-specific regex and asserted equal across unified and legacy summaries.
+4. `metadata` — a 6-key normalized signal dict (`total_mutations`, `mutating_ops`, `skills_on_disk`, `memory_rows_written`, `verdict_accept`, `verdict_rollback`) is asserted equal between legacy and unified sides, plus a full-dict and exact-key-set drift guard.
+
+### Level 2 — Full-loop replay
+
+`tests/test_unified_fullloop_replay.py` (2 tests) runs the real `EvolutionLoop.run(cycles=1)` twice — once with `UnifiedEngine`, once with a legacy engine (`AEvolveEngine`, the simplest recipe) — using a mock `BaseAgent` + mock `BenchmarkAdapter`. Parity assertions:
+
+- Full-content `history.jsonl` equality (only the `timestamp` field is waived via an explicit `_AUTHORIZED_VOLATILE_FIELDS = frozenset({"timestamp"})` set).
+- Full-content `batch_0001.jsonl` equality with the same explicit waiver. `Observer.collect()` is engine-independent (reads only from `Observation`, never from `StepResult.metadata`), so "modulo unified_* fields" reduces to "modulo timestamp" in practice.
+- Git tag parity: both the tag SET *and* `git diff pre-evo-1..evo-1` must match. The diff check uses an explicit `_UNIFIED_PATHSPECS_TO_EXCLUDE = (":(exclude)evolution/unified_steps.jsonl",)` list that applies AC-8's "modulo unified_* fields" rule at the file-path level (the sidecar file is literally a `unified_*` artifact by name).
+
+Both fixture-level and full-loop tests are hermetic — no `strands`, `swebench`, `boto3`, or network clients are imported; workspaces are built fresh under `tmp_path`.
 
 ---
 
 ## CI gates
 
-| Test file | Ensures |
-|---|---|
-| `tests/test_unified_scaffolding.py` | types/registry/capability invariants (20 tests) |
-| `tests/test_unified_atoms.py` | per-atom behaviour and state (22 tests) |
-| `tests/test_unified_controller.py` | regime detection + controller routing (14 tests) |
-| `tests/test_unified_engine.py` | end-to-end `step()` + 4-benchmark routing (9 tests) |
-| `tests/test_unified_import_ban.py` | static grep-based check: no legacy imports under `unified/` (3 tests) |
-| `tests/test_unified_task_skills_isolation.py` | `task_skills_dir` isolation invariants (12 tests) |
-| `tests/test_unified_differential.py` | hermetic parity suite per recipe (9 tests) |
+| Test file | Ensures | Count |
+|---|---|---|
+| `tests/test_unified_scaffolding.py` | types/registry/capability invariants + AC-1 runtime constructor tests for all 4 benchmarks (hermetic — see below) | 26 |
+| `tests/test_unified_atoms.py` | per-atom behaviour, protocol conformance, per-atom state slots, scope enforcement | 22 |
+| `tests/test_unified_controller.py` | regime detection + 5 controller recipe branches + Plan exact-field guard + determinism + no-legacy-engine-field | 15 |
+| `tests/test_unified_engine.py` | end-to-end `step()` + 4-benchmark routing + AC-7 exact-key-set metadata guard + import audit | 10 |
+| `tests/test_unified_import_ban.py` | static grep-based check: no legacy imports under `unified/` | 3 |
+| `tests/test_unified_task_skills_isolation.py` | `task_skills_dir` bidirectional-isolation invariants | 12 |
+| `tests/test_unified_differential.py` | hermetic parity suite per recipe (fixture-level, expectations vs live UnifiedEngine) | 9 |
+| `tests/test_unified_legacy_differential.py` | co-running real legacy engine classes; full `StepResult` parity via 6-key normalized metadata contract + engine-specific summary regex extraction; no-op and positive-mutation paths across all 4 legacy engines | 11 |
+| `tests/test_unified_fullloop_replay.py` | real `EvolutionLoop.run(cycles=1)` replay: full-content history.jsonl + batch_0001.jsonl + git-diff parity (modulo `_AUTHORIZED_VOLATILE_FIELDS` and `_UNIFIED_PATHSPECS_TO_EXCLUDE`) | 2 |
+| `tests/test_skillbench_setup.py` | SkillBench repo fixture + `SkillBenchBenchmark` load path | 6 |
 
-At the time of writing, the full unified test suite runs in well under a second (~89 tests, 2 heavy-dep benchmark-capability tests skipped when `strands`/`swebench` are not installed) and the whole project test run stays green.
+At the time of writing, the full project test run is **116 passed, 0 skipped, 0 failed** (the two earlier `importorskip`-guarded adapter tests were replaced in R9-R14 with hermetic runtime tests using `sys.modules` stubs — see "AC-1 hermetic runtime tests" below).
+
+### AC-1 hermetic runtime tests
+
+The plan requires every benchmark adapter's `feedback_capability` to be callable via the bare constructor (`McpAtlasBenchmark()`, `SweVerifiedMiniBenchmark()`, `Terminal2Benchmark()`, `SkillBenchBenchmark()`). Some adapter modules pull heavy third-party deps (`strands` for MCP-Atlas; `swebench.harness.*` for SWE-bench) at module load, and some have constructors that read env vars or filesystem state. The `test_unified_scaffolding.py` runtime tests use a consistent pattern:
+
+1. **Stub heavy imports** via `monkeypatch.setitem(sys.modules, ...)` with minimal `_fake_pkg` / `_fake_mod` helpers exposing only the symbols the adapter imports.
+2. **Clear env reads** via `monkeypatch.delenv(..., raising=False)` for any env var `__init__` touches (`EVAL_USE_LITELLM` for MCP-Atlas; the 5 `SKILLBENCH_*` vars for SkillBench).
+3. **Control filesystem state** — for SkillBench, build a temp repo tree via `_make_skillbench_repo_tree` and set `SKILLBENCH_REPO_ENV` to it. For Terminal2, build a temp challenges tree and `setenv("TB2_CHALLENGES_DIR", ...)` **before** importing so the module-level `DEFAULT_CHALLENGES_DIR` constant binds to the controlled path; use `_fresh_import` to re-execute the module body and re-bind the constant.
+4. **Instantiate with the bare `Class()` constructor** (no kwargs) so the `__init__` fallback branches (e.g., `self.challenges_dir = challenges_dir or DEFAULT_CHALLENGES_DIR`) execute against the controlled state.
+5. **Assert on the real capability object** — `FrozenInstanceError` on mutation confirms runtime immutability; `benchmark.challenges_dir == str(tmp_challenges)` confirms the bare-constructor fallback landed on the controlled path.
+
+Each adapter also has a supplementary **constructor-variance test** that exercises one non-default argument vector — single counter-example; not a proof of full branch coverage — to guard against `__init__`-time capability mutation.
 
 ---
 
