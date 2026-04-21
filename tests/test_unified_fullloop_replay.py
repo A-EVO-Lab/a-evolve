@@ -147,7 +147,14 @@ def _git_diff(
 # the file-path level for sidecar files — a file literally named
 # `unified_steps.jsonl` is a unified_* artifact at the path level).
 _UNIFIED_PATHSPECS_TO_EXCLUDE: tuple[str, ...] = (
+    # Legacy sidecar file written by UnifiedEngine for jq/debug inspection.
     ":(exclude)evolution/unified_steps.jsonl",
+    # AC-7 persistence target: UnifiedEngine writes step metadata to a
+    # batch-paired file via Observer.append_step_metadata. By naming
+    # convention batch_<N>_step.jsonl, these are unified_*-prefixed
+    # artifacts at the path level and AC-8 excludes them from the
+    # legacy-vs-unified batch-entry parity comparison.
+    ":(exclude)evolution/observations/batch_*_step.jsonl",
 )
 
 
@@ -161,6 +168,14 @@ def _read_history(evolution_dir: Path) -> list[dict[str, Any]]:
 
 
 def _read_batch(evolution_dir: Path, batch_id: int = 1) -> list[dict[str, Any]]:
+    """Return observation records from the batch JSONL.
+
+    Observer.collect() writes only observation records to
+    ``batch_<N>.jsonl``. Engine step metadata (AC-7) is written to the
+    sibling ``batch_<N>_step.jsonl`` via
+    ``Observer.append_step_metadata``, so the batch file itself is pure
+    and this helper needs no filtering.
+    """
     path = evolution_dir / "observations" / f"batch_{batch_id:04d}.jsonl"
     return [
         json.loads(line) for line in path.read_text().splitlines() if line.strip()

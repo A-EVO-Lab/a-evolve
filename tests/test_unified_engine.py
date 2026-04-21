@@ -203,6 +203,66 @@ def test_step_persists_metadata_sidecar(workspace):
     assert "unified_verdict" in record
 
 
+def test_step_persists_metadata_to_batch_pair(tmp_path):
+    """AC-7: Observer.collect() persistence target — step metadata lives
+    in the batch-paired JSONL file alongside the observations, so a
+    reader examining ``observations/`` sees both the observation batch
+    and the per-step unified_* metadata.
+    """
+    from agent_evolve.engine.observer import Observer
+
+    ws = _FakeWorkspace(tmp_path)
+    # Simulate what EvolutionLoop does: seed the batch file first by
+    # calling Observer.collect() on a dummy obs list, then run the
+    # engine step — it must append step metadata to the paired file.
+    evolution_dir = tmp_path / "evolution"
+    evolution_dir.mkdir(parents=True, exist_ok=True)
+    observer = Observer(evolution_dir)
+    observer.collect([])  # writes batch_0001.jsonl (empty observations)
+
+    # Minimal history stub that exposes observer — same contract
+    # EvolutionHistory provides in production.
+    class _Hist:
+        def __init__(self, obs):
+            self._obs = obs
+
+        @property
+        def observer(self):
+            return self._obs
+
+        def get_score_curve(self):
+            return []
+
+    cap = FeedbackCapability(has_pass_fail=True)
+    engine = UnifiedEngine(_FakeConfig(), _Bench(cap))
+    _install_mock_llm(engine)
+
+    obs = [_Obs(_FakeTask("t"), _FakeTrajectory(), _FakeFeedback(True, 1.0, "ok"))]
+    engine.step(workspace=ws, observations=obs, history=_Hist(observer), trial=None)
+
+    # The engine must have appended to batch_0001_step.jsonl (sibling).
+    step_file = evolution_dir / "observations" / "batch_0001_step.jsonl"
+    assert step_file.exists(), (
+        f"Expected step-metadata file at {step_file}; "
+        f"observations dir: {list((evolution_dir/'observations').iterdir())}"
+    )
+    lines = step_file.read_text().strip().splitlines()
+    assert len(lines) == 1
+    rec = json.loads(lines[0])
+    assert rec["_record_type"] == "step_metadata"
+    assert "unified_plan" in rec
+    assert "unified_regime" in rec
+    assert "unified_reports" in rec
+    assert "unified_verdict" in rec
+
+    # The original batch_0001.jsonl must remain pure observation records
+    # (empty in this case because we passed []).
+    batch_file = evolution_dir / "observations" / "batch_0001.jsonl"
+    assert batch_file.exists()
+    batch_lines = batch_file.read_text().strip().splitlines()
+    assert batch_lines == []  # empty obs list
+
+
 def test_step_records_reports_in_operator_order(workspace):
     """AC-7: unified_reports order matches plan.operators order."""
     cap = FeedbackCapability(has_per_claim=True, has_pass_fail=True, judge_available=True)
@@ -265,6 +325,63 @@ def test_step_metadata_has_exactly_ac7_keys(workspace):
     assert all(k.startswith("unified_") for k in r.metadata), (
         "AC-8 requires metadata additions to be prefixed unified_* so they "
         "can be excluded by the batch-entry comparison"
+    )
+
+
+def test_step_calls_history_rollback_when_verdict_requests(workspace):
+    """AC-5: when a verifier returns Verdict(rollback=True), the engine
+    must actually call ``history.rollback_workspace()`` — not just log.
+
+    Uses a spy history that records the rollback call and a recipe
+    that pins a custom verifier returning rollback=True.
+    """
+    from agent_evolve.algorithms.unified.registry import (
+        register_verifier, VERIFIERS,
+    )
+    from agent_evolve.algorithms.unified.types import Verdict
+
+    # Register a test-only verifier that always requests rollback.
+    class _AlwaysRollback:
+        def check(self, workspace, context, reports, trial, history, state):
+            return Verdict(accept=False, rollback=True, reason="test-rollback")
+
+    # Register under a unique name so we can also swap back.
+    if "TestRollbackVerifier" not in VERIFIERS:
+        register_verifier("TestRollbackVerifier")(_AlwaysRollback)
+
+    # Build a fake history that spies on rollback_workspace calls.
+    class _RollbackSpyHistory:
+        def __init__(self):
+            self.rollback_calls: list[str] = []
+
+        def get_score_curve(self):
+            return []
+
+        def rollback_workspace(self, ref: str = "HEAD~1") -> None:
+            self.rollback_calls.append(ref)
+
+    # Patch UnifiedEngine to use our test verifier: inject a plan that
+    # names TestRollbackVerifier. Easiest path is to patch the
+    # controller's plan() to return the desired plan.
+    from agent_evolve.algorithms.unified.types import Plan
+
+    cap = FeedbackCapability(has_pass_fail=True)
+    engine = UnifiedEngine(_FakeConfig(), _Bench(cap))
+    engine.controller.plan = lambda regime, capability, config: Plan(
+        readers=("PassFailReader",),
+        operators=(),
+        verifier="TestRollbackVerifier",
+        artifact_scope={"skills": "rw"},
+        reason_trace=("test-forced-rollback",),
+    )
+
+    spy = _RollbackSpyHistory()
+    obs = [_Obs(_FakeTask("t"), _FakeTrajectory(), _FakeFeedback(True, 1.0, "ok"))]
+    engine.step(workspace=workspace, observations=obs, history=spy, trial=None)
+
+    # AC-5 invariant: rollback was actually executed.
+    assert spy.rollback_calls == ["HEAD~1"], (
+        f"Expected one rollback call to HEAD~1; got {spy.rollback_calls}"
     )
 
 

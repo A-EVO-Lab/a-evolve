@@ -28,6 +28,18 @@ class EvolutionHistory:
         self._versioning = versioning
         self._cycle_records: list[CycleRecord] = []
 
+    @property
+    def observer(self) -> Observer:
+        """Exposed so engines can call ``observer.append_step_metadata(...)``
+        to persist their ``StepResult.metadata`` into the batch JSONL.
+
+        This satisfies AC-7 ("Observer.collect() persists these to the
+        batch JSONL") without modifying the loop — the engine writes
+        its own trailer record to the same file Observer.collect()
+        wrote the observations to.
+        """
+        return self._observer
+
     # ── Cycle records ─────────────────────────────────────────
 
     def record_cycle(self, record: CycleRecord) -> None:
@@ -87,3 +99,15 @@ class EvolutionHistory:
     def get_version_log(self, n: int = 30) -> str:
         """Git log (oneline) for the workspace."""
         return self._versioning.get_log(n=n)
+
+    # ── Workspace mutation (for engines that need rollback) ──────
+
+    def rollback_workspace(self, ref: str = "HEAD~1") -> None:
+        """Restore workspace content from *ref* as a NEW commit.
+
+        Used by engines (e.g., UnifiedEngine) when a verifier's Verdict
+        requests rollback. Delegates to the underlying VersionControl so
+        the operation is idempotent and preserves the rejected version
+        in git history.
+        """
+        self._versioning.rollback(ref)

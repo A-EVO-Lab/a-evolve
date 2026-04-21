@@ -29,17 +29,22 @@ logger = logging.getLogger(__name__)
 class FixHallucinations:
     """Operator that fuses hallucination-correction + memory pruning.
 
-    Internal state:
-        ``state["name_corrections"]`` — dict[str, str] of wrong→correct tool
-        names accumulated across cycles. Seeded from
-        ``context["PatternDetector"]`` or hallucination hints carried in
-        observations; callers may also push to this dict directly from
-        their own diagnostics.
+    Internal state (AC-6 plan name: ``state["_accumulated_state"]``,
+    a dict that wraps the per-atom carry-over):
+
+        ``state["_accumulated_state"]["name_corrections"]`` — dict[str, str]
+        of wrong→correct tool names accumulated across cycles. Seeded
+        from ``context["PatternDetector"]`` or hallucination hints
+        carried in observations; callers may also push to this dict
+        directly from their own diagnostics. Mirrors legacy
+        ``AdaptiveEvolveEngine._accumulated_state["name_corrections"]``
+        at ``adaptive_evolve/engine.py:204``.
+
+        ``state["_accumulated_state"]["existing_param_keys"]`` — set of
+        tool names already recorded with param-error memory so
+        duplicates are skipped across cycles.
 
         ``state["memory_cap"]`` — int (default 15); legacy default.
-
-        ``state["existing_keys"]`` — set of tool names already recorded with
-        param-error memory so duplicates are skipped across cycles.
     """
 
     WRITES: frozenset[str] = frozenset({"skills", "memory"})
@@ -54,9 +59,14 @@ class FixHallucinations:
         fixes = 0
         details: dict[str, Any] = {}
 
-        name_corrections: dict[str, str] = state.setdefault("name_corrections", {})
+        accumulated: dict[str, Any] = state.setdefault("_accumulated_state", {})
+        name_corrections: dict[str, str] = accumulated.setdefault(
+            "name_corrections", {}
+        )
         memory_cap: int = int(state.get("memory_cap", 15))
-        existing_param_keys: set[str] = state.setdefault("existing_param_keys", set())
+        existing_param_keys: set[str] = accumulated.setdefault(
+            "existing_param_keys", set()
+        )
 
         # Pull hallucination map out of the PatternDetector / observation info if present.
         patterns_out = context.entries.get("PatternDetector", {}) if hasattr(context, "entries") else {}

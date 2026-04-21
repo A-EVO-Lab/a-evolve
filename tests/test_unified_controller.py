@@ -170,8 +170,8 @@ def test_controller_per_claim_recipe(controller):
     assert plan.readers == (
         "PassFailReader",
         "ClaimReader",
-        "ClaimTypeAnalyzer",
         "PatternDetector",
+        "ClaimTypeAnalyzer",
         "ScoreCurveReader",
     )
     assert plan.operators == (

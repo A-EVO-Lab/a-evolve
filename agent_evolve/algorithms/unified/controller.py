@@ -35,8 +35,8 @@ class RuleBasedController:
                 readers=(
                     "PassFailReader",
                     "ClaimReader",
-                    "ClaimTypeAnalyzer",
                     "PatternDetector",
+                    "ClaimTypeAnalyzer",
                     "ScoreCurveReader",
                 ),
                 operators=(

@@ -364,8 +364,8 @@ def test_write_episodic_memory_accumulates_cycle(workspace):
     state: dict[str, Any] = {}
     op.apply(workspace, ctx, {"memory": "append"}, state)
     op.apply(workspace, ctx, {"memory": "append"}, state)
-    # cycle_count should be 2 after two applies.
-    assert state["cycle_count"] == 2
+    # _cycle_count should be 2 after two applies (AC-6 plan-named key).
+    assert state["_cycle_count"] == 2
     lines = (workspace.memory_dir / "episodic.jsonl").read_text().strip().splitlines()
     assert len(lines) == 2
     data = [json.loads(l) for l in lines]
@@ -449,7 +449,7 @@ def test_stagnation_rollback_triggers_after_window():
     state: dict[str, Any] = {
         "improvement_threshold": 0.02,
         "stagnation_window": 3,
-        "best_pass_rate": 0.5,
+        "_best_pass_rate": 0.5,  # AC-6 plan-named key
     }
     # Feed three cycles with declining pass_rate; no improvement
     # but degradation is large enough to trigger.
@@ -462,12 +462,13 @@ def test_stagnation_rollback_triggers_after_window():
 
 def test_stagnation_rollback_accepts_on_improvement():
     v = get_verifier("StagnationRollback")
-    state: dict[str, Any] = {"best_pass_rate": 0.5}
+    # AC-6 plan-named state key: underscore prefix.
+    state: dict[str, Any] = {"_best_pass_rate": 0.5}
     ctx = EvidenceContext()
     ctx.entries["PassFailReader"] = {"pass_rate": 0.6}
     verdict = v.check(None, ctx, [], None, None, state)
     assert verdict.accept is True
-    assert state["best_pass_rate"] == 0.6
+    assert state["_best_pass_rate"] == 0.6
 
 
 # ── Scope enforcement ──────────────────────────────────────────

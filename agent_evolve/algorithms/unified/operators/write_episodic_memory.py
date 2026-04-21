@@ -4,8 +4,9 @@ Reference: ``agent_evolve/algorithms/guided_synth/engine.py`` lines 240-276
 (``_write_minimal_memory``). Independent reimplementation under ``unified/``.
 
 Per-cycle state:
-    ``state["cycle_count"]`` — monotonically-increasing cycle counter used
-    in the stored entries. Matches legacy ``self._cycle_count``.
+    ``state["_cycle_count"]`` — monotonically-increasing cycle counter
+    used in the stored entries. Matches legacy ``self._cycle_count``
+    (AC-6 plan text uses the underscore-prefixed name).
 """
 
 from __future__ import annotations
@@ -40,8 +41,8 @@ class WriteEpisodicMemory:
         if scope.get("memory") not in ("rw", "append"):
             return MutationReport(operator_name="WriteEpisodicMemory", count=0)
 
-        cycle = int(state.get("cycle_count", 0)) + 1
-        state["cycle_count"] = cycle
+        cycle = int(state.get("_cycle_count", 0)) + 1
+        state["_cycle_count"] = cycle
 
         # We need the observations list; it is stashed in the context by the
         # engine under a well-known key. Fall back to pass-fail reader if the

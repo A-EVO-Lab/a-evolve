@@ -1164,8 +1164,8 @@ def test_unified_metadata_records_expected_recipe_per_fixture(tmp_path):
             (
                 "PassFailReader",
                 "ClaimReader",
-                "ClaimTypeAnalyzer",
                 "PatternDetector",
+                "ClaimTypeAnalyzer",
                 "ScoreCurveReader",
             ),
             ("FixHallucinations", "AutoSeedSkills", "LLMBashEvolve", "SanityCheck"),

@@ -118,7 +118,23 @@ class UnifiedEngine(EvolutionEngine):
             workspace, context, reports, trial, history, v_slot
         )
         if verdict.rollback:
-            logger.warning("Verifier %s requested rollback: %s", plan.verifier, verdict.reason)
+            logger.warning(
+                "Verifier %s requested rollback: %s", plan.verifier, verdict.reason
+            )
+            # Actually restore the workspace instead of only logging. The
+            # plan's AC-5 requires rollback to be applied when a verdict
+            # demands it. Legacy engines use the project's ``VersionControl``
+            # (via ``history.rollback_workspace``) which checks out the
+            # previous state as a new commit, preserving the rejected
+            # version in git history.
+            try:
+                history.rollback_workspace()
+            except Exception as exc:  # noqa: BLE001
+                # Rollback failures are logged but not re-raised — the
+                # engine must not crash the loop over a git hiccup. The
+                # caller can inspect ``verdict.rollback=True`` to see
+                # that rollback was attempted.
+                logger.error("Workspace rollback failed: %s", exc)
 
         mutated = any(r.count > 0 for r in reports) and not verdict.rollback
 
@@ -129,10 +145,24 @@ class UnifiedEngine(EvolutionEngine):
             "unified_verdict": _as_jsonable(asdict(verdict)),
         }
 
-        # Persist a per-cycle record to the workspace's evolution dir so that
-        # the unified routing decision is observable on disk even though the
-        # default EvolutionLoop does not forward step_result.metadata to the
-        # Observer.
+        # AC-7: Observer.collect() persists unified_* fields to the batch
+        # JSONL. Since EvolutionLoop.run() calls observer.collect(observations)
+        # BEFORE engine.step(), the batch file exists by the time we get
+        # here. We append a trailer record (marked with
+        # _record_type=step_metadata) carrying the unified_* keys to the
+        # same batch file. Downstream readers distinguish observation
+        # rows (no _record_type) from step-metadata rows (_record_type
+        # == step_metadata).
+        observer = getattr(history, "observer", None)
+        if observer is not None:
+            try:
+                observer.append_step_metadata(metadata)
+            except Exception as exc:  # noqa: BLE001
+                logger.warning("Could not append step metadata to batch: %s", exc)
+
+        # Also keep the sidecar file for debugging/jq inspection. Not
+        # required by AC-7 but useful and preserved for backwards
+        # compatibility with any consumer that already reads it.
         self._persist_step_metadata(workspace, metadata, mutated)
 
         # Summary: human-readable AND machine-parseable. The numeric tags

@@ -323,8 +323,8 @@ def test_mcp_atlas_recipe_parity(tmp_path):
     assert plan.readers == (
         "PassFailReader",
         "ClaimReader",
-        "ClaimTypeAnalyzer",
         "PatternDetector",
+        "ClaimTypeAnalyzer",
         "ScoreCurveReader",
     )
     assert plan.operators == (

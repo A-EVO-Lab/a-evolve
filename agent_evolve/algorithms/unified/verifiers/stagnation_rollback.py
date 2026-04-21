@@ -10,9 +10,9 @@ Registered for future recipes and direct invocation via a recipe that
 opts in.
 
 State keys (persisted across cycles):
-    ``state["best_pass_rate"]`` — float
-    ``state["best_tag"]`` — str   ← e.g., "pre-evo-3"
-    ``state["cycles_without_improvement"]`` — int
+    ``state["_best_pass_rate"]`` — float (AC-6 plan name)
+    ``state["_best_tag"]`` — str   ← e.g., "pre-evo-3"
+    ``state["_cycles_without_improvement"]`` — int
     ``state["improvement_threshold"]`` — float (default 0.02)
     ``state["stagnation_window"]`` — int (default 5)
 """
@@ -47,27 +47,27 @@ class StagnationRollback:
         if current is None:
             return Verdict(accept=True, rollback=False, reason="no pass_rate to gate on")
 
-        best = float(state.get("best_pass_rate", 0.0))
+        best = float(state.get("_best_pass_rate", 0.0))
         improvement = current - best
         if improvement >= threshold:
-            state["best_pass_rate"] = current
-            state["cycles_without_improvement"] = 0
+            state["_best_pass_rate"] = current
+            state["_cycles_without_improvement"] = 0
             # Best tag defaults to the current pre-evo tag if one is
             # present in history; otherwise leave unchanged.
-            state["best_tag"] = state.get("best_tag", "")
+            state["_best_tag"] = state.get("_best_tag", "")
             return Verdict(accept=True, rollback=False, reason=f"improved +{improvement:.3f}")
 
-        waits = int(state.get("cycles_without_improvement", 0)) + 1
-        state["cycles_without_improvement"] = waits
+        waits = int(state.get("_cycles_without_improvement", 0)) + 1
+        state["_cycles_without_improvement"] = waits
         if waits >= window:
             degradation = best - current
             if degradation > 0.05 or best < 0.90:
-                best_tag = state.get("best_tag") or ""
+                best_tag = state.get("_best_tag") or ""
                 logger.warning(
                     "Stagnation: %d cycles w/o improvement; best=%.3f current=%.3f; rollback → %s",
                     waits, best, current, best_tag,
                 )
-                state["cycles_without_improvement"] = 0
+                state["_cycles_without_improvement"] = 0
                 return Verdict(
                     accept=False,
                     rollback=True,
