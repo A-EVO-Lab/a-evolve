@@ -100,6 +100,10 @@ class AutoSeedSkills:
                     "Auto-seeded %s skill (pass rate: %.2f)", skill_name, pass_rate
                 )
 
+        # Publish the seeded skill names under the canonical
+        # ``skills_added`` key so UnifiedEngine.step() can roll them up
+        # into the summary alongside other operators.
+        details["skills_added"] = list(details.get("seeded", []))
         return MutationReport(
             operator_name="AutoSeedSkills", count=seeded, details=details
         )

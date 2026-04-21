@@ -135,11 +135,34 @@ class UnifiedEngine(EvolutionEngine):
         # Observer.
         self._persist_step_metadata(workspace, metadata, mutated)
 
+        # Summary: human-readable AND machine-parseable. The numeric tags
+        # (``<N> mutations``, ``<K> skills changed``) are stable suffixes
+        # that a differential-test summary parser can match regex against,
+        # so ``_extract_summary_signals`` in
+        # ``tests/test_unified_legacy_differential.py`` can assert the same
+        # numbers appear in both legacy and unified summaries.
+        total_count = sum(int(r.count) for r in reports)
+        # Count skills changes across the whole recipe via the canonical
+        # "skills_added" / "skills_removed" keys that operators publish
+        # in their MutationReport.details.
+        skills_added_n = 0
+        skills_removed_n = 0
+        for r in reports:
+            details = getattr(r, "details", {}) or {}
+            skills_added_n += len(details.get("skills_added", []) or [])
+            skills_removed_n += len(details.get("skills_removed", []) or [])
+
+        summary = (
+            f"UnifiedEngine: recipe={list(plan.operators)}, "
+            f"{total_count} mutations, "
+            f"{skills_added_n} skills_added, "
+            f"{skills_removed_n} skills_removed, "
+            f"verdict={verdict.reason}"
+        )
+
         return StepResult(
             mutated=mutated,
-            summary=(
-                f"recipe={list(plan.operators)}, verdict={verdict.reason}"
-            ),
+            summary=summary,
             metadata=metadata,
             stop=False,
         )

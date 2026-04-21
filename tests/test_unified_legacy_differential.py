@@ -144,12 +144,14 @@ class _FakeBedrockProvider:
 # ── StepResult comparison helpers ────────────────────────────
 
 
-def _normalize_unified_metadata(md: dict) -> dict:
+def _normalize_unified_metadata(md: dict, workspace: Any) -> dict:
     """Extract the common-signal view of a UnifiedEngine StepResult.metadata.
 
-    ``WriteEpisodicMemory`` returns ``count=0`` by design (memory appends
-    don't influence ``StepResult.mutated`` in legacy guided_synth either),
-    so we detect it by looking at its ``details.tasks_written`` slot.
+    Reads the per-operator reports and the workspace itself to compute the
+    canonical observable signal dict. ``WriteEpisodicMemory`` returns
+    ``count=0`` by design (memory appends don't influence
+    ``StepResult.mutated`` in legacy guided_synth either); we detect it via
+    ``details.tasks_written`` and also via the on-disk ``episodic.jsonl``.
     """
     reports = md.get("unified_reports", [])
     plan = md.get("unified_plan", {})
@@ -157,24 +159,47 @@ def _normalize_unified_metadata(md: dict) -> dict:
 
     total_count = sum(int(r.get("count", 0)) for r in reports)
     mutating_ops: list[str] = []
+    skills_added: list[str] = []
+    skills_removed: list[str] = []
+    memory_rows = 0
     for r in reports:
         name = r["operator_name"]
+        details = r.get("details") or {}
         if int(r.get("count", 0)) > 0:
             mutating_ops.append(name)
-            continue
-        # WriteEpisodicMemory is a special case: count=0 by convention
-        # (see operator docstring), but it still touches the filesystem.
         if name == "WriteEpisodicMemory":
-            tasks_written = int((r.get("details") or {}).get("tasks_written", 0))
-            if tasks_written > 0:
+            tasks_written = int(details.get("tasks_written", 0))
+            memory_rows += tasks_written
+            if tasks_written > 0 and name not in mutating_ops:
                 mutating_ops.append(name)
                 total_count += tasks_written
+        for sk in details.get("skills_added", []) or []:
+            skills_added.append(sk)
+        for sk in details.get("skills_removed", []) or []:
+            skills_removed.append(sk)
+        for seeded in (details.get("seeded", []) or []):
+            skills_added.append(seeded)
+        for item in (details.get("applied", []) or []):
+            # guided_synth SkillCurator reports applied as "accept:name".
+            if isinstance(item, str) and ":" in item:
+                skills_added.append(item.split(":", 1)[1])
+
+    # Also derive memory rows from the filesystem (belt-and-braces).
+    mem_path = Path(workspace.root) / "memory" / "episodic.jsonl"
+    if mem_path.exists() and memory_rows == 0:
+        lines = [l for l in mem_path.read_text().splitlines() if l.strip()]
+        memory_rows = len(lines)
+
+    skills_on_disk = {s.name for s in workspace.list_skills()}
+
     return {
         "total_mutations": total_count,
-        "mutating_ops": sorted(mutating_ops),
+        "mutating_ops": sorted(set(mutating_ops)),
         "recipe_operators": list(plan.get("operators", [])),
         "verdict_accept": bool(verdict.get("accept", True)),
         "verdict_rollback": bool(verdict.get("rollback", False)),
+        "skills_on_disk": sorted(skills_on_disk),
+        "memory_rows_written": memory_rows,
     }
 
 
@@ -190,20 +215,23 @@ def _normalize_legacy_metadata(
     heuristically parsing metadata fields that overlap in legacy (e.g.,
     ``AdaptiveEvolveEngine.metadata["auto_fixes"]`` bundles both
     hallucination corrections AND auto-seeded skills), this helper reads
-    *workspace* signals — which are the same observables the unified
-    engine emits via ``MutationReport.count``.
+    *workspace* signals — the same observables the unified engine
+    emits. Returned keys mirror :func:`_normalize_unified_metadata` so
+    ``assert legacy == unified`` is meaningful.
     """
     total = 0
     mutating_ops: list[str] = []
     skills = {s.name for s in workspace.list_skills()}
+    memory_rows = 0
+    mem_path = Path(workspace.root) / "memory" / "episodic.jsonl"
+    if mem_path.exists():
+        lines = [l for l in mem_path.read_text().splitlines() if l.strip()]
+        memory_rows = len(lines)
 
     if engine_name == "AdaptiveEvolveEngine":
-        # FixHallucinations writes ``tool-name-corrections`` skill when there
-        # were tool-name hallucinations in the observations.
         if "tool-name-corrections" in skills:
             mutating_ops.append("FixHallucinations")
             total += 1
-        # AutoSeedSkills writes handler skills on pattern triggers.
         seeded = {
             n
             for n in skills
@@ -213,7 +241,6 @@ def _normalize_legacy_metadata(
         if seeded:
             mutating_ops.append("AutoSeedSkills")
             total += len(seeded)
-        # SanityCheck: legacy reports sanity_fixes as a list.
         sanity_fixes = md.get("sanity_fixes", []) or []
         if isinstance(sanity_fixes, list) and len(sanity_fixes) > 0:
             mutating_ops.append("SanityCheck")
@@ -224,19 +251,9 @@ def _normalize_legacy_metadata(
             mutating_ops.append("LLMBashEvolve")
             total += new_skills
     elif engine_name == "GuidedSynthesisEngine":
-        # WriteEpisodicMemory: legacy always writes one row per observation
-        # when write_memory=True (default). Check via episodic.jsonl size.
-        mem_path = Path(workspace.root) / "memory" / "episodic.jsonl"
-        if mem_path.exists():
-            lines = [l for l in mem_path.read_text().splitlines() if l.strip()]
-            # Only count the rows written THIS step() — the test fixture
-            # starts with an empty workspace so all rows are from this
-            # call. Multi-cycle tests accumulate rows but still match
-            # between unified and legacy, so counts stay aligned.
-            if len(lines) > 0:
-                mutating_ops.append("WriteEpisodicMemory")
-                total += observations_count
-        # SkillCurator writes skills for each ACCEPT/REPLACE/MERGE decision.
+        if memory_rows > 0:
+            mutating_ops.append("WriteEpisodicMemory")
+            total += observations_count
         applied = md.get("applied", [])
         if applied:
             mutating_ops.append("SkillCurator")
@@ -245,13 +262,69 @@ def _normalize_legacy_metadata(
     return {
         "total_mutations": total,
         "mutating_ops": sorted(mutating_ops),
-        # ``recipe_operators`` is intentionally left loose for legacy —
-        # legacy engines don't expose an explicit recipe. The parity
-        # test asserts the unified recipe separately.
+        # Legacy engines don't expose an explicit recipe list; the unified
+        # side's recipe is asserted separately via plan parity.
         "recipe_operators": None,
         "verdict_accept": True,
         "verdict_rollback": False,
+        "skills_on_disk": sorted(skills),
+        "memory_rows_written": memory_rows,
     }
+
+
+_LEGACY_SUMMARY_PATTERNS: dict[str, list[tuple[str, str]]] = {
+    # (label, regex) — regex must have one capturing group returning a
+    # non-negative integer. Labels match a key in
+    # :func:`_extract_unified_summary_signals` so parity is asserted across
+    # both engine families.
+    "AdaptiveSkillEngine": [
+        # Summary format: "A-Evolve: <N> new skills, <M> drafts reviewed"
+        ("skills_added", r"(\d+) new skills"),
+    ],
+    "AEvolveEngine": [
+        ("skills_added", r"(\d+) new skills"),
+    ],
+    "GuidedSynthesisEngine": [
+        # Summary format: "guided-synth cycle N: curated P proposals, applied A: [...]"
+        ("proposals_applied", r"applied (\d+)"),
+    ],
+    "AdaptiveEvolveEngine": [
+        # Summary format: "AdaptiveEvolve: F auto-fixes, N new skills, P patterns detected"
+        # legacy measures skills_before AFTER auto-seed (engine.py:211), so
+        # `new skills` in the summary is strictly LLM-added (excluding auto-seed).
+        # `auto-fixes` bundles hallucination corrections + auto-seed + sanity
+        # fixes and is the closest analog to the unified total_mutations.
+        ("total_mutations", r"(\d+) auto-fixes"),
+    ],
+}
+
+
+def _extract_summary_signals(summary: str, patterns: list[tuple[str, str]]) -> dict[str, int]:
+    """Pull numeric counts out of a human-readable summary string."""
+    import re
+
+    out: dict[str, int] = {}
+    for label, pattern in patterns:
+        m = re.search(pattern, summary)
+        if m is not None:
+            try:
+                out[label] = int(m.group(1))
+            except (ValueError, IndexError):
+                pass
+    return out
+
+
+_UNIFIED_SUMMARY_PATTERNS: list[tuple[str, str]] = [
+    # Matches "N skills_added" and "N skills_removed" from the unified
+    # summary format produced by ``UnifiedEngine.step()``.
+    ("skills_added", r"(\d+) skills_added"),
+    ("skills_removed", r"(\d+) skills_removed"),
+    ("total_mutations", r"(\d+) mutations"),
+]
+
+
+def _extract_unified_summary_signals(summary: str) -> dict[str, int]:
+    return _extract_summary_signals(summary, _UNIFIED_SUMMARY_PATTERNS)
 
 
 def _assert_step_result_parity(
@@ -264,27 +337,95 @@ def _assert_step_result_parity(
     legacy_workspace,
     observations_count: int,
 ) -> None:
-    """Full StepResult parity check.
+    """Full StepResult parity check covering every field of StepResult.
 
-    Verifies:
-    - ``mutated`` matches.
-    - Non-empty summary strings on both sides.
-    - Normalized signal set (``total_mutations`` + sorted ``mutating_ops``)
-      agrees. Legacy signals come from workspace observables rather than
-      metadata keys, because legacy metadata bundles multiple operator
-      counts into single fields like ``auto_fixes``.
+    StepResult has four fields: ``mutated``, ``summary``, ``metadata``,
+    ``stop``. This helper asserts parity on all four:
+
+    1. ``mutated``: byte-equal boolean.
+    2. ``stop``: byte-equal boolean (both engines leave it at False for
+       normal step() calls; only GEPA opts into ``stop=True``).
+    3. ``summary``: meaningful — both strings are non-empty AND numeric
+       signals extracted via engine-specific regex agree between
+       unified and legacy (e.g., ``N new skills`` in legacy == the
+       ``N skills_added`` count in the unified summary).
+    4. ``metadata``: normalized signal set (``total_mutations``,
+       ``mutating_ops``, ``skills_on_disk``, ``memory_rows_written``,
+       verdict flags) agrees. Legacy signals are read from workspace
+       observables rather than heuristic metadata keys.
     """
+    # Field 1: mutated
     assert unified_result.mutated == legacy_result.mutated, (
         f"mutated disagreement: unified={unified_result.mutated} "
         f"legacy={legacy_result.mutated}"
     )
     if expect_mutation:
         assert unified_result.mutated is True
-    # Both sides must produce a non-empty human-readable summary.
+
+    # Field 4 (first, so one side can't silently opt out of the loop):
+    # stop — both sides must leave it at False for normal step() calls.
+    assert unified_result.stop == legacy_result.stop, (
+        f"stop disagreement: unified={unified_result.stop} "
+        f"legacy={legacy_result.stop}"
+    )
+    assert unified_result.stop is False, (
+        "step() should not set stop=True under any Phase 1 recipe "
+        "(only GEPA's manages_own_evaluation engine opts into stop=True)"
+    )
+
+    # Field 2: summary — meaningful comparison via engine-specific regex.
     assert isinstance(unified_result.summary, str) and unified_result.summary.strip()
     assert isinstance(legacy_result.summary, str) and legacy_result.summary.strip()
+    legacy_summary_signals = _extract_summary_signals(
+        legacy_result.summary,
+        _LEGACY_SUMMARY_PATTERNS.get(legacy_engine_name, []),
+    )
+    unified_summary_signals = _extract_unified_summary_signals(unified_result.summary)
+    # For every signal that legacy extracted (e.g., "N new skills"),
+    # the matching unified signal must agree.
+    if "skills_added" in legacy_summary_signals:
+        assert (
+            legacy_summary_signals["skills_added"]
+            == unified_summary_signals.get("skills_added", -1)
+        ), (
+            f"summary skills_added disagreement: "
+            f"legacy={legacy_summary_signals['skills_added']} "
+            f"unified={unified_summary_signals.get('skills_added')}"
+            f"\n  legacy summary: {legacy_result.summary!r}"
+            f"\n  unified summary: {unified_result.summary!r}"
+        )
+    if "proposals_applied" in legacy_summary_signals:
+        # guided_synth's "applied N" maps to unified's skills_added count
+        # via the SkillCurator report.
+        assert (
+            legacy_summary_signals["proposals_applied"]
+            == unified_summary_signals.get("skills_added", -1)
+        ), (
+            f"summary proposals_applied disagreement: "
+            f"legacy={legacy_summary_signals['proposals_applied']} "
+            f"unified={unified_summary_signals.get('skills_added')}"
+            f"\n  legacy summary: {legacy_result.summary!r}"
+            f"\n  unified summary: {unified_result.summary!r}"
+        )
+    if "total_mutations" in legacy_summary_signals:
+        # AdaptiveEvolveEngine's "N auto-fixes" bundles hallucination +
+        # auto-seed + sanity counts; it is the closest analog to the
+        # unified summary's "N mutations".
+        assert (
+            legacy_summary_signals["total_mutations"]
+            == unified_summary_signals.get("total_mutations", -1)
+        ), (
+            f"summary total_mutations disagreement: "
+            f"legacy={legacy_summary_signals['total_mutations']} "
+            f"unified={unified_summary_signals.get('total_mutations')}"
+            f"\n  legacy summary: {legacy_result.summary!r}"
+            f"\n  unified summary: {unified_result.summary!r}"
+        )
 
-    unified_signals = _normalize_unified_metadata(unified_result.metadata or {})
+    # Field 3: metadata — normalized signals agreement.
+    unified_signals = _normalize_unified_metadata(
+        unified_result.metadata or {}, unified_workspace
+    )
     legacy_signals = _normalize_legacy_metadata(
         legacy_result.metadata or {},
         legacy_engine_name,
@@ -301,6 +442,17 @@ def _assert_step_result_parity(
         f"mutating_ops disagreement: unified={unified_signals['mutating_ops']} "
         f"legacy={legacy_signals['mutating_ops']}"
     )
+    assert unified_signals["skills_on_disk"] == legacy_signals["skills_on_disk"], (
+        f"skills_on_disk disagreement: unified={unified_signals['skills_on_disk']} "
+        f"legacy={legacy_signals['skills_on_disk']}"
+    )
+    assert unified_signals["memory_rows_written"] == legacy_signals["memory_rows_written"], (
+        f"memory_rows_written disagreement: "
+        f"unified={unified_signals['memory_rows_written']} "
+        f"legacy={legacy_signals['memory_rows_written']}"
+    )
+    assert unified_signals["verdict_accept"] is True
+    assert unified_signals["verdict_rollback"] is False
 
 
 # ── History stub ─────────────────────────────────────────────

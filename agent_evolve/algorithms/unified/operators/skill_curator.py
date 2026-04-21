@@ -348,8 +348,35 @@ class SkillCurator:
                 )
 
         applied = _execute_decisions(workspace, proposals, raw, max_skills)
+        # Split the "accept:<name>", "replace:<old>->-<new>", "merge:<src>-><dst>"
+        # strings into normalized skills_added / skills_removed lists so
+        # UnifiedEngine.step() and the differential-parity tests can
+        # aggregate them uniformly with other operators.
+        skills_added: list[str] = []
+        skills_removed: list[str] = []
+        for entry in applied:
+            if entry.startswith("accept:"):
+                skills_added.append(entry.split(":", 1)[1])
+            elif entry.startswith("replace:"):
+                rhs = entry.split(":", 1)[1]
+                if "->" in rhs:
+                    old, new = rhs.split("->", 1)
+                    skills_removed.append(old)
+                    skills_added.append(new)
+            elif entry.startswith("merge:"):
+                rhs = entry.split(":", 1)[1]
+                if "->" in rhs:
+                    _src, dst = rhs.split("->", 1)
+                    # Merged content replaces the destination body; surface as
+                    # an "added" event for summary parity with legacy "applied".
+                    skills_added.append(dst)
         return MutationReport(
             operator_name="SkillCurator",
             count=len(applied),
-            details={"proposals": len(proposals), "applied": applied},
+            details={
+                "proposals": len(proposals),
+                "applied": applied,
+                "skills_added": skills_added,
+                "skills_removed": skills_removed,
+            },
         )
