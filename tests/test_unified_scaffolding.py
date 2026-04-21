@@ -672,49 +672,70 @@ def _make_tb2_challenges_tree(root: Path) -> Path:
 
 
 def test_terminal_capability_runtime(tmp_path, monkeypatch):
-    """AC-1 positive: runtime constructor + attribute access on Terminal2.
+    """AC-1 positive: runtime **bare** constructor + attribute access on Terminal2.
 
     Matches the plan text verbatim, including the parenthesised
-    constructor call:
+    constructor call with NO arguments:
       ``Terminal2Benchmark().feedback_capability.solver_may_propose == True``
 
-    Hermeticity in R13 (Codex R12 finding #2):
-    - ``DEFAULT_CHALLENGES_DIR`` in ``agent_evolve/benchmarks/tb2/terminal2.py``
-      is computed at module import time from ``os.environ.get("TB2_CHALLENGES_DIR", ...)``
-      so a bare ``Terminal2Benchmark()`` would fall through to the
-      checkout-relative default (or an ambient ``TB2_CHALLENGES_DIR``).
-    - R13 fixes this by (a) clearing ``TB2_CHALLENGES_DIR`` via
-      ``monkeypatch.delenv`` before import, (b) building a temp
-      challenges tree under ``tmp_path``, (c) passing it explicitly
-      via ``challenges_dir=`` so no fallback path is reached.
+    Hermeticity via controlled default-path (Codex R13 directive):
+    - R12/R13 iterations either skipped this (bypassed with explicit
+      ``challenges_dir=``) or coupled to ambient env state.
+    - R14 exercises the exact branch the plan requires — bare
+      ``Terminal2Benchmark()`` — under controlled external state by:
+      (a) setting ``TB2_CHALLENGES_DIR`` to a temp tree *before*
+      importing the module so the module-level
+      ``DEFAULT_CHALLENGES_DIR`` constant binds to the temp path;
+      (b) fresh-importing to re-execute the module body and rebind
+      the constant;
+      (c) calling ``Terminal2Benchmark()`` with no args so the
+      ``challenges_dir or DEFAULT_CHALLENGES_DIR`` fallback resolves
+      to the controlled temp path.
     """
-    monkeypatch.delenv("TB2_CHALLENGES_DIR", raising=False)
     challenges = _make_tb2_challenges_tree(tmp_path / "tb2-challenges")
+    monkeypatch.setenv("TB2_CHALLENGES_DIR", str(challenges))
 
-    from agent_evolve.benchmarks.tb2.terminal2 import Terminal2Benchmark
+    # Fresh-import ensures the module-level DEFAULT_CHALLENGES_DIR
+    # (computed from TB2_CHALLENGES_DIR at import time) binds to the
+    # temp path we just set. Without this step a previously-cached
+    # module would retain a DEFAULT_CHALLENGES_DIR bound to whatever
+    # was in the env when the test session started.
+    mod = _fresh_import("agent_evolve.benchmarks.tb2.terminal2", monkeypatch)
+    Terminal2Benchmark = mod.Terminal2Benchmark
+    # Sanity check: the module-level constant now points at tmp.
+    assert mod.DEFAULT_CHALLENGES_DIR == str(challenges), (
+        f"DEFAULT_CHALLENGES_DIR={mod.DEFAULT_CHALLENGES_DIR!r} "
+        f"did not rebind to {str(challenges)!r} after fresh-import; "
+        "module-level env-var capture semantics changed."
+    )
 
-    # Real constructor — runs __init__ body. Pass challenges_dir
-    # explicitly so the ``or DEFAULT_CHALLENGES_DIR`` branch never
-    # fires, even if DEFAULT_CHALLENGES_DIR was bound to an ambient
-    # env-derived value at module import time.
-    benchmark = Terminal2Benchmark(challenges_dir=str(challenges))
+    # BARE constructor — plan-text path; no challenges_dir argument.
+    # __init__ executes `self.challenges_dir = None or DEFAULT_CHALLENGES_DIR`,
+    # resolving to the temp tree.
+    benchmark = Terminal2Benchmark()
     cap = benchmark.feedback_capability
 
     assert cap.solver_may_propose is True  # plan_v1.md AC-1 positive test
     assert cap.has_pass_fail is True
     assert cap.judge_available is True
+    # Confirm __init__ did land on the controlled path, not some other default.
+    assert benchmark.challenges_dir == str(challenges)
     with pytest.raises(FrozenInstanceError):
         cap.solver_may_propose = False  # type: ignore[misc]
 
 
 def test_terminal_constructor_variance_does_not_mutate_capability(tmp_path, monkeypatch):
-    """AC-1: constructing ``Terminal2Benchmark`` with non-default args
-    does not mutate the declared capability.
+    """AC-1 supplemental: non-default arg vector does not mutate capability.
+
+    Supplemental immutability coverage (Codex R13 directive: "Keep the
+    separate constructor-variance test for non-default arguments if
+    useful, but present it only as supplemental immutability coverage,
+    not as proof of the plan-text bare-constructor assertion").
 
     Single counter-example: one non-default argument vector is checked.
-    Does not claim full branch coverage of ``__init__``.
-    Uses the same temp-challenges + env-var isolation as
-    ``test_terminal_capability_runtime`` so no ambient state can leak in.
+    Does not claim full branch coverage of ``__init__``. Passes
+    ``challenges_dir`` explicitly (unlike
+    ``test_terminal_capability_runtime`` which exercises the bare path).
     """
     monkeypatch.delenv("TB2_CHALLENGES_DIR", raising=False)
     challenges = _make_tb2_challenges_tree(tmp_path / "tb2-challenges")
