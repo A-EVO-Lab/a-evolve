@@ -342,16 +342,19 @@ def _fresh_import(module_name: str, monkeypatch: pytest.MonkeyPatch) -> Any:
 
 
 def test_mcp_atlas_capability_runtime(monkeypatch):
-    """AC-1 positive: runtime instantiation + attribute access on MCP-Atlas.
+    """AC-1 positive: runtime constructor + attribute access on MCP-Atlas.
 
-    Matches the plan text verbatim:
+    Matches the plan text verbatim, including the parenthesised
+    constructor call:
       ``McpAtlasBenchmark().feedback_capability.has_per_claim == True``
 
     The adapter's heavy-dep chain (strands/strands.models) is stubbed
     via sys.modules for the duration of the test so the import resolves
-    without installing those deps. The capability property itself runs
-    unmodified production code — we assert on the real
-    ``FeedbackCapability`` instance it returns.
+    without installing those deps. ``McpAtlasBenchmark()`` itself runs
+    the real ``__init__`` body (attribute assignment + env-var check +
+    logging) — we verify the constructor path does not mutate or wire
+    the capability object away from its declaration, which was the
+    exact gap Codex Round 9 review flagged.
     """
     _install_mcp_atlas_stubs(monkeypatch)
     mod = _fresh_import(
@@ -359,13 +362,10 @@ def test_mcp_atlas_capability_runtime(monkeypatch):
     )
     McpAtlasBenchmark = mod.McpAtlasBenchmark
 
-    # Bypass ``__init__`` (which eagerly loads HuggingFace datasets /
-    # MCP client config) — AC-1 asks only about the capability
-    # declaration, not the full init wiring. ``__new__`` gives us a
-    # real instance with no constructor side effects, matching the
-    # minimal access pattern the plan specifies.
-    benchmark = McpAtlasBenchmark.__new__(McpAtlasBenchmark)
-    cap = benchmark.feedback_capability  # property access
+    # Real constructor — runs __init__ body. Defaults only; AC-1 says
+    # nothing about specific constructor arguments.
+    benchmark = McpAtlasBenchmark()
+    cap = benchmark.feedback_capability  # real property access
 
     assert cap.has_per_claim is True  # plan_v1.md AC-1 positive test
     assert cap.solver_may_propose is False  # not overridden → default False
@@ -377,9 +377,10 @@ def test_mcp_atlas_capability_runtime(monkeypatch):
 
 
 def test_swe_capability_runtime(monkeypatch):
-    """AC-1 positive: runtime instantiation + attribute access on SWE-bench.
+    """AC-1 positive: runtime constructor + attribute access on SWE-bench.
 
-    Matches the plan text verbatim:
+    Matches the plan text verbatim, including the parenthesised
+    constructor call:
       ``SweVerifiedMiniBenchmark().feedback_capability.solver_may_propose == True``
     """
     _install_swe_stubs(monkeypatch)
@@ -388,7 +389,8 @@ def test_swe_capability_runtime(monkeypatch):
     )
     SweVerifiedMiniBenchmark = mod.SweVerifiedMiniBenchmark
 
-    benchmark = SweVerifiedMiniBenchmark.__new__(SweVerifiedMiniBenchmark)
+    # Real constructor — runs __init__ body. Defaults only.
+    benchmark = SweVerifiedMiniBenchmark()
     cap = benchmark.feedback_capability
 
     assert cap.has_per_test is True
@@ -397,6 +399,54 @@ def test_swe_capability_runtime(monkeypatch):
     assert cap.judge_available is True
     with pytest.raises(FrozenInstanceError):
         cap.solver_may_propose = False  # type: ignore[misc]
+
+
+def test_mcp_atlas_constructor_does_not_mutate_capability(monkeypatch):
+    """AC-1: even under non-default constructor args, ``__init__`` does
+    not mutate or replace the declared capability.
+
+    Codex Round 9 review specifically flagged the concern that
+    ``__init__`` might perform post-processing that changes the
+    capability. This test constructs with *all* non-default arguments
+    to exercise the full constructor body and confirms the capability
+    property still returns the declared fields.
+    """
+    _install_mcp_atlas_stubs(monkeypatch)
+    mod = _fresh_import(
+        "agent_evolve.benchmarks.mcp_atlas.mcp_atlas", monkeypatch
+    )
+    benchmark = mod.McpAtlasBenchmark(
+        dataset_name="custom/dataset",
+        shuffle=False,
+        holdout_ratio=0.1,
+        eval_model_id="claude-3-5-sonnet-20241022",
+        eval_region="us-east-1",
+        use_litellm=False,
+        concurrency=2,
+    )
+    cap = benchmark.feedback_capability
+    assert cap.has_per_claim is True
+    assert cap.solver_may_propose is False
+    assert cap.judge_available is True
+
+
+def test_swe_constructor_does_not_mutate_capability(monkeypatch):
+    """AC-1 mirror of the MCP-Atlas constructor-variance test."""
+    _install_swe_stubs(monkeypatch)
+    mod = _fresh_import(
+        "agent_evolve.benchmarks.swe_verified_mini.benchmark", monkeypatch
+    )
+    benchmark = mod.SweVerifiedMiniBenchmark(
+        dataset_name="custom/swe",
+        repo_filter="django/django",
+        shuffle=False,
+        holdout_ratio=0.5,
+        eval_timeout=600,
+    )
+    cap = benchmark.feedback_capability
+    assert cap.has_per_test is True
+    assert cap.solver_may_propose is True
+    assert cap.has_pass_fail is True
 
 
 # ── Supplemental structural guard (kept from R8) ──────────────────
