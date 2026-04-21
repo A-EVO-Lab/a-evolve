@@ -10,6 +10,7 @@ Later rounds add per-atom tests and the full differential tests in AC-4/AC-8.
 from __future__ import annotations
 
 from dataclasses import FrozenInstanceError
+from pathlib import Path
 from typing import Any
 
 import pytest
@@ -525,21 +526,87 @@ def test_swe_capability_source_shape_supplemental():
     assert kwargs.get("solver_may_propose") is True
 
 
-def test_skillbench_capability_runtime():
+def _clear_skillbench_env(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Clear all SkillBench env vars so the test is not ambient-state-coupled.
+
+    Mirrors the autouse fixture in ``tests/test_skillbench_setup.py``.
+    Codex Round 11 review flagged that a bare ``SkillBenchBenchmark()``
+    call can (a) pick up ambient SKILLBENCH_* env vars, or (b) fall
+    through to ``ensure_skillbench_repo()`` bootstrap if none are set.
+    Clearing the vars first makes the test's input explicit.
+    """
+    from agent_evolve.agents.skillbench.repo import (
+        SKILLBENCH_HARBOR_REPO_ENV,
+        SKILLBENCH_REF_ENV,
+        SKILLBENCH_REPO_ENV,
+        SKILLBENCH_TASKS_ENV,
+        SKILLBENCH_TASKS_NO_SKILLS_ENV,
+    )
+    for key in (
+        SKILLBENCH_REPO_ENV,
+        SKILLBENCH_REF_ENV,
+        SKILLBENCH_TASKS_ENV,
+        SKILLBENCH_TASKS_NO_SKILLS_ENV,
+        SKILLBENCH_HARBOR_REPO_ENV,
+    ):
+        monkeypatch.delenv(key, raising=False)
+
+
+def _make_skillbench_repo_tree(root: Path) -> Path:
+    """Build a minimal on-disk SkillBench repo so ``SkillBenchBenchmark()``
+    construction has a real tasks/tasks-no-skills/harbor layout to
+    resolve against. Mirrors ``_make_repo_tree`` +
+    ``_write_task`` in ``tests/test_skillbench_setup.py``; the constructor
+    only reads the layout, it doesn't actually load task content.
+    """
+    (root / "tasks").mkdir(parents=True, exist_ok=True)
+    (root / "tasks-no-skills").mkdir(parents=True, exist_ok=True)
+    for split_dir, name in (
+        (root / "tasks", "task-with-skills"),
+        (root / "tasks-no-skills", "task-without-skills"),
+    ):
+        task_dir = split_dir / name
+        (task_dir / "environment").mkdir(parents=True, exist_ok=True)
+        (task_dir / "tests").mkdir(parents=True, exist_ok=True)
+        (task_dir / "instruction.md").write_text("Solve.\n")
+        (task_dir / "environment" / "Dockerfile").write_text("FROM python:3.11\n")
+        (task_dir / "tests" / "test.sh").write_text("#!/usr/bin/env bash\nexit 0\n")
+        (task_dir / "task.toml").write_text(
+            '[metadata]\nid = "%s"\ncategory = "x"\ndifficulty = "easy"\n' % name
+        )
+    (root / "libs" / "terminus_agent").mkdir(parents=True, exist_ok=True)
+    (root / "libs" / "terminus_agent" / "README.md").write_text("x\n")
+    (root / "pyproject.toml").write_text('[project]\nname = "skillsbench"\n')
+    (root / "uv.lock").write_text("version = 1\n")
+    (root / ".python-version").write_text("3.12\n")
+    return root
+
+
+def test_skillbench_capability_runtime(tmp_path, monkeypatch):
     """AC-1 positive: runtime constructor + attribute access on SkillBench.
 
     Matches the plan text verbatim, including the parenthesised
     constructor call:
       ``SkillBenchBenchmark().feedback_capability.has_partial_score == True``
 
-    SkillBenchBenchmark imports only from ``agent_evolve.agents.skillbench.repo``
-    (a lightweight in-repo module) and Python stdlib — no heavy optional
-    deps — so no sys.modules stubbing is needed. ``__init__`` runs to
-    completion with default arguments.
+    Addresses Codex Round 11 finding: the R11 version of this test
+    was environment-coupled because
+    ``SkillBenchBenchmark.__init__`` calls ``resolve_skillbench_paths()``
+    which reads ambient SKILLBENCH_* env vars and, absent any, falls
+    back to ``ensure_skillbench_repo()`` bootstrap. R12 fixes this by
+    (a) clearing all SKILLBENCH_* env vars, (b) building a temp
+    SkillBench repo tree under ``tmp_path``, (c) setting
+    ``SKILLBENCH_REPO_ENV`` to point at it before construction.
+    The constructor path is now fully controlled by the test.
     """
+    from agent_evolve.agents.skillbench.repo import SKILLBENCH_REPO_ENV
     from agent_evolve.benchmarks.skillbench.skill_bench import SkillBenchBenchmark
 
-    benchmark = SkillBenchBenchmark()  # real constructor — runs __init__ body
+    _clear_skillbench_env(monkeypatch)
+    repo = _make_skillbench_repo_tree(tmp_path / "skillsbench")
+    monkeypatch.setenv(SKILLBENCH_REPO_ENV, str(repo))
+
+    benchmark = SkillBenchBenchmark()  # real constructor against the temp repo
     cap = benchmark.feedback_capability  # real property access
 
     assert cap.has_partial_score is True  # plan_v1.md AC-1 positive test
@@ -550,16 +617,23 @@ def test_skillbench_capability_runtime():
         cap.has_partial_score = False  # type: ignore[misc]
 
 
-def test_skillbench_constructor_variance_does_not_mutate_capability():
+def test_skillbench_constructor_variance_does_not_mutate_capability(tmp_path, monkeypatch):
     """AC-1: calling ``SkillBenchBenchmark`` with a distinct, non-default
-    argument vector does not mutate the declared capability.
+    argument vector against a temp repo does not mutate the declared
+    capability.
 
-    One argument vector is not a proof of full branch coverage (as Codex
-    Round 10 review correctly noted — no test here claims otherwise).
-    It is a *single* counter-example: if any constructor branch reachable
-    through this vector mutated the capability, the test would fail.
+    Single counter-example: one non-default argument vector is checked.
+    Does not claim full branch coverage of ``__init__``. Uses the same
+    temp-repo + env-var isolation as
+    ``test_skillbench_capability_runtime`` so ``__init__`` has a
+    deterministic path to resolve against.
     """
+    from agent_evolve.agents.skillbench.repo import SKILLBENCH_REPO_ENV
     from agent_evolve.benchmarks.skillbench.skill_bench import SkillBenchBenchmark
+
+    _clear_skillbench_env(monkeypatch)
+    repo = _make_skillbench_repo_tree(tmp_path / "skillsbench")
+    monkeypatch.setenv(SKILLBENCH_REPO_ENV, str(repo))
 
     benchmark = SkillBenchBenchmark(
         shuffle=False,
