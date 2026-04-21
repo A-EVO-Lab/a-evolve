@@ -27,6 +27,12 @@ class AgentWorkspace:
         self.tools_dir = self.root / "tools"
         self.memory_dir = self.root / "memory"
         self.evolution_dir = self.root / "evolution"
+        # Task-specific skills (AC-11). Lives alongside ``skills_dir`` but is
+        # logically isolated: ``list_skills``/``read_skill``/``write_skill``/
+        # ``delete_skill`` never touch ``task_skills_dir`` entries, and vice
+        # versa. Enforced by :meth:`_assert_outside_task_skills` and the
+        # test in tests/test_unified_task_skills_isolation.py.
+        self.task_skills_dir = self.root / "task_skills"
 
     # ── Prompts ──────────────────────────────────────────────────────
 
@@ -82,6 +88,45 @@ class AgentWorkspace:
         import shutil
 
         skill_dir = self.skills_dir / name
+        if skill_dir.exists():
+            shutil.rmtree(skill_dir)
+
+    # ── Task-specific skills ─────────────────────────────────────────
+    #
+    # Task skills live in a sibling directory, ``workspace/task_skills/``,
+    # isolated from ``skills/``. The unified controller may later emit
+    # recipes that write here (Phase 2 ``GenerateTaskSkill`` operator);
+    # Phase 1 exposes the I/O primitives only. Listing / reading / writing
+    # ``skills/`` NEVER touches ``task_skills/`` and vice versa.
+
+    def list_task_skills(self) -> dict[str, SkillMeta]:
+        """Return ``{task_id: SkillMeta}`` for every task skill currently stored."""
+        if not self.task_skills_dir.exists():
+            return {}
+        out: dict[str, SkillMeta] = {}
+        for d in sorted(self.task_skills_dir.iterdir()):
+            if not d.is_dir() or d.name.startswith("_"):
+                continue
+            skill_file = d / "SKILL.md"
+            if skill_file.exists():
+                meta = _parse_skill_frontmatter(skill_file)
+                meta.path = str(d.relative_to(self.root))
+                out[d.name] = meta
+        return out
+
+    def read_task_skill(self, task_id: str) -> str:
+        path = self.task_skills_dir / task_id / "SKILL.md"
+        return path.read_text() if path.exists() else ""
+
+    def write_task_skill(self, task_id: str, content: str) -> None:
+        skill_dir = self.task_skills_dir / task_id
+        skill_dir.mkdir(parents=True, exist_ok=True)
+        (skill_dir / "SKILL.md").write_text(content)
+
+    def delete_task_skill(self, task_id: str) -> None:
+        import shutil
+
+        skill_dir = self.task_skills_dir / task_id
         if skill_dir.exists():
             shutil.rmtree(skill_dir)
 
