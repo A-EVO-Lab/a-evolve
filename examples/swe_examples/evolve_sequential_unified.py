@@ -1,0 +1,144 @@
+"""SWE-bench Verified evolution runner using the Unified Engine.
+
+Thin counterpart to ``evolve_sequential.py``. Where legacy uses
+``GuidedSynthesisEngine.evolve()`` with a custom batch loop, this
+runner goes through ``EvolutionLoop + UnifiedEngine`` with the
+``solver_proposal`` recipe (matches ``GuidedSynthesisEngine.step()``).
+
+**Axis parity with legacy:**
+
+- Observation: same — ``trajectory._skill_proposal`` attached by SWE agent
+- Update pipeline: ``[WriteEpisodicMemory, SkillCurator]`` (operator equivalents of
+  ``_write_minimal_memory`` + ``_curate_proposals`` + ``_execute_curation``)
+- Verify: ``NoVerify`` (matches ``GuidedSynthesisEngine.step()`` path)
+- Output: ``skills/<curated_name>/SKILL.md`` + ``memory/episodic.jsonl``
+- Scope: ``{skills: rw, memory: append}`` (no prompt writes)
+
+See ``docs/algorithms/unified-equivalence-audit.md`` for the full audit.
+
+Usage:
+    python evolve_sequential_unified.py \\
+        --cycles 3 --limit 5 --output-dir logs/unified_swe
+"""
+from __future__ import annotations
+
+import argparse
+import json
+import logging
+import shutil
+import sys
+from datetime import datetime
+from pathlib import Path
+
+REPO_ROOT = Path(__file__).resolve().parent.parent.parent
+sys.path.insert(0, str(REPO_ROOT))
+
+from agent_evolve.agents.swe.agent import SweAgent
+from agent_evolve.algorithms.unified import UnifiedEngine
+from agent_evolve.benchmarks.swe_verified_mini.benchmark import SweVerifiedMiniBenchmark
+from agent_evolve.config import EvolveConfig
+from agent_evolve.engine.loop import EvolutionLoop
+from agent_evolve.llm.bedrock import BedrockProvider
+
+logger = logging.getLogger(__name__)
+
+
+def main() -> int:
+    p = argparse.ArgumentParser(
+        description="SWE-bench Verified evolution via UnifiedEngine + EvolutionLoop"
+    )
+    p.add_argument("--cycles", type=int, default=3,
+                   help="Number of evolution cycles")
+    p.add_argument("--batch-size", type=int, default=5,
+                   help="Tasks per cycle (passed to bench.get_tasks limit)")
+    p.add_argument("--limit", type=int, default=50,
+                   help="Cap on total tasks loaded from benchmark")
+    p.add_argument("--model-id", default="us.anthropic.claude-opus-4-5-20251101-v1:0")
+    p.add_argument("--region", default="us-west-2")
+    p.add_argument("--max-tokens", type=int, default=16384)
+    p.add_argument("--max-steps", type=int, default=0,
+                   help="Max tool calls per task (0=unlimited)")
+    p.add_argument("--dataset", default="MariusHobbhahn/swe-bench-verified-mini")
+    p.add_argument("--seed-workspace", default=str(REPO_ROOT / "seed_workspaces" / "swe"))
+    p.add_argument("--output-dir", default=None,
+                   help="Defaults to logs/unified_swe_<timestamp>")
+    p.add_argument("-v", "--verbose", action="store_true")
+    args = p.parse_args()
+
+    logging.basicConfig(
+        level=logging.DEBUG if args.verbose else logging.INFO,
+        format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+    )
+    for noisy in ("botocore", "urllib3", "httpcore", "httpx"):
+        logging.getLogger(noisy).setLevel(logging.WARNING)
+
+    # Output dir
+    out_dir = Path(args.output_dir) if args.output_dir else (
+        REPO_ROOT / "logs" / f"unified_swe_{datetime.utcnow():%Y%m%d_%H%M%S}"
+    )
+    out_dir.mkdir(parents=True, exist_ok=True)
+
+    # Benchmark + agent
+    bench = SweVerifiedMiniBenchmark(dataset_name=args.dataset, shuffle=False)
+    logger.info("Capability: %s", bench.feedback_capability)
+
+    # Shared workspace (copied from seed)
+    ws_dir = out_dir / "workspace"
+    seed_dir = Path(args.seed_workspace)
+    if ws_dir.exists():
+        shutil.rmtree(ws_dir)
+    shutil.copytree(seed_dir, ws_dir)
+    logger.info("Workspace: %s (from seed %s)", ws_dir, seed_dir)
+
+    agent = SweAgent(workspace_dir=ws_dir)
+
+    llm = BedrockProvider(model_id=args.model_id, region=args.region)
+
+    config = EvolveConfig(
+        batch_size=args.batch_size,
+        max_cycles=args.cycles,
+        evolver_model=args.model_id,
+        extra={"region": args.region, "max_tokens": args.max_tokens},
+    )
+    engine = UnifiedEngine(config, bench)
+    # Inject LLM so SkillCurator (and any LLMBashEvolve fallback path) can reach it.
+    engine._operator_state.setdefault("SkillCurator", {})["llm_provider"] = llm
+    engine._operator_state.setdefault("LLMBashEvolve", {})["llm_provider"] = llm
+
+    loop = EvolutionLoop(agent=agent, benchmark=bench, engine=engine, config=config)
+
+    logger.info(
+        "Running %d cycles × batch_size=%d (limit=%d, model=%s)",
+        args.cycles, args.batch_size, args.limit, args.model_id,
+    )
+    result = loop.run(cycles=args.cycles)
+
+    # Write results
+    results_path = out_dir / "results.jsonl"
+    with open(results_path, "w") as f:
+        for cycle_idx, score in enumerate(result.score_history, 1):
+            f.write(json.dumps({
+                "cycle": cycle_idx,
+                "score": score,
+            }) + "\n")
+
+    metrics_path = out_dir / "results.metrics.json"
+    metrics_path.write_text(json.dumps({
+        "cycles_completed": result.cycles_completed,
+        "final_score": result.final_score,
+        "score_history": list(result.score_history),
+        "converged": result.converged,
+        "engine": "UnifiedEngine",
+        "recipe": "solver_proposal (PassFailReader+ProposalReader | WriteEpisodicMemory+SkillCurator)",
+        "workspace": str(ws_dir),
+    }, indent=2))
+
+    logger.info(
+        "Done. cycles=%d final_score=%.4f. Results: %s",
+        result.cycles_completed, result.final_score, results_path,
+    )
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

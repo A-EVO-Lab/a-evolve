@@ -1,0 +1,141 @@
+"""Terminal-Bench 2.0 evolution runner using the Unified Engine.
+
+Thin counterpart to ``batch_evolve_terminal.py``. Where legacy uses
+``AdaptiveSkillEngine.evolve()`` with a custom batch loop, this runner
+goes through ``EvolutionLoop + UnifiedEngine`` with the ``drafts``
+recipe branch (matches ``AdaptiveSkillEngine.step()``).
+
+**Axis parity with legacy:**
+
+- Observation: same — workspace drafts in ``skills/_drafts/`` + pass/fail feedback
+- Update pipeline: ``[LLMBashEvolve]`` (operator equivalent of ``_run_llm`` with bash tool)
+- Verify: ``NoVerify``
+- Output: ``skills/<name>/SKILL.md`` + may touch ``prompts/system.md``
+- Scope: ``{skills: rw, prompts: rw}`` (no memory writes)
+
+**AC-9 drift awareness:** Drafts may be consumed by ``LLMBashEvolve``
+between cycles; if cycle N has drafts but cycle N+1 doesn't, the
+controller re-routes to the ``default`` recipe and emits a warning
+(both plans printed). This matches legacy behavior (once drafts are
+exhausted, legacy also stops producing new skills via the drafts path).
+
+Usage:
+    python batch_evolve_terminal_unified.py RUN_NAME --cycles 3
+"""
+from __future__ import annotations
+
+import argparse
+import json
+import logging
+import shutil
+import sys
+from datetime import datetime
+from pathlib import Path
+
+REPO_ROOT = Path(__file__).resolve().parent.parent.parent
+sys.path.insert(0, str(REPO_ROOT))
+
+from agent_evolve.agents.terminal.agent import TerminalAgent
+from agent_evolve.algorithms.unified import UnifiedEngine
+from agent_evolve.benchmarks.tb2.terminal2 import Terminal2Benchmark
+from agent_evolve.config import EvolveConfig
+from agent_evolve.engine.loop import EvolutionLoop
+from agent_evolve.llm.bedrock import BedrockProvider
+
+logger = logging.getLogger(__name__)
+
+
+def main() -> int:
+    p = argparse.ArgumentParser(
+        description="Terminal-Bench 2.0 evolution via UnifiedEngine + EvolutionLoop"
+    )
+    p.add_argument("run_name", help="Name/tag for this run (becomes log dir)")
+    p.add_argument("--cycles", type=int, default=3, help="Evolution cycles")
+    p.add_argument("--batch-size", type=int, default=5,
+                   help="Tasks per cycle (passed to bench.get_tasks limit)")
+    p.add_argument("--limit", type=int, default=20,
+                   help="Max tasks from benchmark")
+    p.add_argument("--model-id", default="us.anthropic.claude-opus-4-5-20251101-v1:0")
+    p.add_argument("--region", default="us-west-2")
+    p.add_argument("--max-tokens", type=int, default=16384)
+    p.add_argument("--challenges-dir", default=None,
+                   help="Path to TB2 challenges dir (otherwise defaults from env)")
+    p.add_argument("--seed-workspace", default=str(REPO_ROOT / "seed_workspaces" / "terminal"))
+    p.add_argument("--log-dir", default=None, help="Defaults to logs/unified_tb_<run_name>")
+    p.add_argument("-v", "--verbose", action="store_true")
+    args = p.parse_args()
+
+    logging.basicConfig(
+        level=logging.DEBUG if args.verbose else logging.INFO,
+        format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+    )
+
+    log_dir = Path(args.log_dir) if args.log_dir else (
+        REPO_ROOT / "logs" / f"unified_tb_{args.run_name}"
+    )
+    log_dir.mkdir(parents=True, exist_ok=True)
+
+    # Benchmark
+    bench_kwargs = {}
+    if args.challenges_dir:
+        bench_kwargs["challenges_dir"] = args.challenges_dir
+    bench = Terminal2Benchmark(**bench_kwargs)
+    logger.info("Capability: %s", bench.feedback_capability)
+
+    # Shared workspace (copied from seed)
+    ws_dir = log_dir / "workspace"
+    seed_dir = Path(args.seed_workspace)
+    if ws_dir.exists():
+        shutil.rmtree(ws_dir)
+    if seed_dir.is_dir():
+        shutil.copytree(seed_dir, ws_dir)
+        logger.info("Workspace: %s (from seed %s)", ws_dir, seed_dir)
+    else:
+        ws_dir.mkdir(parents=True, exist_ok=True)
+        (ws_dir / "prompts").mkdir()
+        (ws_dir / "prompts" / "system.md").write_text("# Agent\n\n")
+        logger.info("Workspace: %s (fresh — seed dir %s missing)", ws_dir, seed_dir)
+
+    agent = TerminalAgent(workspace_dir=ws_dir)
+
+    llm = BedrockProvider(model_id=args.model_id, region=args.region)
+
+    config = EvolveConfig(
+        batch_size=args.batch_size,
+        max_cycles=args.cycles,
+        evolver_model=args.model_id,
+        extra={"region": args.region, "max_tokens": args.max_tokens},
+    )
+    engine = UnifiedEngine(config, bench)
+    engine._operator_state.setdefault("LLMBashEvolve", {})["llm_provider"] = llm
+
+    loop = EvolutionLoop(agent=agent, benchmark=bench, engine=engine, config=config)
+
+    logger.info(
+        "Running %d cycles × batch_size=%d on %d total tasks (model=%s)",
+        args.cycles, args.batch_size, args.limit, args.model_id,
+    )
+    result = loop.run(cycles=args.cycles)
+
+    results_path = log_dir / "results.jsonl"
+    with open(results_path, "w") as f:
+        for cycle_idx, score in enumerate(result.score_history, 1):
+            f.write(json.dumps({"cycle": cycle_idx, "score": score}) + "\n")
+
+    (log_dir / "results.metrics.json").write_text(json.dumps({
+        "cycles_completed": result.cycles_completed,
+        "final_score": result.final_score,
+        "score_history": list(result.score_history),
+        "converged": result.converged,
+        "engine": "UnifiedEngine",
+        "recipe": "drafts (PassFailReader+DraftReader+TrajectoryCompressor | LLMBashEvolve)",
+        "workspace": str(ws_dir),
+    }, indent=2))
+
+    logger.info("Done. cycles=%d final_score=%.4f", result.cycles_completed, result.final_score)
+    logger.info("Results: %s", results_path)
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
