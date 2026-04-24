@@ -1,0 +1,20 @@
+name: nemotron30b-reasoning-trainer
+version: 0.1.0
+contract_version: "1.1"
+
+agent:
+  type: trainer
+  entrypoint: agent_evolve.agents.trainers.hf_peft.HfPeftTrainer
+
+training:
+  docker_image: 801953956576.dkr.ecr.ap-south-1.amazonaws.com/aevolve/nemo-reasoner:2026-04-24-dp
+  train_args: []
+  inference_args: []
+  ckpt_path: adapter
+
+evolvable_layers:
+  - training_config.yaml
+  - data_config.yaml
+  - memory
+
+reload_strategy: hot

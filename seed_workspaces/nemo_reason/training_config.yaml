@@ -1,0 +1,31 @@
+base_ckpt: "$base_ckpt.uri"
+precision: bf16
+
+model:
+  max_seq_len: 8192
+  attn_impl: eager  # Nemotron-H has no flash-attn path; use eager (SDPA falls back automatically)
+  lora:
+    rank: 32
+    target_modules: [q_proj, k_proj, v_proj, o_proj]
+    alpha: 32
+    dropout: 0.05
+
+optimizer:
+  name: adamw
+  lr: 2.0e-4
+  weight_decay: 0.0
+  betas: [0.9, 0.95]
+
+schedule:
+  warmup_steps: 0
+  total_steps: 1
+  decay: cosine
+
+batch:
+  global_batch_size: 32
+  micro_batch_size: 1
+  grad_accum: 32
+
+eval:
+  every_steps: 250
+  mini_split: "nemotron-reasoning-mini"

@@ -1,0 +1,11 @@
+inference:
+  mode: eval
+  prompts_path: /out/prompts.jsonl
+  max_tokens: 512
+  max_model_len: 8192
+  max_lora_rank: 32
+  temperature: 0.0
+  top_p: 1.0
+  batch_size: 8  # per-step prompts; model is sharded across all visible GPUs
+  answer_extractor: boxed
+  output_path: /out/scores.jsonl

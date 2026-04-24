@@ -213,7 +213,7 @@ class BaseTrainer(BaseAgent):
                 *self._models_mount_args(),
                 "-e", f"AEVOLVE_CYCLE={task.id}",
                 "-e", "AEVOLVE_VERB=train",
-                *self._env_passthrough_args(),
+                                *self._env_passthrough_args(),
                 self.docker_image,
                 "train",
                 *self.train_args,
@@ -267,7 +267,7 @@ class BaseTrainer(BaseAgent):
                 subprocess.run(cmd, check=True, stdout=log_file, stderr=subprocess.STDOUT, env=env)
         else:
             cmd = [
-                "docker", "run", "--rm", "--gpus", "all", "--shm-size=16g",
+                "docker", "run", "--rm", "--gpus", "all", "--ipc=host",
                 "-v", f"{self.workspace.root.resolve()}:/workspace:ro",
                 "-v", f"{data_dir}:/data:ro",
                 "-v", f"{Path(ckpt_dir).resolve()}:/ckpt:ro",
@@ -276,7 +276,7 @@ class BaseTrainer(BaseAgent):
                 *self._image_driver_mount_args(),
                 "-e", "AEVOLVE_VERB=inference",
                 "-e", f"AEVOLVE_INFER_MODE={mode}",
-                *self._env_passthrough_args(),
+                                *self._env_passthrough_args(),
                 self.docker_image,
                 "inference",
                 "--config", config_path_in_workspace,

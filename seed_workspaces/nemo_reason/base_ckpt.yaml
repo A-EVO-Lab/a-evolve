@@ -1,0 +1,4 @@
+uri: "/fsx/models/Nemotron-3-Nano-30B-A3B-BF16"
+tokenizer: "/fsx/models/Nemotron-3-Nano-30B-A3B-BF16"
+precision: bf16
+adapter_mode: lora

@@ -42,6 +42,7 @@ credentials.json
 seed_workspaces/*/memory/episodic/*.jsonl
 seed_workspaces/*/memory/semantic/*.jsonl
 seed_workspaces/*/evolution/
+seed_workspaces/*/IMAGE_REQUIREMENTS.md
 inspect_evals/
 
 # Logs

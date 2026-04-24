@@ -4,7 +4,7 @@ Prereqs:
   - ``AEVOLVE_DATA_DIR`` points at a directory containing
     ``nemotron_reasoning/train.csv`` (columns: id, prompt, answer).
   - A pre-built docker image ``nemotron-lora-runner:<tag>`` is available
-    locally. See ``seed_workspaces/nemotron30b_reasoning_trainer/IMAGE_REQUIREMENTS.md``.
+    locally. See ``seed_workspaces/nemo_reason/IMAGE_REQUIREMENTS.md``.
 
 Smoke command (1 cycle, 20 eval tasks):
   python examples/nemotron_examples/evolve_nemotron.py --cycles 1 --limit 20
@@ -27,7 +27,7 @@ def main() -> None:
     parser.add_argument("--limit", type=int, default=200,
                         help="Number of eval tasks per cycle.")
     parser.add_argument("--workspace", type=str,
-                        default="./seed_workspaces/nemotron30b_reasoning_trainer")
+                        default="./seed_workspaces/nemo_reason")
     args = parser.parse_args()
 
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")

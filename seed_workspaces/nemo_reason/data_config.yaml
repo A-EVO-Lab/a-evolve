@@ -1,0 +1,22 @@
+sources:
+  - name: kaggle_train
+    kind: static
+    uri: "local:///data/nemotron_reasoning/train.csv"
+    fields: { prompt: prompt, answer: answer }
+  - name: synth_teacher
+    kind: llm_synth
+    teacher_model: "claude-opus-4-6"
+    n_samples: 5000
+    prompt_template: prompts/synth_puzzle.md
+    reject_if_teacher_wrong: true
+
+filters:
+  - { name: dedup_by_prefix, prefix_tokens: 64 }
+  - { name: boxed_answer_present }
+
+format:
+  schema: chat
+  system_prompt: |
+    Solve the puzzle. Put your final answer in \boxed{...}.
+
+output_path: artifacts/train.jsonl
