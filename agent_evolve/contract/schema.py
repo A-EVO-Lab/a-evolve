@@ -31,9 +31,10 @@ def validate_workspace(root: str | Path) -> list[str]:
             if "name" not in raw:
                 errors.append("manifest.yaml missing required field: name")
             cv = raw.get("contract_version", "")
-            if cv and cv != CURRENT_CONTRACT_VERSION:
+            if cv and cv not in {"1.0", CURRENT_CONTRACT_VERSION}:
                 errors.append(
-                    f"Contract version mismatch: got {cv}, expected {CURRENT_CONTRACT_VERSION}"
+                    f"Contract version mismatch: got {cv}, expected one of "
+                    f"{{'1.0', {CURRENT_CONTRACT_VERSION!r}}}"
                 )
         except Exception as e:
             errors.append(f"Failed to parse manifest.yaml: {e}")

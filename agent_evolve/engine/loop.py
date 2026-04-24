@@ -121,6 +121,15 @@ class EvolutionLoop:
                 trial=self.trial,
             )
 
+            # 4b. For engines that manage their own evaluation, surface the
+            # real training score from step_result.metadata into the score
+            # history so metrics.json and convergence reflect it.
+            if self.engine.manages_own_evaluation:
+                training_score = step_result.metadata.get("training_score")
+                if isinstance(training_score, (int, float)):
+                    cycle_score = float(training_score)
+                    score_history[-1] = cycle_score
+
             # 5. POST-EVOLVE SNAPSHOT
             if step_result.mutated:
                 self.versioning.commit(

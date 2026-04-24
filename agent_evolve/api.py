@@ -70,6 +70,8 @@ _SEED_REGISTRY: dict[str, str] = {
     "arc-agi-3-mas": "arc-mas",
     "arc-agi3": "arc",
     "mcp-mh": "mcp_mh",
+    "nemotron": "nemotron30b_reasoning_trainer",
+    "nemotron-reasoning": "nemotron30b_reasoning_trainer",
 }
 
 
