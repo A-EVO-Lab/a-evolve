@@ -154,7 +154,10 @@ class Terminal2Benchmark(BenchmarkAdapter):
 
     def _do_split(self) -> None:
         """Load all challenges and partition into train + holdout."""
-        from ..agents.terminal.dataset import load_all_tasks
+        # Relative import: this file lives at agent_evolve/benchmarks/tb2/
+        # and needs agent_evolve/agents/terminal/dataset. Three dots to
+        # climb to agent_evolve/, then descend into agents/terminal/.
+        from ...agents.terminal.dataset import load_all_tasks
 
         all_tasks = load_all_tasks(self.challenges_dir)
         rows = []

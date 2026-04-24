@@ -102,18 +102,6 @@ def main() -> int:
     shutil.copytree(seed_dir, ws_dir)
     logger.info("Workspace: %s (from seed %s)", ws_dir, seed_dir)
 
-    # Key registry for MCP API keys (same pattern as legacy).
-    key_registry = KeyRegistry.from_default_config()
-
-    # MCP agent.
-    agent = McpAgent(
-        workspace_dir=ws_dir,
-        model_id=args.solver_model,
-        region=args.region,
-        max_tokens=args.max_tokens,
-        key_registry=key_registry,
-    )
-
     # LLM provider for evolver operators.
     evolver_model = args.evolver_model or args.solver_model
     llm = BedrockProvider(model_id=evolver_model, region=args.region)
@@ -123,6 +111,19 @@ def main() -> int:
         max_cycles=args.cycles,
         evolver_model=evolver_model,
         extra={"region": args.region, "max_tokens": args.max_tokens},
+    )
+
+    # Key registry for MCP API keys — built from the active EvolveConfig
+    # (reads MCP_ENV_FILE / mcp_aws_* keys from config.extra / env).
+    key_registry = KeyRegistry.from_config(config)
+
+    # MCP agent.
+    agent = McpAgent(
+        workspace_dir=ws_dir,
+        model_id=args.solver_model,
+        region=args.region,
+        max_tokens=args.max_tokens,
+        key_registry=key_registry,
     )
     engine = UnifiedEngine(config, bench)
     # LLMBashEvolve (the LLM-driven operator in the per_claim recipe)

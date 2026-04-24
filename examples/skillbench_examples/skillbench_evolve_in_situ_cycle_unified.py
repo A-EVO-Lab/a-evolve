@@ -994,7 +994,7 @@ def _compute_metrics(path: Path) -> dict:
             pass
 
     if not results:
-        return {"total": 0, "passed": 0, "pass_ratio": 0.0}
+        return {"total": 0, "passed": 0, "pass_ratio": 0.0, "final_score": 0.0}
 
     total = len(results)
     passed = sum(1 for r in results if r.get("passed"))
@@ -1018,10 +1018,15 @@ def _compute_metrics(path: Path) -> dict:
         p = sum(1 for r in items if r.get("passed"))
         return {"total": t, "passed": p, "pass_ratio": round(p / t, 4) if t else 0.0}
 
+    pass_ratio = round(passed / total, 4) if total else 0.0
     return {
         "total": total,
         "passed": passed,
-        "pass_ratio": round(passed / total, 4) if total else 0.0,
+        "pass_ratio": pass_ratio,
+        # Alias pass_ratio as final_score so sb evolve metrics honour the
+        # shared evolve-route contract (EvolverBench's sidecar parser reads
+        # results.metrics.json.final_score across all 4 benchmarks).
+        "final_score": pass_ratio,
         "grind_needed": grind_needed,
         "grind_resolved": grind_resolved,
         "by_difficulty": {d: _ratio(items) for d, items in sorted(by_diff.items())},
