@@ -19,6 +19,7 @@ LIMIT="${LIMIT:-}"
 MODE="${MODE:-native}"
 USE_SKILLS="${USE_SKILLS:-true}"
 MODEL_ID="${MODEL_ID:-us.anthropic.claude-opus-4-5-20251101-v1:0}"
+EVOLVER_MODEL_ID="${EVOLVER_MODEL_ID:-}"
 REGION="${REGION:-us-west-2}"
 MAX_TOKENS="${MAX_TOKENS:-64000}"
 
@@ -37,12 +38,13 @@ echo "Mode:          ${MODE}"
 echo "Use skills:    ${USE_SKILLS}"
 [[ -n "${LIMIT}" ]] && echo "Limit:         ${LIMIT}"
 echo "Model:         ${MODEL_ID}"
+echo "Evolver model: ${EVOLVER_MODEL_ID:-<same as solver>}"
 echo "Region:        ${REGION}"
 echo ""
 
 cmd=(
   python "${REPO_ROOT}/examples/skillbench_examples/skillbench_evolve_in_situ_cycle_unified.py"
-  --cycles "${CYCLES}"
+  --max-cycles "${CYCLES}"
   --batch-size "${BATCH_SIZE}"
   --mode "${MODE}"
   --use-skills "${USE_SKILLS}"
@@ -55,6 +57,7 @@ cmd=(
   -v
 )
 [[ -n "${LIMIT}" ]] && cmd+=(--limit "${LIMIT}")
+[[ -n "${EVOLVER_MODEL_ID}" ]] && cmd+=(--evolver-model-id "${EVOLVER_MODEL_ID}")
 
 LOG="${RUN_DIR}/evolve.log"
 echo "Running: ${cmd[*]}"

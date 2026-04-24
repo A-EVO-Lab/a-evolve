@@ -19,6 +19,7 @@ CYCLES="${CYCLES:-3}"
 BATCH_SIZE="${BATCH_SIZE:-5}"
 LIMIT="${LIMIT:-20}"
 MODEL_ID="${MODEL_ID:-us.anthropic.claude-opus-4-5-20251101-v1:0}"
+EVOLVER_MODEL_ID="${EVOLVER_MODEL_ID:-}"
 REGION="${REGION:-us-west-2}"
 MAX_TOKENS="${MAX_TOKENS:-16384}"
 CHALLENGES_DIR="${CHALLENGES_DIR:-}"
@@ -46,6 +47,7 @@ echo "Cycles:        ${CYCLES}"
 echo "Batch size:    ${BATCH_SIZE}"
 echo "Limit:         ${LIMIT}"
 echo "Model:         ${MODEL_ID}"
+echo "Evolver model: ${EVOLVER_MODEL_ID:-<same as solver>}"
 echo "Region:        ${REGION}"
 [[ -n "${CHALLENGES_DIR}" ]] && echo "Challenges:    ${CHALLENGES_DIR}"
 echo ""
@@ -63,6 +65,7 @@ cmd=(
   --log-dir "${LOG_DIR}"
   -v
 )
+[[ -n "${EVOLVER_MODEL_ID}" ]] && cmd+=(--evolver-model-id "${EVOLVER_MODEL_ID}")
 [[ -n "${CHALLENGES_DIR}" ]] && cmd+=(--challenges-dir "${CHALLENGES_DIR}")
 
 LOG="${LOG_DIR}/evolve.log"

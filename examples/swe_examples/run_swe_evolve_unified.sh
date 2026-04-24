@@ -12,6 +12,7 @@ CYCLES="${CYCLES:-3}"
 BATCH_SIZE="${BATCH_SIZE:-5}"
 LIMIT="${LIMIT:-50}"
 MODEL_ID="${MODEL_ID:-us.anthropic.claude-opus-4-5-20251101-v1:0}"
+EVOLVER_MODEL_ID="${EVOLVER_MODEL_ID:-}"
 REGION="${REGION:-us-west-2}"
 MAX_TOKENS="${MAX_TOKENS:-16384}"
 DATASET="${DATASET:-MariusHobbhahn/swe-bench-verified-mini}"
@@ -29,6 +30,7 @@ echo "Batch size:    ${BATCH_SIZE}"
 echo "Limit:         ${LIMIT}"
 echo "Dataset:       ${DATASET}"
 echo "Model:         ${MODEL_ID}"
+echo "Evolver model: ${EVOLVER_MODEL_ID:-<same as solver>}"
 echo "Region:        ${REGION}"
 echo ""
 
@@ -45,6 +47,7 @@ cmd=(
   --output-dir "${OUTPUT_DIR}"
   -v
 )
+[[ -n "${EVOLVER_MODEL_ID}" ]] && cmd+=(--evolver-model-id "${EVOLVER_MODEL_ID}")
 
 LOG="${OUTPUT_DIR}/evolve.log"
 mkdir -p "${OUTPUT_DIR}"

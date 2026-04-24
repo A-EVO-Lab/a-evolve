@@ -70,6 +70,7 @@ class McpAtlasBenchmark(BenchmarkAdapter):
         self.eval_region = eval_region
         self._cache: dict[str, list[dict]] = {}
         self._split_done = False
+        self._cursor: int = 0
 
         # Check environment variable override
         env_use_litellm = os.getenv("EVAL_USE_LITELLM", "").lower()
@@ -90,10 +91,26 @@ class McpAtlasBenchmark(BenchmarkAdapter):
     # ── Public API ───────────────────────────────────────────────────
 
     def get_tasks(self, split: str = "train", limit: int = 10, key_registry: KeyRegistry | None = None) -> list[Task]:
-        """Return up to *limit* Task objects from the requested split."""
+        """Return up to *limit* Task objects from the requested split.
+
+        Stateful cursor pagination (advance-then-reset-at-end): successive
+        calls return contiguous slices and the cursor resets to 0 only when
+        end-of-sweep is reached. A single call never crosses a sweep
+        boundary; the remainder batch may be shorter than ``limit``.
+        """
         rows = self._load_split(split)
         tasks: list[Task] = []
-        for row in rows[:limit]:
+        n = len(rows)
+        if n == 0:
+            return tasks
+        if self._cursor >= n:
+            self._cursor = 0
+        end = min(self._cursor + limit, n)
+        batch_rows = rows[self._cursor:end]
+        self._cursor = end
+        if self._cursor >= n:
+            self._cursor = 0
+        for row in batch_rows:
             # MCP-Atlas HF dataset uses uppercase column names:
             #   TASK, ENABLED_TOOLS, PROMPT, GTFA_CLAIMS, TRAJECTORY
             task_id = row.get("TASK") or row.get("task_id", "")

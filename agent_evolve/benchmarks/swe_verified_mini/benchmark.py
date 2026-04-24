@@ -62,17 +62,28 @@ class SweVerifiedMiniBenchmark(BenchmarkAdapter):
         self.eval_timeout = eval_timeout
         self._cache: dict[str, list[dict]] = {}
         self._split_done = False
+        self._cursor: int = 0
 
     def get_tasks(self, split: str = "test", limit: int = 10) -> list[Task]:
         """Load SWE-bench tasks from HuggingFace.
 
         Supports both SWE-bench Verified (has 'version' field) and SWE-bench Live
         (needs version auto-detection, filters to supported repos).
+
+        Stateful cursor pagination: successive calls return contiguous slices
+        of the filtered rows, advance the cursor, and reset to 0 at end-of-sweep
+        so the next call starts a fresh sweep. A single call never crosses a
+        sweep boundary; the remainder batch at end-of-sweep may be shorter
+        than ``limit``.
         """
         rows = self._load_split(split)
         tasks = []
 
         # Detect dataset type and filter accordingly
+        has_version = False
+        has_dockerhub_tag = False
+        has_docker_image = False
+        latest_versions: dict[str, str] = {}
         if rows:
             has_version = bool(rows[0].get("version"))
             has_dockerhub_tag = bool(rows[0].get("dockerhub_tag"))
@@ -96,7 +107,18 @@ class SweVerifiedMiniBenchmark(BenchmarkAdapter):
                 if len(rows) < before:
                     logger.info("Filtered to %d tasks with Docker images (from %d)", len(rows), before)
 
-        for row in rows[:limit]:
+        n = len(rows)
+        if n == 0:
+            return tasks
+        if self._cursor >= n:
+            self._cursor = 0
+        end = min(self._cursor + limit, n)
+        batch_rows = rows[self._cursor:end]
+        self._cursor = end
+        if self._cursor >= n:
+            self._cursor = 0
+
+        for row in batch_rows:
             instance_id = row["instance_id"]
 
             # Derive version for Live tasks

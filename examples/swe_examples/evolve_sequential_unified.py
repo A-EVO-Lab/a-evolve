@@ -53,7 +53,10 @@ def main() -> int:
                    help="Tasks per cycle (passed to bench.get_tasks limit)")
     p.add_argument("--limit", type=int, default=50,
                    help="Cap on total tasks loaded from benchmark")
-    p.add_argument("--model-id", default="us.anthropic.claude-opus-4-5-20251101-v1:0")
+    p.add_argument("--model-id", default="us.anthropic.claude-opus-4-5-20251101-v1:0",
+                   help="Solver model id")
+    p.add_argument("--evolver-model-id", default=None,
+                   help="Evolver model id (defaults to --model-id)")
     p.add_argument("--region", default="us-west-2")
     p.add_argument("--max-tokens", type=int, default=16384)
     p.add_argument("--max-steps", type=int, default=0,
@@ -90,14 +93,20 @@ def main() -> int:
     shutil.copytree(seed_dir, ws_dir)
     logger.info("Workspace: %s (from seed %s)", ws_dir, seed_dir)
 
-    agent = SweAgent(workspace_dir=ws_dir)
+    agent = SweAgent(
+        workspace_dir=ws_dir,
+        model_id=args.model_id,
+        region=args.region,
+        max_tokens=args.max_tokens,
+    )
 
-    llm = BedrockProvider(model_id=args.model_id, region=args.region)
+    evolver_model_id = args.evolver_model_id or args.model_id
+    llm = BedrockProvider(model_id=evolver_model_id, region=args.region)
 
     config = EvolveConfig(
         batch_size=args.batch_size,
         max_cycles=args.cycles,
-        evolver_model=args.model_id,
+        evolver_model=evolver_model_id,
         extra={"region": args.region, "max_tokens": args.max_tokens},
     )
     engine = UnifiedEngine(config, bench)
@@ -108,8 +117,8 @@ def main() -> int:
     loop = EvolutionLoop(agent=agent, benchmark=bench, engine=engine, config=config)
 
     logger.info(
-        "Running %d cycles × batch_size=%d (limit=%d, model=%s)",
-        args.cycles, args.batch_size, args.limit, args.model_id,
+        "Running %d cycles × batch_size=%d (limit=%d, solver=%s, evolver=%s)",
+        args.cycles, args.batch_size, args.limit, args.model_id, evolver_model_id,
     )
     result = loop.run(cycles=args.cycles)
 

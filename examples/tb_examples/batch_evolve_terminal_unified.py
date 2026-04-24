@@ -55,7 +55,10 @@ def main() -> int:
                    help="Tasks per cycle (passed to bench.get_tasks limit)")
     p.add_argument("--limit", type=int, default=20,
                    help="Max tasks from benchmark")
-    p.add_argument("--model-id", default="us.anthropic.claude-opus-4-5-20251101-v1:0")
+    p.add_argument("--model-id", default="us.anthropic.claude-opus-4-5-20251101-v1:0",
+                   help="Solver model id")
+    p.add_argument("--evolver-model-id", default=None,
+                   help="Evolver model id (defaults to --model-id)")
     p.add_argument("--region", default="us-west-2")
     p.add_argument("--max-tokens", type=int, default=16384)
     p.add_argument("--challenges-dir", default=None,
@@ -96,14 +99,20 @@ def main() -> int:
         (ws_dir / "prompts" / "system.md").write_text("# Agent\n\n")
         logger.info("Workspace: %s (fresh — seed dir %s missing)", ws_dir, seed_dir)
 
-    agent = TerminalAgent(workspace_dir=ws_dir)
+    agent = TerminalAgent(
+        workspace_dir=ws_dir,
+        model_id=args.model_id,
+        region=args.region,
+        max_tokens=args.max_tokens,
+    )
 
-    llm = BedrockProvider(model_id=args.model_id, region=args.region)
+    evolver_model_id = args.evolver_model_id or args.model_id
+    llm = BedrockProvider(model_id=evolver_model_id, region=args.region)
 
     config = EvolveConfig(
         batch_size=args.batch_size,
         max_cycles=args.cycles,
-        evolver_model=args.model_id,
+        evolver_model=evolver_model_id,
         extra={"region": args.region, "max_tokens": args.max_tokens},
     )
     engine = UnifiedEngine(config, bench)
@@ -112,8 +121,8 @@ def main() -> int:
     loop = EvolutionLoop(agent=agent, benchmark=bench, engine=engine, config=config)
 
     logger.info(
-        "Running %d cycles × batch_size=%d on %d total tasks (model=%s)",
-        args.cycles, args.batch_size, args.limit, args.model_id,
+        "Running %d cycles × batch_size=%d on %d total tasks (solver=%s, evolver=%s)",
+        args.cycles, args.batch_size, args.limit, args.model_id, evolver_model_id,
     )
     result = loop.run(cycles=args.cycles)
 
