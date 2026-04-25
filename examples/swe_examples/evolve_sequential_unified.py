@@ -25,6 +25,7 @@ from __future__ import annotations
 import argparse
 import json
 import logging
+import math
 import shutil
 import sys
 from datetime import datetime
@@ -47,8 +48,28 @@ def main() -> int:
     p = argparse.ArgumentParser(
         description="SWE-bench Verified evolution via UnifiedEngine + EvolutionLoop"
     )
+    # Unified pass / cycle knobs (mirrors mcp / tb / sb unified runners).
+    #   --passes K           how many full sweeps of the dataset (outer loop).
+    #   --cycle-per-batch C  in-batch retry multiplier (default 1 = legacy
+    #                        single-attempt-per-batch). C>1 currently
+    #                        increases total EvolutionLoop cycles (cursor
+    #                        still advances each iteration); true
+    #                        retry-same-batch semantics would require a
+    #                        core EvolutionLoop change which is out of
+    #                        scope at this layer.
+    # When EITHER --passes or --cycle-per-batch is set explicitly, the
+    # script computes max_cycles = passes * ⌈limit/batch_size⌉ * cycle_per_batch
+    # and that value wins over --cycles. Otherwise --cycles is honored as
+    # the legacy direct knob (default 3 preserved for back-compat).
+    p.add_argument("--passes", type=int, default=None,
+                   help="Number of full sweeps of the dataset. If set "
+                        "(or --cycle-per-batch is set), max_cycles is "
+                        "computed as passes*⌈limit/batch⌉*cycle_per_batch.")
+    p.add_argument("--cycle-per-batch", type=int, default=None, dest="cycle_per_batch",
+                   help="In-batch retry multiplier (default: 1 when --passes is set).")
     p.add_argument("--cycles", type=int, default=3,
-                   help="Number of evolution cycles")
+                   help="Direct EvolutionLoop max_cycles (legacy, default 3). "
+                        "Overridden when --passes/--cycle-per-batch is set.")
     p.add_argument("--batch-size", type=int, default=5,
                    help="Tasks per cycle (passed to bench.get_tasks limit)")
     p.add_argument("--limit", type=int, default=50,
@@ -103,9 +124,24 @@ def main() -> int:
     evolver_model_id = args.evolver_model_id or args.model_id
     llm = BedrockProvider(model_id=evolver_model_id, region=args.region)
 
+    # Resolve effective max_cycles. If --passes or --cycle-per-batch is
+    # set explicitly, the unified formula wins; otherwise honour --cycles.
+    if args.passes is not None or args.cycle_per_batch is not None:
+        passes = args.passes if args.passes is not None else 1
+        cpb = args.cycle_per_batch if args.cycle_per_batch is not None else 1
+        batches_per_pass = max(1, math.ceil(args.limit / max(1, args.batch_size)))
+        effective_cycles = passes * batches_per_pass * cpb
+        cycle_source = (
+            f"passes={passes} × ⌈{args.limit}/{args.batch_size}⌉={batches_per_pass} "
+            f"× cycle_per_batch={cpb}"
+        )
+    else:
+        effective_cycles = args.cycles
+        cycle_source = f"--cycles={args.cycles}"
+
     config = EvolveConfig(
         batch_size=args.batch_size,
-        max_cycles=args.cycles,
+        max_cycles=effective_cycles,
         evolver_model=evolver_model_id,
         extra={"region": args.region, "max_tokens": args.max_tokens},
     )
@@ -117,10 +153,11 @@ def main() -> int:
     loop = EvolutionLoop(agent=agent, benchmark=bench, engine=engine, config=config)
 
     logger.info(
-        "Running %d cycles × batch_size=%d (limit=%d, solver=%s, evolver=%s)",
-        args.cycles, args.batch_size, args.limit, args.model_id, evolver_model_id,
+        "Running %d cycles (%s) × batch_size=%d (limit=%d, solver=%s, evolver=%s)",
+        effective_cycles, cycle_source, args.batch_size,
+        args.limit, args.model_id, evolver_model_id,
     )
-    result = loop.run(cycles=args.cycles)
+    result = loop.run(cycles=effective_cycles)
 
     # Write results
     results_path = out_dir / "results.jsonl"

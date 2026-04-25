@@ -13,7 +13,13 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 
 # Override via env vars.
+# Unified pass / cycle knobs:
+#   CYCLES    → --max-cycles  (= cycle_per_batch in the unified model)
+#   PASSES    → --passes      (outer dataset sweeps; currently no-op
+#                              with a warning when >1; see python runner
+#                              for context)
 CYCLES="${CYCLES:-3}"
+PASSES="${PASSES:-}"
 BATCH_SIZE="${BATCH_SIZE:-2}"
 LIMIT="${LIMIT:-}"
 MODE="${MODE:-native}"
@@ -61,6 +67,7 @@ cmd=(
 )
 [[ -n "${LIMIT}" ]] && cmd+=(--limit "${LIMIT}")
 [[ -n "${EVOLVER_MODEL_ID}" ]] && cmd+=(--evolver-model-id "${EVOLVER_MODEL_ID}")
+[[ -n "${PASSES}" ]] && cmd+=(--passes "${PASSES}")
 
 LOG="${RUN_DIR}/evolve.log"
 echo "Running: ${cmd[*]}"

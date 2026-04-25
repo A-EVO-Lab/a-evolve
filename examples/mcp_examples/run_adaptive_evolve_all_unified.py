@@ -28,6 +28,7 @@ from __future__ import annotations
 import argparse
 import json
 import logging
+import math
 import shutil
 import sys
 from datetime import datetime
@@ -51,8 +52,19 @@ def main() -> int:
     p = argparse.ArgumentParser(
         description="MCP-Atlas evolution via UnifiedEngine + EvolutionLoop"
     )
+    # Unified pass / cycle knobs (mirrors swe / tb / sb unified runners).
+    # When --passes or --cycle-per-batch is set, the script computes
+    # max_cycles = passes × ⌈limit/batch_size⌉ × cycle_per_batch and
+    # overrides --cycles. Otherwise --cycles is honoured (legacy default).
+    p.add_argument("--passes", type=int, default=None,
+                   help="Number of full sweeps of the dataset. If set "
+                        "(or --cycle-per-batch is set), max_cycles is "
+                        "computed as passes*⌈limit/batch⌉*cycle_per_batch.")
+    p.add_argument("--cycle-per-batch", type=int, default=None, dest="cycle_per_batch",
+                   help="In-batch retry multiplier (default: 1 when --passes is set).")
     p.add_argument("--cycles", type=int, default=3,
-                   help="Number of evolution cycles")
+                   help="Direct EvolutionLoop max_cycles (legacy, default 3). "
+                        "Overridden when --passes/--cycle-per-batch is set.")
     p.add_argument("--batch-size", type=int, default=30,
                    help="Tasks per cycle (passed to bench.get_tasks limit)")
     p.add_argument("--limit", type=int, default=100,
@@ -106,9 +118,24 @@ def main() -> int:
     evolver_model = args.evolver_model or args.solver_model
     llm = BedrockProvider(model_id=evolver_model, region=args.region)
 
+    # Resolve effective max_cycles. If --passes or --cycle-per-batch is
+    # set explicitly, the unified formula wins; otherwise honour --cycles.
+    if args.passes is not None or args.cycle_per_batch is not None:
+        passes = args.passes if args.passes is not None else 1
+        cpb = args.cycle_per_batch if args.cycle_per_batch is not None else 1
+        batches_per_pass = max(1, math.ceil(args.limit / max(1, args.batch_size)))
+        effective_cycles = passes * batches_per_pass * cpb
+        cycle_source = (
+            f"passes={passes} × ⌈{args.limit}/{args.batch_size}⌉={batches_per_pass} "
+            f"× cycle_per_batch={cpb}"
+        )
+    else:
+        effective_cycles = args.cycles
+        cycle_source = f"--cycles={args.cycles}"
+
     config = EvolveConfig(
         batch_size=args.batch_size,
-        max_cycles=args.cycles,
+        max_cycles=effective_cycles,
         evolver_model=evolver_model,
         extra={"region": args.region, "max_tokens": args.max_tokens},
     )
@@ -134,11 +161,11 @@ def main() -> int:
     loop = EvolutionLoop(agent=agent, benchmark=bench, engine=engine, config=config)
 
     logger.info(
-        "Running %d cycles × batch_size=%d (limit=%d, solver=%s, evolver=%s)",
-        args.cycles, args.batch_size, args.limit,
+        "Running %d cycles (%s) × batch_size=%d (limit=%d, solver=%s, evolver=%s)",
+        effective_cycles, cycle_source, args.batch_size, args.limit,
         args.solver_model, evolver_model,
     )
-    result = loop.run(cycles=args.cycles)
+    result = loop.run(cycles=effective_cycles)
 
     results_path = out_dir / "results.jsonl"
     with open(results_path, "w") as f:

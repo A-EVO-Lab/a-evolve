@@ -16,6 +16,8 @@ RUN_NAME="${1:?Usage: $0 <RUN_NAME> [--cycles N] [--batch-size N] [--limit N]}"
 shift || true
 
 CYCLES="${CYCLES:-3}"
+PASSES="${PASSES:-}"
+CYCLE_PER_BATCH="${CYCLE_PER_BATCH:-}"
 BATCH_SIZE="${BATCH_SIZE:-5}"
 LIMIT="${LIMIT:-20}"
 MODEL_ID="${MODEL_ID:-us.anthropic.claude-opus-4-5-20251101-v1:0}"
@@ -32,13 +34,15 @@ LOG_DIR="${LOG_DIR:-${REPO_ROOT}/logs/unified_tb_${RUN_NAME}}"
 # Forward any extra flags to the python script.
 while [[ $# -gt 0 ]]; do
     case "$1" in
-        --cycles)       CYCLES="$2";       shift 2 ;;
-        --batch-size)   BATCH_SIZE="$2";   shift 2 ;;
-        --limit)        LIMIT="$2";        shift 2 ;;
-        --model-id)     MODEL_ID="$2";     shift 2 ;;
-        --region)       REGION="$2";       shift 2 ;;
-        --challenges-dir) CHALLENGES_DIR="$2"; shift 2 ;;
-        *)              echo "Unknown flag: $1"; exit 1 ;;
+        --cycles)          CYCLES="$2";          shift 2 ;;
+        --passes)          PASSES="$2";          shift 2 ;;
+        --cycle-per-batch) CYCLE_PER_BATCH="$2"; shift 2 ;;
+        --batch-size)      BATCH_SIZE="$2";      shift 2 ;;
+        --limit)           LIMIT="$2";           shift 2 ;;
+        --model-id)        MODEL_ID="$2";        shift 2 ;;
+        --region)          REGION="$2";          shift 2 ;;
+        --challenges-dir)  CHALLENGES_DIR="$2";  shift 2 ;;
+        *)                 echo "Unknown flag: $1"; exit 1 ;;
     esac
 done
 
@@ -70,6 +74,9 @@ cmd=(
 )
 [[ -n "${EVOLVER_MODEL_ID}" ]] && cmd+=(--evolver-model-id "${EVOLVER_MODEL_ID}")
 [[ -n "${CHALLENGES_DIR}" ]] && cmd+=(--challenges-dir "${CHALLENGES_DIR}")
+# Unified pass / cycle knobs (when set, overrides --cycles via formula).
+[[ -n "${PASSES}" ]]          && cmd+=(--passes "${PASSES}")
+[[ -n "${CYCLE_PER_BATCH}" ]] && cmd+=(--cycle-per-batch "${CYCLE_PER_BATCH}")
 
 LOG="${LOG_DIR}/evolve.log"
 echo "Running: ${cmd[*]}"

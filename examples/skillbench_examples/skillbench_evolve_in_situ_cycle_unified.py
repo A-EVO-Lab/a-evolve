@@ -1044,7 +1044,14 @@ def main() -> int:
 
     # Grind settings
     p.add_argument("--max-cycles", type=int, default=3,
-                   help="Max solve→evolve cycles per task (default 3)")
+                   help="Max solve→evolve cycles per task (default 3). "
+                        "In the unified pass/cycle model this is the "
+                        "in-batch retry count (cycle_per_batch).")
+    p.add_argument("--passes", type=int, default=1,
+                   help="Number of full sweeps of the dataset (default 1). "
+                        "Each pass re-iterates the outer batch loop with "
+                        "the workspace as evolved by previous passes; "
+                        "tasks already RESOLVED on a prior pass are skipped.")
     p.add_argument("--batch-size", type=int, default=2,
                    help="Tasks per batch (keep small to avoid prompt overflow, default 2)")
     p.add_argument("--max-workers", type=int, default=1,
@@ -1411,6 +1418,23 @@ def main() -> int:
     run_start = time.time()
     stats = {"done": 0, "pass": 0, "fail": 0, "err": 0, "grind_resolved": 0}
     evo_counter = 0
+
+    # NOTE on --passes: the unified pass/cycle model maps `--passes`
+    # to "outer dataset sweeps". SB's `completed` set persists FAILED
+    # tasks (final=True even on FAIL) so a naive multi-pass would
+    # re-skip those rather than re-attempt them. Implementing useful
+    # multi-pass here requires distinguishing resolved-in-this-run
+    # from final-in-this-run, which is a behavior change beyond the
+    # scope of "just expose the knob". For passes>1 we currently log
+    # a warning and keep the legacy single-sweep behaviour. The
+    # `--max-cycles` knob (= cycle_per_batch) provides per-task
+    # solve→evolve→retry, which covers most use cases.
+    if args.passes > 1:
+        log.warning(
+            "--passes=%d requested, but SB multi-pass is not yet implemented; "
+            "running a single sweep. Use --max-cycles for in-batch retry.",
+            args.passes,
+        )
 
     for batch_idx, batch in enumerate(batches):
         batch_num = batch_idx + 1

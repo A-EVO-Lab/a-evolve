@@ -11,6 +11,8 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 
 CYCLES="${CYCLES:-3}"
+PASSES="${PASSES:-}"
+CYCLE_PER_BATCH="${CYCLE_PER_BATCH:-}"
 BATCH_SIZE="${BATCH_SIZE:-30}"
 LIMIT="${LIMIT:-100}"
 SOLVER_MODEL="${SOLVER_MODEL:-us.anthropic.claude-opus-4-5-20251101-v1:0}"
@@ -56,6 +58,9 @@ cmd=(
   -v
 )
 [[ -n "${EVOLVER_MODEL}" ]] && cmd+=(--evolver-model "${EVOLVER_MODEL}")
+# Unified pass / cycle knobs (when set, overrides --cycles via formula).
+[[ -n "${PASSES}" ]]          && cmd+=(--passes "${PASSES}")
+[[ -n "${CYCLE_PER_BATCH}" ]] && cmd+=(--cycle-per-batch "${CYCLE_PER_BATCH}")
 
 LOG="${OUTPUT_DIR}/evolve.log"
 mkdir -p "${OUTPUT_DIR}"
