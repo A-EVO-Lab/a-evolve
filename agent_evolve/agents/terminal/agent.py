@@ -52,10 +52,13 @@ class TerminalAgent(BaseAgent):
 
     def _build_strands_agent(self) -> Agent:
         """Create a strands Agent wired with the workspace's current state."""
+        from ...llm._bedrock_config import bedrock_boto_config
+
         model = BedrockModel(
             model_id=self.model_id,
             region_name=self.region,
             max_tokens=self.max_tokens,
+            boto_client_config=bedrock_boto_config(),
         )
 
         system_prompt = self._build_system_prompt()

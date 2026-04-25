@@ -153,10 +153,14 @@ class SkillBenchAgent(BaseAgent):
             raise ModuleNotFoundError(
                 "SkillBenchAgent requires optional dependency 'strands-agents' for native execution."
             ) from _STRANDS_IMPORT_ERROR
+
+        from ...llm._bedrock_config import bedrock_boto_config
+
         model = BedrockModel(
             model_id=self.model_id,
             region_name=self.region,
             max_tokens=self.max_tokens,
+            boto_client_config=bedrock_boto_config(),
         )
         return Agent(
             model=model,
