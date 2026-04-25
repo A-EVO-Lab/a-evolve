@@ -124,89 +124,86 @@ def test_swe_agent():
     print("[OK] SweAgent (site #2, swe evolve solver)")
 
 
-def test_skillbench_agent_construction():
-    """SkillBenchAgent: verify the BedrockModel construction call carries
-    boto_client_config=bedrock_boto_config(). Full instantiation requires
-    a SkillBench task workspace which is heavy; we instead inspect the
-    source to confirm the construction site is patched, then construct
-    only the BedrockModel directly with the same args.
+def test_skillbench_agent():
+    """SkillBenchAgent → strands BedrockModel → boto3 client (site #7).
+
+    Constructs SkillBenchAgent directly and calls its
+    `_build_strands_agent` with an empty tools list. Verifies both
+    default env propagation AND env override.
     """
-    src = (REPO_ROOT / "agent_evolve" / "agents" / "skillbench" / "agent.py").read_text()
-    assert "boto_client_config=bedrock_boto_config()" in src, (
-        "SkillBenchAgent BedrockModel construction missing boto_client_config="
-        "bedrock_boto_config() — site #7 patch regressed"
-    )
+    from agent_evolve.agents.skillbench.agent import SkillBenchAgent
 
-    # Direct construction sanity: BedrockModel + bedrock_boto_config integration.
-    from agent_evolve.llm._bedrock_config import bedrock_boto_config
+    ws = _make_workspace()
     try:
-        from strands.models import BedrockModel
-    except ImportError:
-        print("[SKIP] SkillBenchAgent (strands not available; source-grep PASSED)")
-        return
+        _clear_env()
+        agent = SkillBenchAgent(workspace_dir=str(ws), model_id="test-model")
+        strands_agent = agent._build_strands_agent(tools=[])
+        _assert_default(_get_boto_cfg(strands_agent))
 
-    _clear_env()
-    model = BedrockModel(
-        model_id="test-model",
-        region_name="us-west-2",
-        max_tokens=1024,
-        boto_client_config=bedrock_boto_config(),
-    )
-    cfg = _get_boto_cfg(type("Wrap", (), {"model": model})())
-    _assert_default(cfg)
-
-    os.environ["BEDROCK_RETRY_MAX_ATTEMPTS"] = "20"
-    os.environ["BEDROCK_READ_TIMEOUT_SEC"] = "900"
-    model2 = BedrockModel(
-        model_id="test-model",
-        region_name="us-west-2",
-        max_tokens=1024,
-        boto_client_config=bedrock_boto_config(),
-    )
-    cfg2 = _get_boto_cfg(type("Wrap", (), {"model": model2})())
-    _assert_override(cfg2)
-    _clear_env()
-    print("[OK] SkillBenchAgent (site #7, sb evolve solver — source-grep + direct BedrockModel)")
+        os.environ["BEDROCK_RETRY_MAX_ATTEMPTS"] = "20"
+        os.environ["BEDROCK_READ_TIMEOUT_SEC"] = "900"
+        agent2 = SkillBenchAgent(workspace_dir=str(ws), model_id="test-model")
+        strands_agent2 = agent2._build_strands_agent(tools=[])
+        _assert_override(_get_boto_cfg(strands_agent2))
+    finally:
+        import shutil
+        shutil.rmtree(ws, ignore_errors=True)
+        _clear_env()
+    print("[OK] SkillBenchAgent (site #7, sb evolve solver — full agent instantiation, default + env override)")
 
 
-def test_mcp_agent_construction():
-    """McpAgent: same source-grep + direct BedrockModel approach as SkillBench
-    (full McpAgent instantiation requires KeyRegistry + container plumbing).
+def test_mcp_agent():
+    """McpAgent → strands BedrockModel → boto3 client (site #5).
+
+    Constructs McpAgent directly and calls its `_build_strands_agent`
+    with an empty tools list. Verifies both default env propagation
+    AND env override.
     """
-    src = (REPO_ROOT / "agent_evolve" / "agents" / "mcp" / "agent.py").read_text()
-    assert "boto_client_config=bedrock_boto_config()" in src, (
-        "McpAgent BedrockModel construction missing boto_client_config="
-        "bedrock_boto_config() — site #5 patch regressed"
-    )
+    from agent_evolve.agents.mcp.agent import McpAgent
 
-    from agent_evolve.llm._bedrock_config import bedrock_boto_config
+    ws = _make_workspace()
     try:
-        from strands.models import BedrockModel
-    except ImportError:
-        print("[SKIP] McpAgent (strands not available; source-grep PASSED)")
-        return
+        _clear_env()
+        agent = McpAgent(workspace_dir=str(ws), model_id="test-model")
+        strands_agent = agent._build_strands_agent(tools=[])
+        _assert_default(_get_boto_cfg(strands_agent))
 
-    _clear_env()
-    model = BedrockModel(
-        model_id="test-model",
-        region_name="us-west-2",
-        max_tokens=1024,
-        boto_client_config=bedrock_boto_config(),
-    )
-    _assert_default(_get_boto_cfg(type("Wrap", (), {"model": model})())
-                    )
-    print("[OK] McpAgent (site #5, mcp evolve solver — source-grep + direct BedrockModel)")
+        os.environ["BEDROCK_RETRY_MAX_ATTEMPTS"] = "20"
+        os.environ["BEDROCK_READ_TIMEOUT_SEC"] = "900"
+        agent2 = McpAgent(workspace_dir=str(ws), model_id="test-model")
+        strands_agent2 = agent2._build_strands_agent(tools=[])
+        _assert_override(_get_boto_cfg(strands_agent2))
+    finally:
+        import shutil
+        shutil.rmtree(ws, ignore_errors=True)
+        _clear_env()
+    print("[OK] McpAgent (site #5, mcp evolve solver — full agent instantiation, default + env override)")
 
 
-def test_mcp_mh_agent_construction():
-    """McpMHAgent (mcp baseline solver, site #3): source-grep — already
-    patched in the prior round."""
-    src = (REPO_ROOT / "agent_evolve" / "agents" / "mcp_mh" / "agent.py").read_text()
-    assert "boto_client_config=bedrock_boto_config()" in src, (
-        "McpMHAgent BedrockModel construction missing boto_client_config="
-        "bedrock_boto_config() — site #3 patch regressed"
-    )
-    print("[OK] McpMHAgent (site #3, mcp baseline solver — source-grep)")
+def test_mcp_mh_agent():
+    """McpMHAgent → strands BedrockModel → boto3 client (site #3, mcp
+    baseline solver). Constructs the agent directly and asserts both
+    default and env-overridden propagation, same shape as McpAgent.
+    """
+    from agent_evolve.agents.mcp_mh.agent import McpMHAgent
+
+    ws = _make_workspace()
+    try:
+        _clear_env()
+        agent = McpMHAgent(workspace_dir=str(ws), model_id="test-model")
+        strands_agent = agent._build_strands_agent(tools=[])
+        _assert_default(_get_boto_cfg(strands_agent))
+
+        os.environ["BEDROCK_RETRY_MAX_ATTEMPTS"] = "20"
+        os.environ["BEDROCK_READ_TIMEOUT_SEC"] = "900"
+        agent2 = McpMHAgent(workspace_dir=str(ws), model_id="test-model")
+        strands_agent2 = agent2._build_strands_agent(tools=[])
+        _assert_override(_get_boto_cfg(strands_agent2))
+    finally:
+        import shutil
+        shutil.rmtree(ws, ignore_errors=True)
+        _clear_env()
+    print("[OK] McpMHAgent (site #3, mcp baseline solver — full agent instantiation, default + env override)")
 
 
 def test_out_of_scope_sites_unmodified():
@@ -231,9 +228,9 @@ def test_out_of_scope_sites_unmodified():
 def main():
     test_terminal_agent()
     test_swe_agent()
-    test_skillbench_agent_construction()
-    test_mcp_agent_construction()
-    test_mcp_mh_agent_construction()
+    test_skillbench_agent()
+    test_mcp_agent()
+    test_mcp_mh_agent()
     test_out_of_scope_sites_unmodified()
     print()
     print("All Bedrock-config propagation regression tests passed.")
