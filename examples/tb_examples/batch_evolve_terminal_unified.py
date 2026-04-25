@@ -91,8 +91,14 @@ def main() -> int:
     )
     log_dir.mkdir(parents=True, exist_ok=True)
 
-    # Benchmark
-    bench_kwargs = {}
+    # Benchmark. shuffle=False makes the task order deterministic (dataset
+    # order, first `limit` tasks). The TB baseline runner (batch_evolve_terminal.py)
+    # also defaults to shuffle=False, so evolve and baseline cells see the
+    # SAME 50 tasks — required for a fair lift = with_evo - no_evo
+    # comparison. The Terminal2Benchmark adapter defaults shuffle=True and
+    # does not seed random, so leaving the default would have evolve and
+    # baseline see disjoint random samples.
+    bench_kwargs = {"shuffle": False}
     if args.challenges_dir:
         bench_kwargs["challenges_dir"] = args.challenges_dir
     bench = Terminal2Benchmark(**bench_kwargs)
