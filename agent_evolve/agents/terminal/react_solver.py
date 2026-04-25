@@ -319,7 +319,14 @@ def react_solve(
     messages = [{"role": "user", "content": [{"text": task_prompt}]}]
     result.messages = messages
 
-    base_specs = tool_specs if tool_specs is not None else TOOL_SPECS
+    # Treat empty tool_specs the same as None and fall back to defaults.
+    # Bedrock's converse API requires `toolConfig.tools` to have ≥1 entry,
+    # so an empty list is never a valid request payload. The previous
+    # `is not None` check let `tool_specs=[]` through (which happens when
+    # callers pass `TerminalAgent.get_tool_specs()` under `--no-skills`,
+    # because the workspace has no skills → no tool specs), causing
+    # Bedrock to reject every solve attempt before any LLM call.
+    base_specs = tool_specs if tool_specs else TOOL_SPECS
     all_specs = base_specs + ([READ_SKILL_SPEC] if skills else [])
     tool_config = {"tools": all_specs}
     t0 = time.time()
