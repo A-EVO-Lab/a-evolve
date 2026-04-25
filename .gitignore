@@ -63,6 +63,7 @@ inspect_evals/
 !/tests/test_unified_differential.py
 !/tests/test_unified_legacy_differential.py
 !/tests/test_unified_fullloop_replay.py
+!/tests/test_bedrock_config_propagation.py
 !/tests/gepa/
 
 # Root-level artifacts
