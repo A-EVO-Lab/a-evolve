@@ -21,6 +21,72 @@ from typing import Any
 from .types import FeedbackCapability, Plan, RegimeTag
 
 
+def _extra(config: Any) -> dict[str, Any]:
+    value = getattr(config, "extra", {}) or {}
+    return value if isinstance(value, dict) else {}
+
+
+def _flag(config: Any, name: str, default: bool = True) -> bool:
+    return bool(getattr(config, name, default))
+
+
+def _apply_scope(config: Any, scope: dict[str, str]) -> dict[str, str]:
+    """Apply EvolveConfig mutation flags to a recipe's artifact scope."""
+    out = dict(scope)
+    if not _flag(config, "evolve_prompts", True):
+        out["prompts"] = "ro"
+    if not _flag(config, "evolve_skills", True):
+        out["skills"] = "ro"
+    if not _flag(config, "evolve_memory", True):
+        out["memory"] = "ro"
+    if not _flag(config, "evolve_tools", False):
+        out["tools"] = "ro"
+    return out
+
+
+def _scope_grants(scope: dict[str, str], artifact: str) -> bool:
+    return scope.get(artifact) in ("rw", "append")
+
+
+_OP_WRITES: dict[str, tuple[str, ...]] = {
+    "FixHallucinations": ("skills", "memory"),
+    "AutoSeedSkills": ("skills",),
+    "LLMBashEvolve": ("prompts", "skills", "memory", "tools"),
+    "SanityCheck": ("prompts", "skills"),
+    "WriteEpisodicMemory": ("memory",),
+    "SkillCurator": ("skills",),
+}
+
+
+def _filter_operators(operators: tuple[str, ...], scope: dict[str, str]) -> tuple[str, ...]:
+    filtered: list[str] = []
+    for name in operators:
+        writes = _OP_WRITES.get(name)
+        if writes and not any(_scope_grants(scope, w) for w in writes):
+            continue
+        filtered.append(name)
+    return tuple(filtered)
+
+
+def _plan(
+    *,
+    readers: tuple[str, ...],
+    operators: tuple[str, ...],
+    verifier: str,
+    artifact_scope: dict[str, str],
+    reason_trace: tuple[str, ...],
+    config: Any,
+) -> Plan:
+    scoped = _apply_scope(config, artifact_scope)
+    return Plan(
+        readers=readers,
+        operators=_filter_operators(operators, scoped),
+        verifier=verifier,
+        artifact_scope=scoped,
+        reason_trace=reason_trace,
+    )
+
+
 class RuleBasedController:
     """Deterministic rule-based recipe dispatcher."""
 
@@ -30,8 +96,21 @@ class RuleBasedController:
         capability: FeedbackCapability,
         config: Any,
     ) -> Plan:
+        extra = _extra(config)
+        legacy_profile = str(extra.get("legacy_profile", "")).lower()
+
+        if legacy_profile == "swe" and not regime.has_solver_proposal:
+            return _plan(
+                readers=("PassFailReader", "TrajectoryCompressor"),
+                operators=(),
+                verifier="NoVerify",
+                artifact_scope={"skills": "ro", "memory": "ro", "prompts": "ro"},
+                reason_trace=("matched: swe legacy no solver proposals",),
+                config=config,
+            )
+
         if regime.has_per_claim:
-            return Plan(
+            return _plan(
                 readers=(
                     "PassFailReader",
                     "ClaimReader",
@@ -48,42 +127,47 @@ class RuleBasedController:
                 verifier="NoVerify",
                 artifact_scope={"prompts": "rw", "skills": "rw", "memory": "append"},
                 reason_trace=("matched: per_claim regime",),
+                config=config,
             )
 
         if regime.has_solver_proposal and capability.solver_may_propose:
-            return Plan(
+            return _plan(
                 readers=("PassFailReader", "ProposalReader"),
                 operators=("WriteEpisodicMemory", "SkillCurator"),
                 verifier="NoVerify",
                 artifact_scope={"skills": "rw", "memory": "append"},
                 reason_trace=("matched: solver_proposal regime",),
+                config=config,
             )
 
         if regime.has_drafts:
-            return Plan(
+            return _plan(
                 readers=("PassFailReader", "DraftReader", "TrajectoryCompressor"),
                 operators=("LLMBashEvolve",),
                 verifier="NoVerify",
                 artifact_scope={"skills": "rw", "prompts": "rw"},
                 reason_trace=("matched: drafts regime",),
+                config=config,
             )
 
         trajectory_only = bool(getattr(config, "trajectory_only", False))
         if trajectory_only or not regime.has_binary_verifier:
-            return Plan(
+            return _plan(
                 readers=("TrajectoryCompressor", "LLMJudgeReader"),
                 operators=("LLMBashEvolve",),
                 verifier="NoVerify",
                 artifact_scope={"skills": "rw"},
                 reason_trace=("matched: trajectory_only regime",),
+                config=config,
             )
 
-        return Plan(
+        return _plan(
             readers=("PassFailReader", "TrajectoryCompressor"),
             operators=("LLMBashEvolve",),
             verifier="NoVerify",
             artifact_scope={"skills": "rw"},
             reason_trace=("default: minimal llm_bash recipe",),
+            config=config,
         )
 
 

@@ -1,32 +1,31 @@
 #!/usr/bin/env bash
-# Run SkillBench evolution via UnifiedEngine (Phase 1).
+# Run SkillBench train/test split via UnifiedEngine.
 #
-# This is the unified counterpart to
-# run_skillbench_evolve_in_situ_cycle.sh. The legacy script uses
-# AEvolveEngine.evolve() and the 1639-line orchestration wrapper. This
-# one uses EvolutionLoop + UnifiedEngine — engine-level parity only
-# (general-skill evolution). See
-# docs/algorithms/unified-equivalence-audit.md for the scope difference.
+# Two-phase wrapper around examples/skillbench_examples/skillbench_evolve_split_unified.py:
+#
+#   Phase 1 (TRAIN): solve first $EVOLVE_LIMIT tasks once in batches of
+#                    $BATCH_SIZE; after each batch, run $CYCLES serial
+#                    batch-level evolve step(s) via UnifiedEngine.
+#   Phase 2 (TEST):  evaluate the next $EVAL_LIMIT tasks once each on the
+#                    evolved workspace — no engine and no retries.
+#
+# Defaults: EVOLVE_LIMIT=20, BATCH_SIZE=1, CYCLES=1, SKILL_SELECT_LIMIT=0,
+#           EVAL_LIMIT=""(all remaining).
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 
-# Override via env vars.
-# Unified pass / cycle knobs:
-#   CYCLES    → --max-cycles  (= cycle_per_batch in the unified model)
-#   PASSES    → --passes      (outer dataset sweeps; currently no-op
-#                              with a warning when >1; see python runner
-#                              for context)
 CYCLES="${CYCLES:-${MAX_CYCLES:-1}}"
-PASSES="${PASSES:-}"
 BATCH_SIZE="${BATCH_SIZE:-1}"
-MAX_WORKERS="${MAX_WORKERS:-${PARALLEL:-1}}"
+# Train: max parallel solve workers. Effective parallelism is
+# min(TRAIN_PARALLEL, BATCH_SIZE). Evolve is always serial.
+TRAIN_PARALLEL="${TRAIN_PARALLEL:-1}"
+# Test: explicit worker count for Phase 2 (no evolve, fully parallelizable).
+TEST_PARALLEL="${TEST_PARALLEL:-5}"
+EVOLVE_LIMIT="${EVOLVE_LIMIT:-20}"
+EVAL_LIMIT="${EVAL_LIMIT:-}"
 LIMIT="${LIMIT:-}"
-# Skill selection: '0' or 'all' = inject every skill, N>0 = top-N by
-# keyword match. Mirrors the legacy `run_skillbench_evolve_in_situ_cycle.sh`
-# env knob so EvolverBench (or manual callers) can cap how many skills
-# the solver agent sees per task.
 SKILL_SELECT_LIMIT="${SKILL_SELECT_LIMIT:-0}"
 MODE="${MODE:-native}"
 USE_SKILLS="${USE_SKILLS:-false}"
@@ -66,24 +65,23 @@ HARBOR_JOBS_DIR="${HARBOR_JOBS_DIR:-/tmp/aevolve-skillbench-harbor-jobs}"
 HARBOR_TIMEOUT_SEC="${HARBOR_TIMEOUT_SEC:-1800}"
 HARBOR_UV_CMD="${HARBOR_UV_CMD:-uv run harbor run}"
 RUN_ID="${RUN_ID:-$(date -u +%Y%m%d_%H%M%S)_pid$$}"
-MODE_LC="$(echo "${MODE}" | tr '[:upper:]' '[:lower:]')"
-USE_SKILLS_LC="$(echo "${USE_SKILLS}" | tr '[:upper:]' '[:lower:]')"
-RUN_DIR="${RUN_DIR:-${REPO_ROOT}/logs/unified_grind_run_${MODE_LC}_skills-${USE_SKILLS_LC}_${RUN_ID}}"
+RUN_DIR="${RUN_DIR:-${REPO_ROOT}/logs/unified_skillbench_split_${RUN_ID}}"
 
 mkdir -p "$(dirname "${RUN_DIR}")"
 
-echo "=== SkillBench Unified Run ==="
+echo "=== SkillBench Train/Test Split (Unified) ==="
 echo "Run ID:        ${RUN_ID}"
 echo "Run dir:       ${RUN_DIR}"
-echo "Cycles:        ${CYCLES}"
-echo "Batch size:    ${BATCH_SIZE}"
-echo "Parallel:      ${MAX_WORKERS} (thread)"
+echo "Phase1 evolve: ${EVOLVE_LIMIT} tasks, batch ${BATCH_SIZE}, cycle-per-batch ${CYCLES}"
+echo "Phase2 eval:   ${EVAL_LIMIT:-all remaining}"
+echo "Train parallel: ${TRAIN_PARALLEL} (effective=min(${TRAIN_PARALLEL},${BATCH_SIZE}))"
+echo "Test parallel:  ${TEST_PARALLEL} (thread)"
 echo "Mode:          ${MODE}"
 echo "Use skills:    ${USE_SKILLS}"
 echo "Feedback:      ${FEEDBACK_LEVEL}"
 echo "Task skills:   ${TASK_SKILL_MODE}"
 echo "Success mode:  ${SUCCESS_MODE}"
-[[ -n "${LIMIT}" ]] && echo "Limit:         ${LIMIT}"
+[[ -n "${LIMIT}" ]] && echo "Total limit:   ${LIMIT}"
 echo "Model:         ${MODEL_ID}"
 echo "Evolver model: ${EVOLVER_MODEL_ID:-<same as solver>}"
 echo "Region:        ${REGION}"
@@ -99,10 +97,12 @@ fi
 
 cmd=(
   "${PY_CMD[@]}"
-  "${REPO_ROOT}/examples/skillbench_examples/skillbench_evolve_in_situ_cycle_unified.py"
-  --max-cycles "${CYCLES}"
+  "${REPO_ROOT}/examples/skillbench_examples/skillbench_evolve_split_unified.py"
+  --cycle-per-batch "${CYCLES}"
   --batch-size "${BATCH_SIZE}"
-  --max-workers "${MAX_WORKERS}"
+  --train-parallel "${TRAIN_PARALLEL}"
+  --test-parallel "${TEST_PARALLEL}"
+  --evolve-limit "${EVOLVE_LIMIT}"
   --mode "${MODE}"
   --use-skills "${USE_SKILLS}"
   --split-seed "${SPLIT_SEED}"
@@ -134,9 +134,9 @@ cmd=(
   --harbor-uv-cmd "${HARBOR_UV_CMD}"
   -v
 )
-[[ -n "${LIMIT}" ]] && cmd+=(--limit "${LIMIT}")
-[[ -n "${EVOLVER_MODEL_ID}" ]] && cmd+=(--evolver-model-id "${EVOLVER_MODEL_ID}")
-[[ -n "${PASSES}" ]] && cmd+=(--passes "${PASSES}")
+[[ -n "${EVAL_LIMIT}" ]]          && cmd+=(--eval-limit "${EVAL_LIMIT}")
+[[ -n "${LIMIT}" ]]                && cmd+=(--limit "${LIMIT}")
+[[ -n "${EVOLVER_MODEL_ID}" ]]    && cmd+=(--evolver-model-id "${EVOLVER_MODEL_ID}")
 [[ -n "${TASKS_DIR_WITH_SKILLS}" ]] && cmd+=(--tasks-dir-with-skills "${TASKS_DIR_WITH_SKILLS}")
 [[ -n "${TASKS_DIR_WITHOUT_SKILLS}" ]] && cmd+=(--tasks-dir-without-skills "${TASKS_DIR_WITHOUT_SKILLS}")
 [[ -n "${HARBOR_REPO}" ]] && cmd+=(--harbor-repo "${HARBOR_REPO}")
@@ -160,9 +160,10 @@ exit_code=${PIPESTATUS[0]}
 set -e
 
 echo ""
-echo "=== Unified run completed ==="
+echo "=== SkillBench split run completed ==="
 echo "  Exit code:  ${exit_code}"
-echo "  Results:    ${RUN_DIR}/results.jsonl"
+echo "  Train:      ${RUN_DIR}/results.jsonl"
+echo "  Test:       ${RUN_DIR}/results.test.jsonl"
 echo "  Metrics:    ${RUN_DIR}/results.metrics.json"
 echo "  Log:        ${LOG}"
 exit "${exit_code}"

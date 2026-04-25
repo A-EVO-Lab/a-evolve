@@ -25,6 +25,8 @@ class EvolveConfig:
     batch_size: int = 10
     max_cycles: int = 20
     holdout_ratio: float = 0.2
+    parallel_workers: int = 1
+    parallel_backend: str = "thread"
 
     # Gating: which layers the evolver is allowed to mutate
     evolve_prompts: bool = True

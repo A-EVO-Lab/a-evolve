@@ -3,9 +3,14 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from typing import TYPE_CHECKING
 
 from ..algorithms.unified.types import FeedbackCapability
-from ..types import Feedback, Task, Trajectory
+from ..types import Feedback, Observation, Task, Trajectory
+
+if TYPE_CHECKING:
+    from ..config import EvolveConfig
+    from ..protocol.base_agent import BaseAgent
 
 
 class BenchmarkAdapter(ABC):
@@ -35,6 +40,21 @@ class BenchmarkAdapter(ABC):
         Should return rich Feedback with a detailed ``detail`` field
         so the evolver can diagnose failures.
         """
+
+    def solve_batch_parallel(
+        self,
+        tasks: list[Task],
+        agent: "BaseAgent",
+        config: "EvolveConfig",
+    ) -> list[Observation] | None:
+        """Optional benchmark-specific batch solve/evaluate implementation.
+
+        Returning ``None`` tells ``EvolutionLoop`` to use its generic fallback.
+        Adapters should implement this when they need process isolation,
+        per-task containers, or custom worker construction that cannot be
+        expressed by sharing the current in-process ``agent`` object.
+        """
+        return None
 
     @property
     def feedback_capability(self) -> FeedbackCapability:

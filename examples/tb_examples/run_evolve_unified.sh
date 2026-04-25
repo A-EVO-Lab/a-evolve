@@ -16,11 +16,14 @@ RUN_NAME="${1:?Usage: $0 <RUN_NAME> [--cycles N] [--batch-size N] [--limit N]}"
 shift || true
 
 CYCLES="${CYCLES:-}"
-PASSES="${PASSES:-1}"
-CYCLE_PER_BATCH="${CYCLE_PER_BATCH:-1}"
+PASSES="${PASSES:-}"
+CYCLE_PER_BATCH="${CYCLE_PER_BATCH:-}"
 BATCH_SIZE="${BATCH_SIZE:-5}"
-LIMIT="${LIMIT:-50}"
+LIMIT="${LIMIT:-20}"
+PARALLEL="${PARALLEL:-6}"
+PARALLEL_BACKEND="${PARALLEL_BACKEND:-thread}"
 MODEL_ID="${MODEL_ID:-us.anthropic.claude-opus-4-6-v1}"
+SOLVER="${SOLVER:-react}"
 EVOLVER_MODEL_ID="${EVOLVER_MODEL_ID:-}"
 export BEDROCK_RETRY_MAX_ATTEMPTS="${BEDROCK_RETRY_MAX_ATTEMPTS:-15}"
 export BEDROCK_READ_TIMEOUT_SEC="${BEDROCK_READ_TIMEOUT_SEC:-600}"
@@ -33,7 +36,7 @@ LOG_DIR="${LOG_DIR:-${REPO_ROOT}/logs/unified_tb_${RUN_NAME}}"
 # Skill-budget cap (mirrors legacy run_evolution.sh --max-skills). Empty
 # means "let the python runner use its own default", set to a positive
 # integer to cap how many skills the evolver may keep in the workspace.
-MAX_SKILLS="${MAX_SKILLS:-}"
+MAX_SKILLS="${MAX_SKILLS:-6}"
 
 # Forward any extra flags to the python script.
 while [[ $# -gt 0 ]]; do
@@ -45,6 +48,7 @@ while [[ $# -gt 0 ]]; do
         --limit)           LIMIT="$2";           shift 2 ;;
         --max-skills)      MAX_SKILLS="$2";      shift 2 ;;
         --model-id)        MODEL_ID="$2";        shift 2 ;;
+        --solver)          SOLVER="$2";          shift 2 ;;
         --region)          REGION="$2";          shift 2 ;;
         --challenges-dir)  CHALLENGES_DIR="$2";  shift 2 ;;
         *)                 echo "Unknown flag: $1"; exit 1 ;;
@@ -55,31 +59,48 @@ mkdir -p "${LOG_DIR}"
 
 echo "=== Terminal-Bench Unified Run: ${RUN_NAME} ==="
 echo "Log dir:       ${LOG_DIR}"
-echo "Cycles:        ${CYCLES}"
+echo "Cycles:        ${CYCLES:-full sweep}"
 echo "Batch size:    ${BATCH_SIZE}"
 echo "Limit:         ${LIMIT}"
+echo "Parallel:      ${PARALLEL}"
+echo "Parallel backend: ${PARALLEL_BACKEND}"
+echo "Solver:        ${SOLVER}"
 echo "Model:         ${MODEL_ID}"
 echo "Evolver model: ${EVOLVER_MODEL_ID:-<same as solver>}"
 echo "Region:        ${REGION}"
+echo "Max skills:    ${MAX_SKILLS}"
+echo "Evolve flags:  trajectory-only, skills-only, protect-skills"
 [[ -n "${CHALLENGES_DIR}" ]] && echo "Challenges:    ${CHALLENGES_DIR}"
 echo ""
 
+# Choose python runner: respect an already-active venv; otherwise fall
+# back to `uv run python` (matches legacy run_evolution.sh / run_baseline.sh).
+if [[ -n "${VIRTUAL_ENV:-}" ]]; then
+    PY_CMD=(python)
+else
+    PY_CMD=(env UV_CACHE_DIR=/tmp/uv_cache uv run python)
+fi
+
 cmd=(
-  python "${REPO_ROOT}/examples/tb_examples/batch_evolve_terminal_unified.py"
+  "${PY_CMD[@]}"
+  "${REPO_ROOT}/examples/tb_examples/batch_evolve_terminal_unified.py"
   "${RUN_NAME}"
-  --cycles "${CYCLES}"
   --batch-size "${BATCH_SIZE}"
+  --parallel "${PARALLEL}"
+  --parallel-backend "${PARALLEL_BACKEND}"
   --limit "${LIMIT}"
+  --max-skills "${MAX_SKILLS}"
   --model-id "${MODEL_ID}"
+  --solver "${SOLVER}"
   --region "${REGION}"
   --max-tokens "${MAX_TOKENS}"
   --seed-workspace "${SEED_WORKSPACE}"
   --log-dir "${LOG_DIR}"
   -v
 )
+[[ -n "${CYCLES}" ]] && cmd+=(--cycles "${CYCLES}")
 [[ -n "${EVOLVER_MODEL_ID}" ]] && cmd+=(--evolver-model-id "${EVOLVER_MODEL_ID}")
 [[ -n "${CHALLENGES_DIR}" ]] && cmd+=(--challenges-dir "${CHALLENGES_DIR}")
-[[ -n "${MAX_SKILLS}" ]] && cmd+=(--max-skills "${MAX_SKILLS}")
 # Unified pass / cycle knobs (when set, overrides --cycles via formula).
 [[ -n "${PASSES}" ]]          && cmd+=(--passes "${PASSES}")
 [[ -n "${CYCLE_PER_BATCH}" ]] && cmd+=(--cycle-per-batch "${CYCLE_PER_BATCH}")

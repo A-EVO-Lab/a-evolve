@@ -104,6 +104,7 @@ class UnifiedEngine(EvolutionEngine):
         for name in plan.readers:
             reader = get_reader(name)
             slot = self._reader_state.setdefault(name, {})
+            _seed_runtime_state(slot, self.config)
             try:
                 out = reader.read(
                     observations, workspace, history, self.config, context, slot
@@ -138,6 +139,7 @@ class UnifiedEngine(EvolutionEngine):
         for name in plan.operators:
             op = get_operator(name)
             slot = self._operator_state.setdefault(name, {})
+            _seed_runtime_state(slot, self.config)
             _enforce_scope(op, plan.artifact_scope, name)
             try:
                 report = op.apply(workspace, context, plan.artifact_scope, slot)
@@ -297,6 +299,34 @@ def _enforce_scope(op: Any, scope: dict[str, str], op_name: str) -> None:
             f"Operator {op_name!r} declares WRITES={sorted(writes)} but "
             f"plan.artifact_scope={dict(scope)} grants none of them."
         )
+
+
+def _seed_runtime_state(slot: dict[str, Any], config: Any) -> None:
+    """Expose EvolveConfig and ``extra`` knobs to readers/operators.
+
+    Unified atoms are intentionally decoupled from the full config object, but
+    legacy-compatible runs still need the same knobs (max_skills,
+    protect_skills, verification_focus, region, token budget, etc.) that the
+    old engines threaded into their prompt builders.
+    """
+    extra = getattr(config, "extra", {}) or {}
+    if not isinstance(extra, dict):
+        extra = {}
+
+    model_id = getattr(config, "evolver_model", None)
+    if model_id is not None:
+        slot.setdefault("model_id", model_id)
+    max_tokens = extra.get("max_tokens", getattr(config, "evolver_max_tokens", None))
+    if max_tokens is not None:
+        slot.setdefault("max_tokens", max_tokens)
+    for key, value in extra.items():
+        slot.setdefault(key, value)
+
+    slot.setdefault("evolve_prompts", bool(getattr(config, "evolve_prompts", True)))
+    slot.setdefault("evolve_skills", bool(getattr(config, "evolve_skills", True)))
+    slot.setdefault("evolve_memory", bool(getattr(config, "evolve_memory", True)))
+    slot.setdefault("evolve_tools", bool(getattr(config, "evolve_tools", False)))
+    slot.setdefault("trajectory_only", bool(getattr(config, "trajectory_only", False)))
 
 
 def _as_jsonable(obj: Any) -> Any:

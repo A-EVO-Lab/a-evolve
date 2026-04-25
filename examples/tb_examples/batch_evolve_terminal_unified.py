@@ -61,11 +61,16 @@ def main() -> int:
                         "computed as passes*⌈limit/batch⌉*cycle_per_batch.")
     p.add_argument("--cycle-per-batch", type=int, default=None, dest="cycle_per_batch",
                    help="In-batch retry multiplier (default: 1 when --passes is set).")
-    p.add_argument("--cycles", type=int, default=3, help="Direct EvolutionLoop "
-                   "max_cycles (legacy, default 3). Overridden when "
-                   "--passes/--cycle-per-batch is set.")
+    p.add_argument("--cycles", type=int, default=None, help="Direct EvolutionLoop "
+                   "max_cycles. If omitted, the runner uses one full sweep. "
+                   "Overridden when --passes/--cycle-per-batch is set.")
     p.add_argument("--batch-size", type=int, default=5,
                    help="Tasks per cycle (passed to bench.get_tasks limit)")
+    p.add_argument("--parallel", type=int, default=6,
+                   help="Parallel workers within each batch (default 6; matches TB wrapper)")
+    p.add_argument("--parallel-backend", default="thread",
+                   choices=["thread", "process", "benchmark"],
+                   help="In-batch parallel backend (default thread for TB).")
     p.add_argument("--limit", type=int, default=20,
                    help="Max tasks from benchmark")
     # Skill-budget cap (mirrors the legacy `batch_evolve_terminal.py
@@ -73,11 +78,13 @@ def main() -> int:
     # so SkillCurator's prompt builder (`agent_evolve.algorithms.skillforge
     # .prompts._build_*_instructions`) reads it and emits the
     # "SKILL BUDGET REACHED" guard text.
-    p.add_argument("--max-skills", type=int, default=5,
+    p.add_argument("--max-skills", type=int, default=6,
                    help="Maximum total skills the evolver may keep in the "
-                        "workspace (default 5; matches legacy default).")
-    p.add_argument("--model-id", default="us.anthropic.claude-opus-4-5-20251101-v1:0",
+                        "workspace (default 6; matches run_evolution.sh).")
+    p.add_argument("--model-id", default="us.anthropic.claude-opus-4-6-v1",
                    help="Solver model id")
+    p.add_argument("--solver", default="react", choices=["react", "strands"],
+                   help="Terminal-Bench solver (default react; matches legacy TB).")
     p.add_argument("--evolver-model-id", default=None,
                    help="Evolver model id (defaults to --model-id)")
     p.add_argument("--region", default="us-west-2")
@@ -131,6 +138,7 @@ def main() -> int:
         model_id=args.model_id,
         region=args.region,
         max_tokens=args.max_tokens,
+        solver=args.solver,
     )
 
     evolver_model_id = args.evolver_model_id or args.model_id
@@ -147,18 +155,33 @@ def main() -> int:
             f"passes={passes} × ⌈{args.limit}/{args.batch_size}⌉={batches_per_pass} "
             f"× cycle_per_batch={cpb}"
         )
-    else:
+    elif args.cycles is not None:
         effective_cycles = args.cycles
         cycle_source = f"--cycles={args.cycles}"
+    else:
+        effective_cycles = max(1, math.ceil(args.limit / max(1, args.batch_size)))
+        cycle_source = f"legacy full sweep: ceil({args.limit}/{args.batch_size})"
 
     config = EvolveConfig(
         batch_size=args.batch_size,
         max_cycles=effective_cycles,
+        parallel_workers=max(1, args.parallel),
+        parallel_backend=args.parallel_backend,
         evolver_model=evolver_model_id,
+        trajectory_only=True,
+        evolve_prompts=False,
+        evolve_skills=True,
+        evolve_memory=False,
+        evolve_tools=False,
         extra={
             "region": args.region,
             "max_tokens": args.max_tokens,
             "max_skills": args.max_skills,
+            "legacy_profile": "tb",
+            "skills_only": True,
+            "protect_skills": True,
+            "prompt_only": False,
+            "solver_proposed": False,
         },
     )
     engine = UnifiedEngine(config, bench)
@@ -167,9 +190,10 @@ def main() -> int:
     loop = EvolutionLoop(agent=agent, benchmark=bench, engine=engine, config=config)
 
     logger.info(
-        "Running %d cycles (%s) × batch_size=%d on %d total tasks (solver=%s, evolver=%s)",
+        "Running %d cycles (%s) × batch_size=%d on %d total tasks "
+        "(solver=%s, solver_model=%s, evolver=%s)",
         effective_cycles, cycle_source, args.batch_size, args.limit,
-        args.model_id, evolver_model_id,
+        args.solver, args.model_id, evolver_model_id,
     )
     result = loop.run(cycles=effective_cycles)
 
@@ -184,6 +208,15 @@ def main() -> int:
         "score_history": list(result.score_history),
         "converged": result.converged,
         "engine": "UnifiedEngine",
+        "legacy_settings": {
+            "parallel": args.parallel,
+            "parallel_backend": args.parallel_backend,
+            "solver": args.solver,
+            "trajectory_only": True,
+            "skills_only": True,
+            "protect_skills": True,
+            "max_skills": args.max_skills,
+        },
         "recipe": "drafts (PassFailReader+DraftReader+TrajectoryCompressor | LLMBashEvolve)",
         "workspace": str(ws_dir),
     }, indent=2))

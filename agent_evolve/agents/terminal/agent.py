@@ -44,11 +44,15 @@ class TerminalAgent(BaseAgent):
         model_id: str = "us.anthropic.claude-sonnet-4-20250514-v1:0",
         region: str = "us-west-2",
         max_tokens: int = 16384,
+        solver: str = "react",
     ):
         super().__init__(workspace_dir)
+        if solver not in {"react", "strands"}:
+            raise ValueError(f"Unsupported TerminalAgent solver: {solver!r}")
         self.model_id = model_id
         self.region = region
         self.max_tokens = max_tokens
+        self.solver = solver
 
     def _build_strands_agent(self) -> Agent:
         """Create a strands Agent wired with the workspace's current state."""
@@ -102,10 +106,12 @@ class TerminalAgent(BaseAgent):
             # NOTE: Test files are NOT copied before solving — only during evaluation
             # to prevent the agent from reading test expectations.
 
-            agent = self._build_strands_agent()
             user_prompt = self._build_user_prompt(task_name, task.input)
 
-            logger.info("Solving %s with image %s (timeout=%ds)", task_name, docker_image, timeout_sec)
+            logger.info(
+                "Solving %s with image %s (solver=%s, timeout=%ds)",
+                task_name, docker_image, self.solver, timeout_sec,
+            )
             logger.info("Container: %s", container.container_name)
             logger.info("System prompt: %d chars, skills: %d, memories: %d",
                         len(self.system_prompt), len(self.skills), len(self.memories))
@@ -113,25 +119,63 @@ class TerminalAgent(BaseAgent):
             import time as _time
             t0 = _time.time()
 
-            # Run agent with wall-clock timeout
-            response = self._run_with_timeout(agent, user_prompt, timeout_sec)
+            response = None
+            conversation = []
+            usage = {}
+
+            if self.solver == "react":
+                from .react_solver import react_solve, extract_conversation
+
+                react_result = react_solve(
+                    task_prompt=user_prompt,
+                    container_name=container.container_name,
+                    model_id=self.model_id,
+                    region=self.region,
+                    max_tokens=self.max_tokens,
+                    timeout_sec=timeout_sec,
+                    log=logger,
+                    system_prompt=self._build_system_prompt(),
+                    skills=self.get_skills_content(),
+                    tool_specs=self.get_tool_specs(),
+                    tool_executors=self.load_tool_executors(),
+                )
+                usage = {
+                    "input_tokens": react_result.total_input_tokens,
+                    "output_tokens": react_result.total_output_tokens,
+                    "total_tokens": (
+                        react_result.total_input_tokens
+                        + react_result.total_output_tokens
+                    ),
+                }
+                conversation = extract_conversation(react_result.messages)
+                response = (
+                    f"submitted={react_result.submitted} "
+                    f"timed_out={react_result.timed_out} "
+                    f"tool_calls={react_result.tool_call_count}"
+                )
+            else:
+                agent = self._build_strands_agent()
+                response = self._run_with_timeout(agent, user_prompt, timeout_sec)
+
+                if response:
+                    try:
+                        u = response.metrics.accumulated_usage
+                        usage = {
+                            "input_tokens": u.get("inputTokens", 0),
+                            "output_tokens": u.get("outputTokens", 0),
+                            "total_tokens": u.get("totalTokens", 0),
+                        }
+                    except Exception:
+                        pass
+
+                try:
+                    conversation = _extract_conversation(agent.messages)
+                except Exception:
+                    logger.debug("Could not extract conversation from strands agent")
 
             solve_elapsed = _time.time() - t0
             logger.info("Agent finished in %.1fs (response=%s)",
                         solve_elapsed, "OK" if response else "TIMEOUT/ERROR")
-
-            # Extract usage
-            usage = {}
-            if response:
-                try:
-                    u = response.metrics.accumulated_usage
-                    usage = {
-                        "input_tokens": u.get("inputTokens", 0),
-                        "output_tokens": u.get("outputTokens", 0),
-                        "total_tokens": u.get("totalTokens", 0),
-                    }
-                except Exception:
-                    pass
 
             # Run evaluation
             passed = False
@@ -150,16 +194,10 @@ class TerminalAgent(BaseAgent):
             else:
                 logger.warning("No test.sh found, skipping evaluation")
 
-            # Capture the full strands conversation for logging
-            conversation = []
-            try:
-                conversation = _extract_conversation(agent.messages)
-            except Exception:
-                logger.debug("Could not extract conversation from strands agent")
-
             steps.append({
                 "llm_output": str(response)[:2000] if response else "(timeout)",
                 "usage": usage,
+                "solver": self.solver,
                 "passed": passed,
                 "eval_output": eval_output[-2000:] if len(eval_output) > 2000 else eval_output,
                 "conversation": conversation,

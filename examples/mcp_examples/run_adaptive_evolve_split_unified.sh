@@ -1,20 +1,31 @@
 #!/usr/bin/env bash
-# Run MCP-Atlas evolution via UnifiedEngine (Phase 1).
+# Run MCP-Atlas train/test split via UnifiedEngine.
 #
-# Unified counterpart to examples/mcp_examples/adaptive_evolve_all.py.
-# Engine-level parity with AdaptiveEvolveEngine — see
-# docs/algorithms/unified-equivalence-audit.md and
-# docs/mcp-atlas-demo-unified.md.
+# Two-phase wrapper around examples/mcp_examples/run_adaptive_evolve_all_split_unified.py:
+#
+#   Phase 1 (TRAIN): evolve on first $EVOLVE_LIMIT tasks in train batches
+#                    of $BATCH_SIZE.
+#   Phase 2 (TEST):  evaluate $EVAL_LIMIT remaining tasks with the evolved
+#                    workspace (no engine).
+#
+# LIMIT is a global cap applied before the train/test split: first keep at
+# most $LIMIT ordered MCP tasks, then train on $EVOLVE_LIMIT and evaluate the
+# remaining slice.
+#
+# Defaults: EVOLVE_LIMIT=30, BATCH_SIZE=30, EVAL_LIMIT=""(all remaining).
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 
-CYCLES="${CYCLES:-}"
-PASSES="${PASSES:-}"
-CYCLE_PER_BATCH="${CYCLE_PER_BATCH:-}"
+EVOLVE_LIMIT="${EVOLVE_LIMIT:-30}"
+EVAL_LIMIT="${EVAL_LIMIT:-}"
 BATCH_SIZE="${BATCH_SIZE:-30}"
-PARALLEL="${PARALLEL:-1}"
+# Train: max parallel solve workers in each Phase 1 batch.
+# Effective parallelism is min(TRAIN_PARALLEL, BATCH_SIZE).
+TRAIN_PARALLEL="${TRAIN_PARALLEL:-${PARALLEL:-1}}"
+# Test: explicit worker count for Phase 2 (no evolve, fully parallelizable).
+TEST_PARALLEL="${TEST_PARALLEL:-5}"
 PARALLEL_BACKEND="${PARALLEL_BACKEND:-thread}"
 LIMIT="${LIMIT:-500}"
 SOLVER_MODEL="${SOLVER_MODEL:-us.anthropic.claude-opus-4-6-v1}"
@@ -30,17 +41,18 @@ SEED_WORKSPACE="${SEED_WORKSPACE:-${REPO_ROOT}/seed_workspaces/mcp}"
 ENV_FILE="${ENV_FILE:-.env}"        # path to .env with MCP API keys; matches legacy usage
 DOCKER_IMAGE="${DOCKER_IMAGE:-ghcr.io/scaleapi/mcp-atlas:latest}"
 RUN_ID="${RUN_ID:-$(date -u +%Y%m%d_%H%M%S)_pid$$}"
-OUTPUT_DIR="${OUTPUT_DIR:-${REPO_ROOT}/logs/unified_mcp_${RUN_ID}}"
+OUTPUT_DIR="${OUTPUT_DIR:-${REPO_ROOT}/logs/unified_mcp_split_${RUN_ID}}"
 
 mkdir -p "$(dirname "${OUTPUT_DIR}")"
 
-echo "=== MCP-Atlas Unified Run ==="
+echo "=== MCP-Atlas Train/Test Split (Unified) ==="
 echo "Run ID:        ${RUN_ID}"
 echo "Output dir:    ${OUTPUT_DIR}"
-echo "Cycles:        ${CYCLES:-full sweep}"
-echo "Batch size:    ${BATCH_SIZE}"
-echo "Parallel:      ${PARALLEL} (${PARALLEL_BACKEND})"
-echo "Limit:         ${LIMIT}"
+echo "Phase1 evolve: ${EVOLVE_LIMIT} tasks, batch ${BATCH_SIZE}"
+echo "Phase2 eval:   ${EVAL_LIMIT:-all remaining}"
+echo "Train parallel: ${TRAIN_PARALLEL} (effective=min(${TRAIN_PARALLEL},${BATCH_SIZE})) backend=${PARALLEL_BACKEND}"
+echo "Test parallel:  ${TEST_PARALLEL}"
+echo "Global cap:    ${LIMIT} tasks before train/test split"
 echo "Dataset:       ${DATASET}"
 echo "Solver model:  ${SOLVER_MODEL}"
 echo "Evolver model: ${EVOLVER_MODEL:-<same as solver>}"
@@ -59,9 +71,11 @@ fi
 
 cmd=(
   "${PY_CMD[@]}"
-  "${REPO_ROOT}/examples/mcp_examples/run_adaptive_evolve_all_unified.py"
+  "${REPO_ROOT}/examples/mcp_examples/run_adaptive_evolve_all_split_unified.py"
+  --evolve-limit "${EVOLVE_LIMIT}"
   --batch-size "${BATCH_SIZE}"
-  --parallel "${PARALLEL}"
+  --train-parallel "${TRAIN_PARALLEL}"
+  --test-parallel "${TEST_PARALLEL}"
   --parallel-backend "${PARALLEL_BACKEND}"
   --limit "${LIMIT}"
   --solver-model "${SOLVER_MODEL}"
@@ -73,13 +87,10 @@ cmd=(
   --output-dir "${OUTPUT_DIR}"
   -v
 )
-[[ -n "${CYCLES}" ]] && cmd+=(--cycles "${CYCLES}")
+[[ -n "${EVAL_LIMIT}" ]]    && cmd+=(--eval-limit "${EVAL_LIMIT}")
 [[ -n "${EVOLVER_MODEL}" ]] && cmd+=(--evolver-model "${EVOLVER_MODEL}")
 [[ -n "${ENV_FILE}" ]]      && cmd+=(--env-file "${ENV_FILE}")
 [[ -n "${DOCKER_IMAGE}" ]]  && cmd+=(--docker-image "${DOCKER_IMAGE}")
-# Unified pass / cycle knobs (when set, overrides --cycles via formula).
-[[ -n "${PASSES}" ]]          && cmd+=(--passes "${PASSES}")
-[[ -n "${CYCLE_PER_BATCH}" ]] && cmd+=(--cycle-per-batch "${CYCLE_PER_BATCH}")
 
 LOG="${OUTPUT_DIR}/evolve.log"
 mkdir -p "${OUTPUT_DIR}"
@@ -97,9 +108,11 @@ exit_code=${PIPESTATUS[0]}
 set -e
 
 echo ""
-echo "=== MCP unified run completed ==="
+echo "=== MCP split run completed ==="
 echo "  Exit code:  ${exit_code}"
-echo "  Results:    ${OUTPUT_DIR}/results.jsonl"
+echo "  Train:      ${OUTPUT_DIR}/results.train.jsonl"
+echo "  Test:       ${OUTPUT_DIR}/results.test.jsonl"
+echo "  Combined:   ${OUTPUT_DIR}/results.jsonl"
 echo "  Metrics:    ${OUTPUT_DIR}/results.metrics.json"
 echo "  Log:        ${LOG}"
 exit "${exit_code}"

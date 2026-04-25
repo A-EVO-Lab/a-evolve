@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import json
 import logging
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -86,15 +87,7 @@ class EvolutionLoop:
                 cycle_score = 0.0
             else:
                 tasks = self.benchmark.get_tasks(split="train", limit=self.config.batch_size)
-                observations: list[Observation] = []
-
-                for task in tasks:
-                    try:
-                        trajectory = self.agent.solve(task)
-                        feedback = self.benchmark.evaluate(task, trajectory)
-                        observations.append(Observation(task=task, trajectory=trajectory, feedback=feedback))
-                    except Exception as e:
-                        logger.error("Error solving task %s: %s", task.id, e)
+                observations = self._solve_and_evaluate_batch(tasks)
 
                 self.agent.export_to_fs()
                 batch_path = self.observer.collect(observations)
@@ -183,6 +176,73 @@ class EvolutionLoop:
         )
 
     # ── Internal helpers ──────────────────────────────────────
+
+    def _solve_and_evaluate_batch(self, tasks: list) -> list[Observation]:
+        workers = max(1, int(getattr(self.config, "parallel_workers", 1) or 1))
+        if workers == 1 or len(tasks) <= 1:
+            observations: list[Observation] = []
+            for task in tasks:
+                obs = self._solve_and_evaluate_one(task)
+                if obs is not None:
+                    observations.append(obs)
+            return observations
+
+        backend = str(getattr(self.config, "parallel_backend", "thread") or "thread").lower()
+        if backend not in {"thread", "process", "benchmark"}:
+            raise ValueError(
+                f"Unknown parallel_backend={backend!r}; expected "
+                "'thread', 'process', or 'benchmark'."
+            )
+
+        if backend in {"process", "benchmark"}:
+            solve_batch_parallel = getattr(self.benchmark, "solve_batch_parallel", None)
+            custom = (
+                solve_batch_parallel(tasks, self.agent, self.config)
+                if solve_batch_parallel is not None
+                else None
+            )
+            if custom is not None:
+                logger.info(
+                    "Benchmark parallel backend produced %d observation(s)",
+                    len(custom),
+                )
+                return custom
+            logger.warning(
+                "parallel_backend=%s requested but benchmark %s did not provide "
+                "a custom backend; falling back to thread backend.",
+                backend,
+                self.benchmark.__class__.__name__,
+            )
+
+        logger.info(
+            "Solving/evaluating %d tasks with %d parallel worker(s)",
+            len(tasks), min(workers, len(tasks)),
+        )
+        by_index: dict[int, Observation] = {}
+        with ThreadPoolExecutor(max_workers=min(workers, len(tasks))) as pool:
+            futures = {
+                pool.submit(self._solve_and_evaluate_one, task): idx
+                for idx, task in enumerate(tasks)
+            }
+            for future in as_completed(futures):
+                idx = futures[future]
+                try:
+                    obs = future.result()
+                except Exception as exc:  # noqa: BLE001
+                    logger.error("Unexpected parallel worker error: %s", exc)
+                    continue
+                if obs is not None:
+                    by_index[idx] = obs
+        return [by_index[i] for i in sorted(by_index)]
+
+    def _solve_and_evaluate_one(self, task) -> Observation | None:
+        try:
+            trajectory = self.agent.solve(task)
+            feedback = self.benchmark.evaluate(task, trajectory)
+            return Observation(task=task, trajectory=trajectory, feedback=feedback)
+        except Exception as e:  # noqa: BLE001
+            logger.error("Error solving task %s: %s", task.id, e)
+            return None
 
     def _append_history(
         self, evolution_dir: Path, cycle: int, score: float, mutated: bool

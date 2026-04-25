@@ -9,7 +9,7 @@ REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 # ------------------------------------------------------------------------------
 
 # Grind settings
-MAX_CYCLES="${MAX_CYCLES:-3}"          # max solve→evolve cycles per task
+MAX_CYCLES="${MAX_CYCLES:-1}"          # max solve→evolve cycles per task
 BATCH_SIZE="${BATCH_SIZE:-1}"          # tasks per evolution batch (1 = evolve after each task, like SWE-evolve)
 MAX_WORKERS="${MAX_WORKERS:-1}"        # parallel workers for solving (1=serial, >1=parallel solve, serial evolve)
 

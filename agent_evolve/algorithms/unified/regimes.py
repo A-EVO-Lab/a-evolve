@@ -87,11 +87,14 @@ def detect_regime(
                 has_per_claim = True
                 break
 
+    extra = getattr(config, "extra", {}) or {}
+    allow_solver_proposals = bool(extra.get("solver_proposes", True))
+
     # Solver proposal: runtime evidence, not capability hint.
     # trajectory_only masks proposals (solver reflection may be shaped by feedback).
     # Observation-shape masking does NOT mask proposals (orthogonal signal).
     has_solver_proposal = False
-    if not trajectory_only:
+    if allow_solver_proposals and not trajectory_only:
         for o in obs_list:
             proposal = getattr(getattr(o, "trajectory", None), "_skill_proposal", "")
             if proposal and "ACTION: NONE" not in proposal.upper():

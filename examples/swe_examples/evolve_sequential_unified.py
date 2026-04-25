@@ -67,14 +67,29 @@ def main() -> int:
                         "computed as passes*⌈limit/batch⌉*cycle_per_batch.")
     p.add_argument("--cycle-per-batch", type=int, default=None, dest="cycle_per_batch",
                    help="In-batch retry multiplier (default: 1 when --passes is set).")
-    p.add_argument("--cycles", type=int, default=3,
-                   help="Direct EvolutionLoop max_cycles (legacy, default 3). "
-                        "Overridden when --passes/--cycle-per-batch is set.")
+    p.add_argument("--cycles", type=int, default=None,
+                   help="Direct EvolutionLoop max_cycles. If omitted, the "
+                        "runner uses one legacy full sweep. Overridden when "
+                        "--passes/--cycle-per-batch is set.")
     p.add_argument("--batch-size", type=int, default=5,
                    help="Tasks per cycle (passed to bench.get_tasks limit)")
     p.add_argument("--limit", type=int, default=50,
                    help="Cap on total tasks loaded from benchmark")
-    p.add_argument("--model-id", default="us.anthropic.claude-opus-4-5-20251101-v1:0",
+    p.add_argument("--parallel", type=int, default=5,
+                   help="Parallel workers within each batch (default 5).")
+    p.add_argument("--parallel-backend", default="process",
+                   choices=["thread", "process", "benchmark"],
+                   help="In-batch parallel backend (default process; matches legacy SWE).")
+    p.add_argument("--feedback", type=str, default="minimal",
+                   choices=["none", "minimal"],
+                   help="Feedback to evolver: none masks scores; minimal includes scores.")
+    p.add_argument("--solver-proposes", action="store_true",
+                   help="Enable legacy V11 solver-proposed skill curation.")
+    p.add_argument("--verification-focus", action="store_true",
+                   help="Solver/curator focus on verification skills.")
+    p.add_argument("--efficiency-prompt", action="store_true",
+                   help="Add hypothesis-first efficiency constraints to solver prompt.")
+    p.add_argument("--model-id", default="us.anthropic.claude-opus-4-6-v1",
                    help="Solver model id")
     p.add_argument("--evolver-model-id", default=None,
                    help="Evolver model id (defaults to --model-id)")
@@ -82,6 +97,8 @@ def main() -> int:
     p.add_argument("--max-tokens", type=int, default=16384)
     p.add_argument("--max-steps", type=int, default=0,
                    help="Max tool calls per task (0=unlimited)")
+    p.add_argument("--window-size", type=int, default=40,
+                   help="Sliding window size for conversation memory")
     p.add_argument("--dataset", default="MariusHobbhahn/swe-bench-verified-mini")
     p.add_argument("--seed-workspace", default=str(REPO_ROOT / "seed_workspaces" / "swe"))
     p.add_argument("--output-dir", default=None,
@@ -119,6 +136,10 @@ def main() -> int:
         model_id=args.model_id,
         region=args.region,
         max_tokens=args.max_tokens,
+        max_steps=args.max_steps,
+        window_size=args.window_size,
+        verification_focus=args.verification_focus,
+        efficiency_prompt=args.efficiency_prompt,
     )
 
     evolver_model_id = args.evolver_model_id or args.model_id
@@ -135,15 +156,32 @@ def main() -> int:
             f"passes={passes} × ⌈{args.limit}/{args.batch_size}⌉={batches_per_pass} "
             f"× cycle_per_batch={cpb}"
         )
-    else:
+    elif args.cycles is not None:
         effective_cycles = args.cycles
         cycle_source = f"--cycles={args.cycles}"
+    else:
+        effective_cycles = max(1, math.ceil(args.limit / max(1, args.batch_size)))
+        cycle_source = f"legacy full sweep: ceil({args.limit}/{args.batch_size})"
 
     config = EvolveConfig(
         batch_size=args.batch_size,
         max_cycles=effective_cycles,
+        parallel_workers=max(1, args.parallel),
+        parallel_backend=args.parallel_backend,
         evolver_model=evolver_model_id,
-        extra={"region": args.region, "max_tokens": args.max_tokens},
+        trajectory_only=args.feedback == "none",
+        evolve_prompts=False,
+        evolve_skills=bool(args.solver_proposes),
+        evolve_memory=False,
+        evolve_tools=False,
+        extra={
+            "region": args.region,
+            "max_tokens": args.max_tokens,
+            "legacy_profile": "swe",
+            "solver_proposes": bool(args.solver_proposes),
+            "write_memory": False,
+            "verification_focus": bool(args.verification_focus),
+        },
     )
     engine = UnifiedEngine(config, bench)
     # Inject LLM so SkillCurator (and any LLMBashEvolve fallback path) can reach it.
@@ -175,7 +213,20 @@ def main() -> int:
         "score_history": list(result.score_history),
         "converged": result.converged,
         "engine": "UnifiedEngine",
-        "recipe": "solver_proposal (PassFailReader+ProposalReader | WriteEpisodicMemory+SkillCurator)",
+        "recipe": (
+            "solver_proposal (SkillCurator only; write_memory=False)"
+            if args.solver_proposes
+            else "swe legacy no-op (solver_proposes=False)"
+        ),
+        "legacy_settings": {
+            "feedback": args.feedback,
+            "solver_proposes": args.solver_proposes,
+            "write_memory": False,
+            "parallel": args.parallel,
+            "parallel_backend": args.parallel_backend,
+            "max_steps": args.max_steps,
+            "window_size": args.window_size,
+        },
         "workspace": str(ws_dir),
     }, indent=2))
 

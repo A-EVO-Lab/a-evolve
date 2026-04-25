@@ -1,11 +1,10 @@
 #!/usr/bin/env python3
-"""Grind SkillBench tasks via the UNIFIED engine (behaviour-equivalent to legacy).
+"""Run SkillBench train/test split via the UNIFIED engine.
 
-This is the unified counterpart to ``skillbench_evolve_in_situ_cycle.py``.
-The orchestration (per-task retry loop, pre-solve task-specific skill
-generation, post-solve task-specific skill evolution, harbor mode,
-ThreadPoolExecutor, etc.) is IDENTICAL to the legacy script. The only
-differences are:
+This is the split counterpart to ``skillbench_evolve_in_situ_cycle_unified.py``.
+It keeps the SkillBench setup, task loading, task-specific skill
+pre-generation, harbor mode, artifact export, and UnifiedEngine shim, but
+changes the train loop to match the other split runners:
 
   1. ``AEvolveEngine(config)`` is replaced by a ``UnifiedEngine(config, bench)``
      that receives the same ``BedrockProvider`` via its
@@ -18,28 +17,27 @@ differences are:
          rest of the script reads (``skills_added``, ``skills_removed``,
          ``new_skills``, ``skills_before``, ``skills_after``, ``usage``)
 
-All task-specific skill logic (``_generate_task_skill``,
-``_evolve_task_skill``, retry on failure) remains inline in this file —
-it is orchestration-layer behaviour, not engine-layer, and lives here
-per the plan's DEC on "grind loop is a loop-level concern".
+Task-specific skill helpers are retained for compatibility with the shared
+SkillBench code path. In this split runner, train tasks are not retried after
+evolution.
 
-For each task in each batch:
-  - Solve the task
-  - If PASS → move on, no evolution needed
-  - If FAIL → evolve workspace based on full trajectory, then retry SAME task
-  - Repeat until PASS or max_cycles exhausted
+For each train batch:
+  - Solve every task in the batch once
+  - Collect the batch observations
+  - Evolve the workspace once per configured batch cycle
+  - Do not retry train tasks
 
 Evolved skills are injected into Docker containers so the agent can
 discover them via list_skills / load_skill (same as curated skills).
 
 Usage:
-    # Quick test: 2 tasks, max 3 retries each
-    python examples/skillbench_examples/skillbench_evolve_in_situ_cycle_unified.py \
-      --batch-size 2 --max-cycles 3 --use-skills false --limit 2 -v
+    # Quick test: 2 train tasks, one batch-level evolve step, then test
+    python examples/skillbench_examples/skillbench_evolve_split_unified.py \
+      --evolve-limit 2 --batch-size 2 --cycle-per-batch 1 --use-skills false -v
 
     # Full run
-    python examples/skillbench_examples/skillbench_evolve_in_situ_cycle_unified.py \
-      --batch-size 2 --max-cycles 5 --use-skills false
+    python examples/skillbench_examples/skillbench_evolve_split_unified.py \
+      --evolve-limit 20 --batch-size 1 --cycle-per-batch 1 --use-skills false
 """
 from __future__ import annotations
 
@@ -54,6 +52,7 @@ import threading
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
+from typing import Any
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 
@@ -117,8 +116,8 @@ class _LegacyEvolveShim:
     The legacy script calls ``evolver.evolve(workspace=..., observation_logs=...,
     evo_number=...)`` and reads a dict with keys ``skills_added``,
     ``skills_removed``, ``new_skills``, ``skills_before``, ``skills_after``,
-    ``usage``. This shim preserves that contract so the rest of the script
-    (task-specific skill pre-gen, retry, harbor, tracing) stays unchanged.
+    ``usage``. This shim preserves that contract so the split runner can
+    keep SkillBench-specific setup, artifact export, harbor, and tracing code.
 
     Internally it calls ``UnifiedEngine.step(workspace, observations,
     history_stub, trial=None)`` and aggregates the unified_reports into
@@ -999,7 +998,8 @@ def _compute_metrics(path: Path) -> dict:
     total = len(results)
     passed = sum(1 for r in results if r.get("passed"))
 
-    # How many needed grinding (>1 cycle)
+    # Compatibility aliases for older in-situ/grind result readers. Split
+    # train solves are one-shot, so these stay zero for new split outputs.
     grind_needed = sum(1 for r in results if r.get("cycles_used", 1) > 1)
     grind_resolved = sum(1 for r in results if r.get("cycles_used", 1) > 1 and r.get("passed"))
 
@@ -1039,25 +1039,39 @@ def _compute_metrics(path: Path) -> dict:
 
 def main() -> int:
     p = argparse.ArgumentParser(
-        description="Grind SkillBench tasks: solve → evolve → retry until pass or max_cycles"
+        description=(
+            "SkillBench train/test split: solve each train batch once, "
+            "evolve after the batch, then evaluate held-out tasks"
+        )
     )
 
-    # Grind settings
-    p.add_argument("--max-cycles", type=int, default=3,
-                   help="Max solve→evolve cycles per task (default 3). "
-                        "In the unified pass/cycle model this is the "
-                        "in-batch retry count (cycle_per_batch).")
+    # Split/train settings
+    p.add_argument("--max-cycles", "--cycle-per-batch", "--cycles-per-batch",
+                   type=int, default=1, dest="max_cycles",
+                   help="Batch-level evolve steps after each train batch "
+                        "(default 1). Train tasks are solved once and are "
+                        "not retried in the split setting.")
     p.add_argument("--passes", type=int, default=1,
                    help="Number of full sweeps of the dataset (default 1). "
                         "Each pass re-iterates the outer batch loop with "
                         "the workspace as evolved by previous passes; "
                         "tasks already RESOLVED on a prior pass are skipped.")
     p.add_argument("--batch-size", type=int, default=1,
-                   help="Tasks per batch (default 1; matches legacy wrapper)")
-    p.add_argument("--max-workers", "--parallel", dest="max_workers",
-                   type=int, default=1,
-                   help="Parallel workers for solving "
-                        "(1=serial, >1=parallel solve, serial evolve)")
+                   help="Tasks per Phase 1 train batch (default 1). "
+                        "The evolver sees this many trajectories per "
+                        "batch-level evolve call.")
+    p.add_argument("--train-parallel", type=int, default=1,
+                   dest="train_parallel",
+                   help="Phase 1 (train): max parallel workers for solving "
+                        "tasks within a batch. Effective parallelism is "
+                        "min(train_parallel, batch_size) since only "
+                        "batch_size tasks are in flight at once. Default 1 "
+                        "(serial). Evolve is always serial.")
+    p.add_argument("--test-parallel", type=int, default=5,
+                   dest="test_parallel",
+                   help="Phase 2 (test): number of tasks to evaluate in "
+                        "parallel. Default 5. Test has no evolve so this "
+                        "is independent of --train-parallel.")
 
     # Tasks
     p.add_argument("--use-skills", type=_parse_bool, default=False)
@@ -1068,6 +1082,17 @@ def main() -> int:
     p.add_argument("--difficulty", type=str, default=None)
     p.add_argument("--limit", type=int, default=None,
                    help="Max total tasks (for quick testing)")
+    # Train/test split knobs (only used by the split runner; the underlying
+    # main loop uses --limit on the train slice and a dedicated eval pass
+    # on the test slice).
+    p.add_argument("--evolve-limit", type=int, default=20, dest="evolve_limit",
+                   help="Phase 1 (train): number of tasks to evolve on. "
+                        "Default 20 (matches wrapper). Tasks beyond this "
+                        "index go into the Phase 2 test slice.")
+    p.add_argument("--eval-limit", type=int, default=None, dest="eval_limit",
+                   help="Phase 2 (test): cap on remaining tasks to "
+                        "evaluate. Default: all remaining tasks after the "
+                        "train slice.")
 
     # Agent / execution
     p.add_argument("--mode", default="native", choices=["native", "harbor"])
@@ -1090,7 +1115,7 @@ def main() -> int:
         type=str,
         default="pre_generate_and_retry",
         choices=["off", "retry_only", "pre_generate_and_retry"],
-        help="How task-specific skills are used during grinding.",
+                   help="How task-specific skills are used during train solves.",
     )
 
     # Workspace
@@ -1106,7 +1131,7 @@ def main() -> int:
     # Output
     p.add_argument("--output", type=str, default=None)
     p.add_argument("--run-dir", type=str, default=None,
-                   help="Run directory (default: logs/grind_run_<timestamp>)")
+                   help="Run directory (default: logs/skillbench_split_<timestamp>)")
 
     # Harbor
     p.add_argument("--harbor-repo", type=str, default=None)
@@ -1163,6 +1188,20 @@ def main() -> int:
     p.add_argument("-v", "--verbose", action="store_true")
     args = p.parse_args()
 
+    # ── Validate split parameters early (before any I/O) ──
+    if args.batch_size <= 0:
+        p.error(f"--batch-size must be > 0 (got {args.batch_size})")
+    if args.evolve_limit < 0:
+        p.error(f"--evolve-limit must be >= 0 (got {args.evolve_limit})")
+    if args.eval_limit is not None and args.eval_limit < 0:
+        p.error(f"--eval-limit must be >= 0 or omitted (got {args.eval_limit})")
+    if args.max_cycles <= 0:
+        p.error(f"--max-cycles must be > 0 (got {args.max_cycles})")
+    if args.train_parallel <= 0:
+        p.error(f"--train-parallel must be > 0 (got {args.train_parallel})")
+    if args.test_parallel <= 0:
+        p.error(f"--test-parallel must be > 0 (got {args.test_parallel})")
+
     # ── Logging ───────────────────────────────────────────────────
     logging.basicConfig(
         level=logging.DEBUG if args.verbose else logging.INFO,
@@ -1171,10 +1210,10 @@ def main() -> int:
     for n in ("botocore", "urllib3", "httpcore", "httpx",
               "strands.models", "strands.tools", "strands.telemetry"):
         logging.getLogger(n).setLevel(logging.WARNING)
-    log = logging.getLogger("skillbench_grind")
+    log = logging.getLogger("skillbench_split")
 
     run_dir = Path(args.run_dir) if args.run_dir else Path(
-        f"logs/grind_run_{time.strftime('%Y%m%d_%H%M%S')}_pid{os.getpid()}"
+        f"logs/skillbench_split_{time.strftime('%Y%m%d_%H%M%S')}_pid{os.getpid()}"
     )
     run_dir.mkdir(parents=True, exist_ok=True)
     os.environ.setdefault("SKILLBENCH_RUN_ID", run_dir.name)
@@ -1219,14 +1258,38 @@ def main() -> int:
     if args.limit:
         all_sb_tasks = all_sb_tasks[:args.limit]
 
-    total_tasks = len(all_sb_tasks)
-    batches = [all_sb_tasks[i:i + args.batch_size]
+    if args.evolve_limit > len(all_sb_tasks):
+        raise SystemExit(
+            f"--evolve-limit ({args.evolve_limit}) > available tasks "
+            f"({len(all_sb_tasks)})"
+        )
+    if args.evolve_limit % args.batch_size != 0:
+        raise SystemExit(
+            f"--evolve-limit ({args.evolve_limit}) must be divisible by "
+            f"--batch-size ({args.batch_size}) so Phase 1 walks exactly "
+            "evolve_limit tasks in full train batches."
+        )
+
+    # ── Train/Test split ──────────────────────────────────────────
+    # Phase 1 (TRAIN) operates on the first evolve_limit tasks in train
+    # batches. Each batch is solved once and then evolved batch-level.
+    # Phase 2 (TEST) runs a single pass of agent.solve() + bm.evaluate()
+    # on the remaining slice with the workspace already evolved by Phase 1.
+    train_tasks = all_sb_tasks[:args.evolve_limit]
+    if args.eval_limit is not None:
+        test_tasks = all_sb_tasks[args.evolve_limit:args.evolve_limit + args.eval_limit]
+    else:
+        test_tasks = all_sb_tasks[args.evolve_limit:]
+
+    total_tasks = len(train_tasks)
+    batches = [train_tasks[i:i + args.batch_size]
                for i in range(0, total_tasks, args.batch_size)]
 
     log.info("=" * 70)
-    log.info("SkillBench Grind (cycle per task)")
-    log.info("  Total tasks:    %d (%d batches of %d)", total_tasks, len(batches), args.batch_size)
-    log.info("  Max cycles:     %d per task", args.max_cycles)
+    log.info("SkillBench Train/Test Split (Unified)")
+    log.info("  Phase1 train:   %d tasks (%d batches of %d)", total_tasks, len(batches), args.batch_size)
+    log.info("  Phase2 test:    %d tasks (eval-only, no engine)", len(test_tasks))
+    log.info("  Batch cycles:   %d evolve step(s) after each train batch", args.max_cycles)
     log.info("  Use skills:     %s", args.use_skills)
     log.info("  Feedback level: %s", args.feedback_level)
     log.info("  Task skills:    %s", args.task_skill_mode)
@@ -1240,7 +1303,7 @@ def main() -> int:
     log.info("  SkillBench ref: %s", resolved_skillbench.repo_ref)
     if args.task_skill_mode == "pre_generate_and_retry":
         log.info(
-            "  Note: cycle-1 passes may include pre-generated task-specific skills, "
+            "  Note: train solves may include pre-generated task-specific skills, "
             "so they are not a pure general-skill transfer signal."
         )
     log.info("=" * 70)
@@ -1313,9 +1376,13 @@ def main() -> int:
     evolution_dir.mkdir(parents=True, exist_ok=True)
     observer = Observer(evolution_dir)
 
+    # Train phase parallelism: cap at batch_size since only batch_size tasks
+    # are in flight at once. Evolve itself is always serial (it observes the batch).
+    train_workers = min(args.train_parallel, args.batch_size)
+
     config = EvolveConfig(
         evolver_model=args.evolver_model_id or args.model_id,
-        parallel_workers=max(1, args.max_workers),
+        parallel_workers=train_workers,
         parallel_backend="thread",
         extra={
             "region": args.region,
@@ -1373,9 +1440,9 @@ def main() -> int:
             },
         )
 
-    # ── Helper: solve one task (one cycle), thread-safe ─────────
+    # ── Helper: solve one task, thread-safe ─────────────────────
     def _solve_one(sb_task, task: Task, cycle: int, batch_num: int) -> dict:
-        """Solve one task for one cycle. Returns result dict. Thread-safe."""
+        """Solve one task once. Returns result dict. Thread-safe."""
         t0 = time.time()
         try:
             trajectory = agent.solve(task)
@@ -1416,31 +1483,27 @@ def main() -> int:
                 "elapsed": elapsed, "error": str(e),
             }
 
-    max_workers = max(1, args.max_workers)
+    # Reuse train_workers computed above (batch_size if --parallel else 1).
+    max_workers = train_workers
 
     # ══════════════════════════════════════════════════════════════
-    # MAIN LOOP: process batches, grind each task
-    # Strategy: solve in PARALLEL, evolve in SERIAL
+    # MAIN LOOP: process train batches
+    # Strategy: solve in PARALLEL (when --train-parallel > 1), evolve SERIAL
     # ══════════════════════════════════════════════════════════════
 
     run_start = time.time()
-    stats = {"done": 0, "pass": 0, "fail": 0, "err": 0, "grind_resolved": 0}
+    stats = {"done": 0, "pass": 0, "fail": 0, "err": 0}
     evo_counter = 0
 
-    # NOTE on --passes: the unified pass/cycle model maps `--passes`
-    # to "outer dataset sweeps". SB's `completed` set persists FAILED
-    # tasks (final=True even on FAIL) so a naive multi-pass would
-    # re-skip those rather than re-attempt them. Implementing useful
-    # multi-pass here requires distinguishing resolved-in-this-run
-    # from final-in-this-run, which is a behavior change beyond the
-    # scope of "just expose the knob". For passes>1 we currently log
-    # a warning and keep the legacy single-sweep behaviour. The
-    # `--max-cycles` knob (= cycle_per_batch) provides per-task
-    # solve→evolve→retry, which covers most use cases.
+    # NOTE on --passes: SB's `completed` set persists FAILED tasks
+    # (final=True even on FAIL), so a naive multi-pass would re-skip
+    # those rather than re-attempt them. For split parity with the
+    # other benchmarks we keep a single sweep; --cycle-per-batch controls
+    # how many serial evolve steps run after each solved train batch.
     if args.passes > 1:
         log.warning(
             "--passes=%d requested, but SB multi-pass is not yet implemented; "
-            "running a single sweep. Use --max-cycles for in-batch retry.",
+            "running a single sweep. Use --cycle-per-batch for batch-level evolve steps.",
             args.passes,
         )
 
@@ -1477,7 +1540,7 @@ def main() -> int:
                 )
             agent.reload_from_fs()
 
-        # Track per-task state across cycles
+        # Track per-task state for the single train solve pass.
         task_state: dict[str, dict] = {}
         for sb_task in pending:
             task_state[sb_task.name] = {
@@ -1487,187 +1550,177 @@ def main() -> int:
                 "cycles_used": 0,
             }
 
-        # ── Grind cycles: solve parallel → evolve serial → retry ──
-        for cycle in range(1, args.max_cycles + 1):
-            # Collect tasks that still need solving this cycle
-            to_solve = [
-                ts for ts in task_state.values()
-                if not ts["resolved"] and ts["cycles_used"] < cycle
-            ]
-            if not to_solve:
-                break
-
-            # ── PARALLEL SOLVE ──
-            if max_workers > 1 and len(to_solve) > 1:
-                log.info("  [cycle %d] Solving %d tasks in parallel (workers=%d)",
-                         cycle, len(to_solve), min(max_workers, len(to_solve)))
-                futures = {}
-                with ThreadPoolExecutor(max_workers=min(max_workers, len(to_solve))) as ex:
-                    for ts in to_solve:
-                        fut = ex.submit(
-                            _solve_one, ts["sb_task"], ts["task"], cycle, batch_num,
-                        )
-                        futures[fut] = ts
-                results = []
-                for fut in as_completed(futures):
-                    results.append(fut.result())
-            else:
-                # Serial solve (max_workers=1 or single task)
-                results = []
+        # ── TRAIN SOLVE: solve each task once, then evolve after the batch ──
+        cycle = 1
+        to_solve = list(task_state.values())
+        if max_workers > 1 and len(to_solve) > 1:
+            log.info("  Solving %d train tasks in parallel (workers=%d)",
+                     len(to_solve), min(max_workers, len(to_solve)))
+            futures = {}
+            with ThreadPoolExecutor(max_workers=min(max_workers, len(to_solve))) as ex:
                 for ts in to_solve:
-                    r = _solve_one(ts["sb_task"], ts["task"], cycle, batch_num)
-                    results.append(r)
+                    fut = ex.submit(
+                        _solve_one, ts["sb_task"], ts["task"], cycle, batch_num,
+                    )
+                    futures[fut] = ts
+            results = []
+            for fut in as_completed(futures):
+                results.append(fut.result())
+        else:
+            results = []
+            for ts in to_solve:
+                results.append(_solve_one(ts["sb_task"], ts["task"], cycle, batch_num))
 
-            # ── Process results + collect failures ──
-            cycle_observations: list[Observation] = []
-            for r in results:
-                task_id = r["task"].id
-                ts = task_state[task_id]
-                ts["cycles_used"] = cycle
+        batch_observations: list[Observation] = []
+        failed_observations: list[Observation] = []
+        for r in results:
+            task_id = r["task"].id
+            ts = task_state[task_id]
+            ts["cycles_used"] = 1
 
-                if r["error"]:
-                    log.error("  [%d/%d] %s cycle %d: ERROR %s (%.0fs)",
-                              stats["done"] + 1, total_tasks, task_id,
-                              cycle, r["error"], r["elapsed"])
-                    _write_result(output_path, {
-                        "task_id": task_id, "passed": False, "score": 0.0,
-                        "failure_class": "error", "cycle": cycle,
-                        "batch": batch_num,
-                        "category": r["sb_task"].metadata.get("category", "unknown"),
-                        "difficulty": r["sb_task"].metadata.get("difficulty", "unknown"),
-                        "duration_sec": round(r["elapsed"], 1),
-                        "detail": f"ERROR: {r['error']}", "final": False,
-                    })
-                    ts["resolved"] = False  # Mark as done (error = give up)
-                    ts["cycles_used"] = args.max_cycles  # Don't retry
-                    continue
-
-                feedback = r["feedback"]
-                trajectory = r["trajectory"]
-                task = r["task"]
-
-                # ── GAP#1: score + failure_class + test counts in per-cycle line ──
-                _fc = feedback.raw.get("failure_class", "unknown")
-                _rw = feedback.raw.get("reward_float", 0.0)
-                _test_info = SkillBenchBenchmark._extract_test_results(
-                    str(feedback.raw.get("verifier_tail", ""))
-                )
-                _np, _nf = _test_info["n_passed"], _test_info["n_failed"]
-                _test_str = f" ({_np}/{_np + _nf} tests)" if (_np + _nf) > 0 else ""
-                # ── GAP#5: score delta between cycles ──
-                _prev_score = ts.get("best_score", 0.0)
-                _delta_str = ""
-                if cycle > 1 and not feedback.success:
-                    delta = _rw - _prev_score
-                    _delta_str = f" delta={delta:+.3f}"
-                ts["best_score"] = max(_prev_score, _rw)
-                # ── GAP#3: skills actually used by solver ──
-                _skills_loaded = []
-                if trajectory.steps:
-                    _skills_loaded = trajectory.steps[-1].get("skills_loaded", [])
-                _skills_str = ""
-                if _skills_loaded:
-                    _skills_str = f" skills_used={_skills_loaded}"
-
-                log.info(
-                    "  [%d/%d] %s cycle %d/%d: %s score=%.3f%s %s (%.0fs)%s%s",
-                    stats["done"] + 1, total_tasks, task_id,
-                    cycle, args.max_cycles,
-                    "PASS" if feedback.success else "FAIL",
-                    _rw, _test_str, _fc,
-                    r["elapsed"], _delta_str, _skills_str,
-                )
-                # ── GAP#4: accumulate token usage ──
-                _usage = {}
-                if trajectory.steps:
-                    _usage = trajectory.steps[-1].get("usage", {})
-                _solver_in = int(_usage.get("input_tokens", 0))
-                _solver_out = int(_usage.get("output_tokens", 0))
-                stats.setdefault("solver_input_tokens", 0)
-                stats.setdefault("solver_output_tokens", 0)
-                stats["solver_input_tokens"] += _solver_in
-                stats["solver_output_tokens"] += _solver_out
-
+            if r["error"]:
+                log.error("  [%d/%d] %s train solve: ERROR %s (%.0fs)",
+                          stats["done"] + 1, total_tasks, task_id,
+                          r["error"], r["elapsed"])
                 _write_result(output_path, {
-                    "task_id": task_id,
-                    "passed": feedback.success,
-                    "score": feedback.score,
-                    "reward_float": _rw,
-                    "failure_class": _fc,
-                    "tests_passed": _np,
-                    "tests_failed": _nf,
-                    "skills_loaded": _skills_loaded,
-                    "cycle": cycle, "batch": batch_num,
+                    "task_id": task_id, "passed": False, "score": 0.0,
+                    "failure_class": "error", "cycle": cycle,
+                    "batch": batch_num,
                     "category": r["sb_task"].metadata.get("category", "unknown"),
                     "difficulty": r["sb_task"].metadata.get("difficulty", "unknown"),
                     "duration_sec": round(r["elapsed"], 1),
-                    "detail": feedback.detail,
-                    "final": False,
+                    "detail": f"ERROR: {r['error']}", "final": False,
                 })
+                ts["resolved"] = False
+                continue
 
-                # Trace solver result
-                evolver_feedback_detail = _build_evolver_feedback_detail(
-                    task,
-                    feedback,
+            feedback = r["feedback"]
+            trajectory = r["trajectory"]
+            task = r["task"]
+
+            _fc = feedback.raw.get("failure_class", "unknown")
+            _rw = feedback.raw.get("reward_float", 0.0)
+            _test_info = SkillBenchBenchmark._extract_test_results(
+                str(feedback.raw.get("verifier_tail", ""))
+            )
+            _np, _nf = _test_info["n_passed"], _test_info["n_failed"]
+            _test_str = f" ({_np}/{_np + _nf} tests)" if (_np + _nf) > 0 else ""
+
+            ts["best_score"] = max(ts.get("best_score", 0.0), _rw)
+            _skills_loaded = []
+            if trajectory.steps:
+                _skills_loaded = trajectory.steps[-1].get("skills_loaded", [])
+            _skills_str = f" skills_used={_skills_loaded}" if _skills_loaded else ""
+
+            log.info(
+                "  [%d/%d] %s train solve: %s score=%.3f%s %s (%.0fs)%s",
+                stats["done"] + 1, total_tasks, task_id,
+                "PASS" if feedback.success else "FAIL",
+                _rw, _test_str, _fc, r["elapsed"], _skills_str,
+            )
+
+            _usage = {}
+            if trajectory.steps:
+                _usage = trajectory.steps[-1].get("usage", {})
+            _solver_in = int(_usage.get("input_tokens", 0))
+            _solver_out = int(_usage.get("output_tokens", 0))
+            stats.setdefault("solver_input_tokens", 0)
+            stats.setdefault("solver_output_tokens", 0)
+            stats["solver_input_tokens"] += _solver_in
+            stats["solver_output_tokens"] += _solver_out
+
+            _write_result(output_path, {
+                "task_id": task_id,
+                "passed": feedback.success,
+                "score": feedback.score,
+                "reward_float": _rw,
+                "failure_class": _fc,
+                "tests_passed": _np,
+                "tests_failed": _nf,
+                "skills_loaded": _skills_loaded,
+                "cycle": cycle,
+                "batch": batch_num,
+                "category": r["sb_task"].metadata.get("category", "unknown"),
+                "difficulty": r["sb_task"].metadata.get("difficulty", "unknown"),
+                "duration_sec": round(r["elapsed"], 1),
+                "detail": feedback.detail,
+                "final": False,
+            })
+
+            evolver_feedback_detail = _build_evolver_feedback_detail(
+                task,
+                feedback,
+                args.feedback_level,
+            )
+            _trace_solver_result(
+                work_dir,
+                task_id,
+                cycle,
+                feedback,
+                r["elapsed"],
+                evolver_feedback_detail,
+            )
+
+            obs = Observation(task=task, trajectory=trajectory, feedback=feedback)
+            batch_observations.append(obs)
+            if not feedback.success:
+                failed_observations.append(obs)
+            ts["resolved"] = bool(feedback.success)
+
+        # ── SERIAL EVOLVE: one or more batch-level evolve steps, no retry ──
+        if batch_observations:
+            agent.export_to_fs()
+            observer.collect([
+                _make_sanitized_observation(obs, args.feedback_level)
+                for obs in batch_observations
+            ])
+
+            # Keep the legacy current_observation.md side channel populated
+            # for LLMBashEvolve. Prefer a failure; otherwise use the last
+            # successful observation as a representative batch example.
+            representative_obs = (
+                failed_observations[-1] if failed_observations else batch_observations[-1]
+            )
+            _write_observation_for_evolver(
+                work_dir,
+                representative_obs.task,
+                representative_obs.feedback,
+                representative_obs.trajectory,
+                cycle,
+                feedback_level=args.feedback_level,
+            )
+
+            evo_logs = []
+            for obs in batch_observations:
+                entry: dict[str, Any] = {
+                    "task_id": obs.task.id,
+                    "task_input": obs.task.input,
+                    "agent_output": obs.trajectory.output,
+                    "steps": obs.trajectory.steps,
+                }
+                # Gate success/score by feedback_level to prevent leakage.
+                if args.feedback_level in ("score", "tests", "masked", "full"):
+                    entry["score"] = obs.feedback.score
+                if args.feedback_level in ("tests", "masked", "full"):
+                    entry["success"] = obs.feedback.success
+                entry["evolver_feedback_detail"] = _build_evolver_feedback_detail(
+                    obs.task,
+                    obs.feedback,
                     args.feedback_level,
                 )
-                _trace_solver_result(
-                    work_dir,
-                    task_id,
-                    cycle,
-                    feedback,
-                    r["elapsed"],
-                    evolver_feedback_detail,
-                )
+                evo_logs.append(entry)
 
-                if feedback.success:
-                    ts["resolved"] = True
-                elif cycle < args.max_cycles:
-                    cycle_observations.append(
-                        Observation(task=task, trajectory=trajectory, feedback=feedback)
-                    )
-
-            # ── SERIAL EVOLVE (on all failures from this cycle) ──
-            if cycle_observations and cycle < args.max_cycles:
-                agent.export_to_fs()
-                observer.collect([
-                    _make_sanitized_observation(obs, args.feedback_level)
-                    for obs in cycle_observations
-                ])
-
-                # Write observation for the LAST failure (evolver reads one file)
-                last_obs = cycle_observations[-1]
-                _write_observation_for_evolver(
-                    work_dir, last_obs.task, last_obs.feedback,
-                    last_obs.trajectory, cycle,
-                    feedback_level=args.feedback_level,
-                )
-
+            for batch_cycle in range(1, args.max_cycles + 1):
                 evo_counter += 1
-                log.info("  --- Evolution cycle %d (%d failures) ---",
-                         evo_counter, len(cycle_observations))
+                log.info(
+                    "  --- Batch evolution %d/%d (global %d; observations=%d, failures=%d) ---",
+                    batch_cycle,
+                    args.max_cycles,
+                    evo_counter,
+                    len(batch_observations),
+                    len(failed_observations),
+                )
 
-                evo_logs = []
-                for obs in cycle_observations:
-                    entry: dict[str, Any] = {
-                        "task_id": obs.task.id,
-                        "task_input": obs.task.input,
-                        "agent_output": obs.trajectory.output,
-                        "steps": obs.trajectory.steps,
-                    }
-                    # Gate success/score by feedback_level to prevent leakage
-                    if args.feedback_level in ("score", "tests", "masked", "full"):
-                        entry["score"] = obs.feedback.score
-                    if args.feedback_level in ("tests", "masked", "full"):
-                        entry["success"] = obs.feedback.success
-                    entry["evolver_feedback_detail"] = _build_evolver_feedback_detail(
-                        obs.task,
-                        obs.feedback,
-                        args.feedback_level,
-                    )
-                    evo_logs.append(entry)
-
-                # Trace evolver input
                 skill_names_before = [
                     s.name for s in agent.workspace.list_skills()
                 ]
@@ -1687,7 +1740,6 @@ def main() -> int:
                             max_lines=200, max_bytes=6000, log=log,
                         )
 
-                    # Trace evolver output
                     _trace_evo_output(work_dir, evo_counter, evolve_result, n_distilled)
 
                     agent.reload_from_fs()
@@ -1695,7 +1747,6 @@ def main() -> int:
                     _evo_usage = evolve_result.get("usage", {})
                     _evo_added = evolve_result.get("skills_added", [])
                     _evo_removed = evolve_result.get("skills_removed", [])
-                    # ── GAP#4: accumulate evolver token usage ──
                     stats.setdefault("evolver_input_tokens", 0)
                     stats.setdefault("evolver_output_tokens", 0)
                     stats["evolver_input_tokens"] += int(_evo_usage.get("input_tokens", 0))
@@ -1715,22 +1766,6 @@ def main() -> int:
                         n_distilled,
                         _evo_detail,
                     )
-
-                    # Evolve task-specific skills for each failed task.
-                    if _should_retry_with_task_skills(args.task_skill_mode):
-                        for obs in cycle_observations:
-                            _evolve_task_skill(
-                                work_dir,
-                                obs.task,
-                                obs.feedback,
-                                args.model_id,
-                                args.region,
-                                feedback_level=args.feedback_level,
-                                no_direct_answers=args.no_direct_answers,
-                                log=log,
-                            )
-                        agent.reload_from_fs()
-
                 except Exception as e:
                     log.error("  Evolution failed: %s", e)
                     agent.reload_from_fs()
@@ -1744,8 +1779,6 @@ def main() -> int:
             stats["done"] += 1
             if resolved:
                 stats["pass"] += 1
-                if cycles_used > 1:
-                    stats["grind_resolved"] += 1
             else:
                 stats["fail"] += 1
 
@@ -1761,9 +1794,6 @@ def main() -> int:
             completed.add(task_id)
 
             # ── Success distillation (draft_only or gated_promotion) ──
-            # Skip for multi-cycle passes: the evolver already created a
-            # workspace skill from the failure, so success distillation
-            # would produce a weaker duplicate.
             if resolved and args.success_mode != "off" and cycles_used == 1:
                 category = ts["sb_task"].metadata.get("category", "unknown")
                 _distill_success_to_draft(
@@ -1788,11 +1818,112 @@ def main() -> int:
                 agent.reload_from_fs()
 
     # ══════════════════════════════════════════════════════════════
+    # PHASE 2: TEST (eval-only on remaining tasks; no evolve, no retry)
+    # ══════════════════════════════════════════════════════════════
+    test_results: list[dict] = []
+    test_path = output_path.with_name(output_path.stem + ".test" + output_path.suffix)
+    test_workers = max(1, args.test_parallel)
+    log.info("")
+    log.info("=" * 70)
+    log.info(
+        "PHASE 2 TEST — %d tasks (eval-only on evolved workspace, parallel=%d)",
+        len(test_tasks), test_workers,
+    )
+    log.info("=" * 70)
+
+    def _eval_one_test(sb_task) -> dict:
+        task = _to_task(sb_task)
+        rec: dict = {
+            "task_id": task.id,
+            "phase": "test",
+            "category": sb_task.metadata.get("category", "unknown"),
+            "difficulty": sb_task.metadata.get("difficulty", "unknown"),
+        }
+        t0 = time.time()
+        try:
+            trajectory = agent.solve(task)
+            feedback = bm.evaluate(task, trajectory)
+            rec["score"] = float(getattr(feedback, "score", 0.0))
+            rec["passed"] = bool(getattr(feedback, "success", False))
+            rec["success"] = rec["passed"]
+        except Exception as e:  # noqa: BLE001
+            rec["score"] = 0.0
+            rec["passed"] = False
+            rec["success"] = False
+            rec["error"] = str(e)[:300]
+        rec["elapsed_sec"] = round(time.time() - t0, 1)
+        return rec
+
+    if test_tasks:
+        agent.reload_from_fs()  # ensure agent sees latest evolved skills
+        test_fp = open(test_path, "w")
+        try:
+            if test_workers > 1 and len(test_tasks) > 1:
+                # Parallel test: results stream in completion order; the JSONL
+                # output retains task_id so order doesn't matter for downstream.
+                n_workers = min(test_workers, len(test_tasks))
+                log.info("  Spawning %d test workers", n_workers)
+                with ThreadPoolExecutor(max_workers=n_workers) as ex:
+                    futures = {ex.submit(_eval_one_test, st): st for st in test_tasks}
+                    for fut in as_completed(futures):
+                        rec = fut.result()
+                        log.info(
+                            "  [test %d/%d] %s: passed=%s score=%.3f (%.0fs)",
+                            len(test_results) + 1, len(test_tasks), rec["task_id"],
+                            rec["passed"], rec["score"], rec["elapsed_sec"],
+                        )
+                        test_results.append(rec)
+                        test_fp.write(json.dumps(rec) + "\n")
+                        test_fp.flush()
+            else:
+                # Serial test (test_workers=1 or single task)
+                for sb_task in test_tasks:
+                    rec = _eval_one_test(sb_task)
+                    log.info(
+                        "  [test %d/%d] %s: passed=%s score=%.3f (%.0fs)",
+                        len(test_results) + 1, len(test_tasks), rec["task_id"],
+                        rec["passed"], rec["score"], rec["elapsed_sec"],
+                    )
+                    test_results.append(rec)
+                    test_fp.write(json.dumps(rec) + "\n")
+                    test_fp.flush()
+        finally:
+            test_fp.close()
+    else:
+        log.info("  (no test tasks — train slice covers the whole limited dataset)")
+
+    # ══════════════════════════════════════════════════════════════
     # SUMMARY
     # ══════════════════════════════════════════════════════════════
 
     total_elapsed = time.time() - run_start
     metrics = _compute_metrics(output_path)
+    n_test = len(test_results)
+    test_pass = sum(1 for r in test_results if r.get("passed"))
+    test_pass_rate = test_pass / n_test if n_test else 0.0
+    test_mean_score = (
+        sum(r.get("score", 0.0) for r in test_results) / n_test if n_test else 0.0
+    )
+    metrics["phase1_train"] = {
+        "evolve_limit": args.evolve_limit,
+        "n_tasks": metrics.get("total", 0),
+        "n_passed": metrics.get("passed", 0),
+        "pass_ratio": metrics.get("pass_ratio", 0.0),
+        "n_batches": len(batches),
+        "evolve_steps_per_batch": args.max_cycles,
+        "batch_evolutions": evo_counter,
+    }
+    metrics["phase2_test"] = {
+        "eval_limit": args.eval_limit,
+        "n_evaluated": n_test,
+        "n_passed": test_pass,
+        "pass_rate": test_pass_rate,
+        "mean_score": test_mean_score,
+    }
+    # Train/test split: TEST pass rate is the headline number for "did
+    # evolution help on UNSEEN tasks?". For convenience we override
+    # final_score so EvolverBench-style readers pick up the test number.
+    metrics["final_score"] = test_pass_rate
     metrics["workspace"] = {
         "skills_final": len(agent.workspace.list_skills()),
         "memories_final": len(agent.workspace.read_all_memories(limit=9999)),
@@ -1800,10 +1931,14 @@ def main() -> int:
     }
     metrics["config"] = {
         "max_cycles": args.max_cycles,
+        "cycle_per_batch": args.max_cycles,
         "batch_size": args.batch_size,
-        "parallel": max_workers,
-        "max_workers": max_workers,
+        "train_parallel": args.train_parallel,
+        "train_workers_effective": max_workers,
+        "test_parallel": args.test_parallel,
         "parallel_backend": "thread",
+        "evolve_limit": args.evolve_limit,
+        "eval_limit": args.eval_limit,
         "use_skills": args.use_skills,
         "model_id": args.model_id,
         "evolver_model_id": args.evolver_model_id or args.model_id,
@@ -1826,10 +1961,11 @@ def main() -> int:
     log.info("")
     log.info("=" * 70)
     log.info("DONE in %.0fs", total_elapsed)
-    log.info("  Overall:       %d/%d passed (%.1f%%)",
+    log.info("  TRAIN: %d/%d passed (%.1f%%)",
              metrics["passed"], metrics["total"], 100 * metrics["pass_ratio"])
-    log.info("  Grind needed:  %d tasks needed retries", metrics.get("grind_needed", 0))
-    log.info("  Grind resolved:%d tasks resolved via evolution", metrics.get("grind_resolved", 0))
+    log.info("  TEST:  %d/%d passed (%.1f%%)  mean_score=%.3f",
+             test_pass, n_test, 100.0 * test_pass_rate, test_mean_score)
+    log.info("  Train evolutions: %d batch-level engine step(s)", evo_counter)
     if _total_tokens > 0:
         log.info("  Tokens:        solver=%s (in=%s out=%s) evolver=%s (in=%s out=%s) total=%s",
                  f"{(_s_in + _s_out):,}", f"{_s_in:,}", f"{_s_out:,}",

@@ -24,7 +24,7 @@ from swebench.harness.constants import (
 from swebench.harness.grading import MAP_REPO_TO_PARSER
 from swebench.harness.test_spec.test_spec import TestSpec, make_test_spec
 
-from ...types import Feedback, Task, Trajectory
+from ...types import Feedback, Observation, Task, Trajectory
 from ..base import BenchmarkAdapter
 
 logger = logging.getLogger(__name__)
@@ -157,6 +157,74 @@ class SweVerifiedMiniBenchmark(BenchmarkAdapter):
                 },
             ))
         return tasks
+
+    def solve_batch_parallel(self, tasks, agent, config) -> list[Observation] | None:
+        """SWE legacy-compatible process backend.
+
+        The old ``examples/swe_examples/evolve_sequential.py`` used a
+        ProcessPoolExecutor where each worker reconstructed its own SweAgent
+        and benchmark. Do the same here instead of trying to pickle/share the
+        live agent, LLM client, or benchmark object across processes.
+        """
+        backend = str(getattr(config, "parallel_backend", "thread") or "thread").lower()
+        if backend not in {"process", "benchmark"}:
+            return None
+
+        from concurrent.futures import ProcessPoolExecutor, as_completed
+
+        workers = max(1, int(getattr(config, "parallel_workers", 1) or 1))
+        if workers <= 1 or len(tasks) <= 1:
+            return None
+
+        workspace_dir = str(agent.workspace.root)
+        model_id = getattr(agent, "model_id", "us.anthropic.claude-opus-4-6-v1")
+        region = getattr(agent, "region", "us-west-2")
+        max_tokens = int(getattr(agent, "max_tokens", 16384))
+        max_steps = int(getattr(agent, "max_steps", 0))
+        window_size = int(getattr(agent, "window_size", 40))
+        verification_focus = bool(getattr(agent, "verification_focus", False))
+        efficiency_prompt = bool(getattr(agent, "efficiency_prompt", False))
+
+        payloads = [
+            {
+                "id": task.id,
+                "input": task.input,
+                "metadata": task.metadata,
+            }
+            for task in tasks
+        ]
+
+        by_index: dict[int, Observation] = {}
+        with ProcessPoolExecutor(max_workers=min(workers, len(payloads))) as pool:
+            futures = {
+                pool.submit(
+                    _solve_swe_task_process,
+                    idx,
+                    payload,
+                    workspace_dir,
+                    model_id,
+                    region,
+                    max_tokens,
+                    max_steps,
+                    window_size,
+                    verification_focus,
+                    efficiency_prompt,
+                    self.dataset_name,
+                    self.eval_timeout,
+                ): idx
+                for idx, payload in enumerate(payloads)
+            }
+            for fut in as_completed(futures):
+                idx = futures[fut]
+                try:
+                    result_idx, obs = fut.result()
+                except Exception as exc:  # noqa: BLE001
+                    logger.error("SWE process worker failed for task %s: %s",
+                                 tasks[idx].id, exc)
+                    continue
+                by_index[result_idx] = obs
+
+        return [by_index[i] for i in sorted(by_index)]
 
     def evaluate(self, task: Task, trajectory: Trajectory) -> Feedback:
         """Evaluate a patch by applying it in Docker and grading via swebench."""
@@ -375,6 +443,61 @@ def _grade_with_swebench(
         f"\n\nFAIL_TO_PASS:\n\n{json.dumps(sorted_f2p, indent=2)}\n\n"
     )
     return score, explanation
+
+
+def _solve_swe_task_process(
+    idx: int,
+    task_payload: dict[str, Any],
+    workspace_dir: str,
+    model_id: str,
+    region: str,
+    max_tokens: int,
+    max_steps: int,
+    window_size: int,
+    verification_focus: bool,
+    efficiency_prompt: bool,
+    dataset_name: str,
+    eval_timeout: int,
+) -> tuple[int, Observation]:
+    """Process-pool worker used by ``SweVerifiedMiniBenchmark``."""
+    task = Task(
+        id=task_payload["id"],
+        input=task_payload.get("input", ""),
+        metadata=task_payload.get("metadata", {}),
+    )
+    try:
+        from ...agents.swe.agent import SweAgent
+
+        agent = SweAgent(
+            workspace_dir=workspace_dir,
+            model_id=model_id,
+            region=region,
+            max_tokens=max_tokens,
+            max_steps=max_steps,
+            window_size=window_size,
+            verification_focus=verification_focus,
+            efficiency_prompt=efficiency_prompt,
+        )
+        benchmark = SweVerifiedMiniBenchmark(
+            dataset_name=dataset_name,
+            shuffle=False,
+            eval_timeout=eval_timeout,
+        )
+        trajectory = agent.solve(task)
+        feedback = benchmark.evaluate(task, trajectory)
+    except Exception as exc:  # noqa: BLE001
+        trajectory = Trajectory(
+            task_id=task.id,
+            output="",
+            steps=[{"error": str(exc)[:1000]}],
+        )
+        feedback = Feedback(
+            success=False,
+            score=0.0,
+            detail=str(exc)[:1000],
+            raw={"instance_id": task.id, "error": str(exc)[:1000]},
+        )
+    return idx, Observation(task=task, trajectory=trajectory, feedback=feedback)
 
 
 def _parse_list_field(row: dict, *keys: str) -> list:

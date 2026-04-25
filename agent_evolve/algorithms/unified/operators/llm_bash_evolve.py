@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import json
 import logging
+import shutil
 import subprocess
 from pathlib import Path
 from typing import Any
@@ -116,19 +117,168 @@ def _canonical_json(obj: Any) -> str:
     return json.dumps(obj, sort_keys=True, ensure_ascii=False, default=_default)
 
 
-def _build_user_prompt(evidence: dict[str, Any], cycle_num: int) -> str:
+def _build_permission_block(
+    scope: dict[str, Any] | None,
+    state: dict[str, Any] | None,
+    protected_skills: list[str] | None = None,
+) -> str:
+    scope = scope or {}
+    state = state or {}
+    lines = ["### Workspace Permissions"]
+
+    if scope.get("prompts") == "rw":
+        lines.append("- You MAY modify prompts/system.md.")
+    else:
+        lines.append("- You MUST NOT modify files under prompts/.")
+
+    if scope.get("skills") == "rw":
+        max_skills = state.get("max_skills")
+        protect_skills = bool(state.get("protect_skills", False))
+        if protect_skills:
+            lines.append(
+                "- You MAY create NEW skills under skills/, but MUST NOT modify "
+                "or delete existing skills."
+            )
+            if protected_skills:
+                lines.append(
+                    "- Existing protected skills: "
+                    + ", ".join(sorted(protected_skills))
+                )
+        else:
+            lines.append("- You MAY create/modify/delete skills under skills/.")
+        if max_skills is not None:
+            lines.append(f"- Maximum total non-draft skills: {max_skills}.")
+    else:
+        lines.append("- You MUST NOT modify files under skills/.")
+
+    if scope.get("memory") in ("rw", "append"):
+        lines.append("- You MAY append concise entries under memory/.")
+    else:
+        lines.append("- You MUST NOT modify files under memory/.")
+
+    if scope.get("tools") == "rw":
+        lines.append("- You MAY modify files under tools/.")
+    else:
+        lines.append("- You MUST NOT modify files under tools/.")
+
+    if bool(state.get("skills_only", False)):
+        lines.append("- This is a skills-only run: skills/ is the only mutable artifact family.")
+
+    return "\n".join(lines)
+
+
+def _build_user_prompt(
+    evidence: dict[str, Any],
+    cycle_num: int,
+    scope: dict[str, Any] | None = None,
+    state: dict[str, Any] | None = None,
+    protected_skills: list[str] | None = None,
+) -> str:
     """Canonicalize the EvidenceContext so mocked-LLM diffs are byte-stable."""
     payload = {"cycle": cycle_num, "evidence": {k: evidence[k] for k in sorted(evidence)}}
     return (
         f"## Evolution Cycle #{cycle_num}\n\n"
+        + _build_permission_block(scope, state, protected_skills)
+        + "\n\n"
         "### Evidence Context (canonicalized JSON)\n```json\n"
         + _canonical_json(payload)
         + "\n```\n\n### Instructions\n"
         "1. Review the evidence above — identify patterns, common failures, recurring themes.\n"
         "2. Use the workspace_bash tool to read/write files in the workspace.\n"
-        "3. Prefer small, targeted skill additions; avoid rewriting large prompt sections.\n"
-        "4. Verify your changes with `git diff` before finishing.\n"
+        "3. Obey the workspace permissions exactly.\n"
+        "4. Prefer small, targeted skill additions; avoid rewriting large prompt sections.\n"
+        "5. Verify your changes with `git diff` before finishing.\n"
     )
+
+
+def _snapshot_tree(root: Path) -> dict[str, bytes] | None:
+    if not root.exists():
+        return None
+    snapshot: dict[str, bytes] = {}
+    for path in sorted(root.rglob("*")):
+        if path.is_file():
+            snapshot[str(path.relative_to(root))] = path.read_bytes()
+    return snapshot
+
+
+def _restore_tree(root: Path, snapshot: dict[str, bytes] | None) -> None:
+    if snapshot is None:
+        if root.exists():
+            shutil.rmtree(root)
+        return
+
+    root.mkdir(parents=True, exist_ok=True)
+    wanted = set(snapshot)
+    for path in sorted(root.rglob("*"), reverse=True):
+        if path.is_file() and str(path.relative_to(root)) not in wanted:
+            path.unlink()
+    for rel, content in snapshot.items():
+        path = root / rel
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(content)
+    for path in sorted(root.rglob("*"), reverse=True):
+        if path.is_dir() and not any(path.iterdir()):
+            path.rmdir()
+
+
+def _enforce_post_scope(
+    workspace: Any,
+    scope: dict[str, Any],
+    state: dict[str, Any],
+    snapshots: dict[str, dict[str, bytes] | None],
+    protected_skill_snapshots: dict[str, dict[str, bytes] | None],
+    skills_before: set[str],
+) -> list[str]:
+    restored: list[str] = []
+    root = Path(workspace.root)
+
+    artifact_dirs = {
+        "prompts": root / "prompts",
+        "memory": root / "memory",
+        "tools": root / "tools",
+    }
+    for artifact, path in artifact_dirs.items():
+        if scope.get(artifact) not in ("rw", "append"):
+            current = _snapshot_tree(path)
+            if current != snapshots.get(artifact):
+                _restore_tree(path, snapshots.get(artifact))
+                restored.append(artifact)
+
+    if scope.get("skills") != "rw":
+        skills_path = root / "skills"
+        current = _snapshot_tree(skills_path)
+        if current != snapshots.get("skills"):
+            _restore_tree(skills_path, snapshots.get("skills"))
+            restored.append("skills")
+        return restored
+
+    if bool(state.get("protect_skills", False)):
+        for name, snapshot in protected_skill_snapshots.items():
+            skill_dir = root / "skills" / name
+            if _snapshot_tree(skill_dir) != snapshot:
+                _restore_tree(skill_dir, snapshot)
+                restored.append(f"protected_skill:{name}")
+
+    max_skills_raw = state.get("max_skills")
+    if max_skills_raw is not None:
+        try:
+            max_skills = int(max_skills_raw)
+        except (TypeError, ValueError):
+            max_skills = 0
+        if max_skills > 0:
+            skills = [s.name for s in workspace.list_skills()]
+            if len(skills) > max_skills:
+                added = sorted(set(skills) - skills_before)
+                removable = added + [s for s in sorted(skills) if s not in added]
+                if bool(state.get("protect_skills", False)):
+                    removable = [s for s in removable if s not in skills_before]
+                for name in removable:
+                    if len(workspace.list_skills()) <= max_skills:
+                        break
+                    workspace.delete_skill(name)
+                    restored.append(f"max_skills_removed:{name}")
+
+    return restored
 
 
 @register_operator("LLMBashEvolve")
@@ -159,9 +309,25 @@ class LLMBashEvolve:
         cycle_num = int(state.get("cycle_num", 0)) + 1
         state["cycle_num"] = cycle_num
         skills_before = {s.name for s in workspace.list_skills()}
+        protected_skill_snapshots = {
+            name: _snapshot_tree(Path(workspace.root) / "skills" / name)
+            for name in skills_before
+        }
+        snapshots = {
+            "prompts": _snapshot_tree(Path(workspace.root) / "prompts"),
+            "skills": _snapshot_tree(Path(workspace.root) / "skills"),
+            "memory": _snapshot_tree(Path(workspace.root) / "memory"),
+            "tools": _snapshot_tree(Path(workspace.root) / "tools"),
+        }
 
         evidence = dict(getattr(context, "entries", {}))
-        user_prompt = _build_user_prompt(evidence, cycle_num)
+        user_prompt = _build_user_prompt(
+            evidence,
+            cycle_num,
+            scope=scope,
+            state=state,
+            protected_skills=sorted(skills_before),
+        )
         max_tokens = int(state.get("max_tokens", self.DEFAULT_MAX_TOKENS))
         bash_fn = _make_workspace_bash(workspace.root)
 
@@ -251,6 +417,14 @@ class LLMBashEvolve:
                     details={"error": str(exc)[:200]},
                 )
 
+        restored = _enforce_post_scope(
+            workspace,
+            scope,
+            state,
+            snapshots,
+            protected_skill_snapshots,
+            skills_before,
+        )
         skills_after = {s.name for s in workspace.list_skills()}
         added = sorted(skills_after - skills_before)
         removed = sorted(skills_before - skills_after)
@@ -266,6 +440,7 @@ class LLMBashEvolve:
                 "cycle": cycle_num,
                 "skills_added": added,
                 "skills_removed": removed,
+                "scope_restored": restored,
                 "response_len": len(response_content or ""),
             },
         )
