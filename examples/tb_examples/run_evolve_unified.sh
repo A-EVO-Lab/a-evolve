@@ -15,12 +15,12 @@ REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 RUN_NAME="${1:?Usage: $0 <RUN_NAME> [--cycles N] [--batch-size N] [--limit N]}"
 shift || true
 
-CYCLES="${CYCLES:-3}"
-PASSES="${PASSES:-}"
-CYCLE_PER_BATCH="${CYCLE_PER_BATCH:-}"
+CYCLES="${CYCLES:-}"
+PASSES="${PASSES:-1}"
+CYCLE_PER_BATCH="${CYCLE_PER_BATCH:-1}"
 BATCH_SIZE="${BATCH_SIZE:-5}"
-LIMIT="${LIMIT:-20}"
-MODEL_ID="${MODEL_ID:-us.anthropic.claude-opus-4-5-20251101-v1:0}"
+LIMIT="${LIMIT:-50}"
+MODEL_ID="${MODEL_ID:-us.anthropic.claude-opus-4-6-v1}"
 EVOLVER_MODEL_ID="${EVOLVER_MODEL_ID:-}"
 export BEDROCK_RETRY_MAX_ATTEMPTS="${BEDROCK_RETRY_MAX_ATTEMPTS:-15}"
 export BEDROCK_READ_TIMEOUT_SEC="${BEDROCK_READ_TIMEOUT_SEC:-600}"
@@ -30,6 +30,10 @@ MAX_TOKENS="${MAX_TOKENS:-16384}"
 CHALLENGES_DIR="${CHALLENGES_DIR:-}"
 SEED_WORKSPACE="${SEED_WORKSPACE:-${REPO_ROOT}/seed_workspaces/terminal}"
 LOG_DIR="${LOG_DIR:-${REPO_ROOT}/logs/unified_tb_${RUN_NAME}}"
+# Skill-budget cap (mirrors legacy run_evolution.sh --max-skills). Empty
+# means "let the python runner use its own default", set to a positive
+# integer to cap how many skills the evolver may keep in the workspace.
+MAX_SKILLS="${MAX_SKILLS:-}"
 
 # Forward any extra flags to the python script.
 while [[ $# -gt 0 ]]; do
@@ -39,6 +43,7 @@ while [[ $# -gt 0 ]]; do
         --cycle-per-batch) CYCLE_PER_BATCH="$2"; shift 2 ;;
         --batch-size)      BATCH_SIZE="$2";      shift 2 ;;
         --limit)           LIMIT="$2";           shift 2 ;;
+        --max-skills)      MAX_SKILLS="$2";      shift 2 ;;
         --model-id)        MODEL_ID="$2";        shift 2 ;;
         --region)          REGION="$2";          shift 2 ;;
         --challenges-dir)  CHALLENGES_DIR="$2";  shift 2 ;;
@@ -74,6 +79,7 @@ cmd=(
 )
 [[ -n "${EVOLVER_MODEL_ID}" ]] && cmd+=(--evolver-model-id "${EVOLVER_MODEL_ID}")
 [[ -n "${CHALLENGES_DIR}" ]] && cmd+=(--challenges-dir "${CHALLENGES_DIR}")
+[[ -n "${MAX_SKILLS}" ]] && cmd+=(--max-skills "${MAX_SKILLS}")
 # Unified pass / cycle knobs (when set, overrides --cycles via formula).
 [[ -n "${PASSES}" ]]          && cmd+=(--passes "${PASSES}")
 [[ -n "${CYCLE_PER_BATCH}" ]] && cmd+=(--cycle-per-batch "${CYCLE_PER_BATCH}")

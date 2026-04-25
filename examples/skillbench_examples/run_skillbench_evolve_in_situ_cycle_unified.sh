@@ -22,6 +22,11 @@ CYCLES="${CYCLES:-3}"
 PASSES="${PASSES:-}"
 BATCH_SIZE="${BATCH_SIZE:-2}"
 LIMIT="${LIMIT:-}"
+# Skill selection: '0' or 'all' = inject every skill, N>0 = top-N by
+# keyword match. Mirrors the legacy `run_skillbench_evolve_in_situ_cycle.sh`
+# env knob so EvolverBench (or manual callers) can cap how many skills
+# the solver agent sees per task.
+SKILL_SELECT_LIMIT="${SKILL_SELECT_LIMIT:-}"
 MODE="${MODE:-native}"
 USE_SKILLS="${USE_SKILLS:-true}"
 MODEL_ID="${MODEL_ID:-us.anthropic.claude-opus-4-5-20251101-v1:0}"
@@ -68,6 +73,7 @@ cmd=(
 [[ -n "${LIMIT}" ]] && cmd+=(--limit "${LIMIT}")
 [[ -n "${EVOLVER_MODEL_ID}" ]] && cmd+=(--evolver-model-id "${EVOLVER_MODEL_ID}")
 [[ -n "${PASSES}" ]] && cmd+=(--passes "${PASSES}")
+[[ -n "${SKILL_SELECT_LIMIT}" ]] && cmd+=(--skill-select-limit "${SKILL_SELECT_LIMIT}")
 
 LOG="${RUN_DIR}/evolve.log"
 echo "Running: ${cmd[*]}"

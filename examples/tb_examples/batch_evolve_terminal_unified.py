@@ -68,6 +68,14 @@ def main() -> int:
                    help="Tasks per cycle (passed to bench.get_tasks limit)")
     p.add_argument("--limit", type=int, default=20,
                    help="Max tasks from benchmark")
+    # Skill-budget cap (mirrors the legacy `batch_evolve_terminal.py
+    # --max-skills`). Threaded through EvolveConfig.extra["max_skills"]
+    # so SkillCurator's prompt builder (`agent_evolve.algorithms.skillforge
+    # .prompts._build_*_instructions`) reads it and emits the
+    # "SKILL BUDGET REACHED" guard text.
+    p.add_argument("--max-skills", type=int, default=5,
+                   help="Maximum total skills the evolver may keep in the "
+                        "workspace (default 5; matches legacy default).")
     p.add_argument("--model-id", default="us.anthropic.claude-opus-4-5-20251101-v1:0",
                    help="Solver model id")
     p.add_argument("--evolver-model-id", default=None,
@@ -147,7 +155,11 @@ def main() -> int:
         batch_size=args.batch_size,
         max_cycles=effective_cycles,
         evolver_model=evolver_model_id,
-        extra={"region": args.region, "max_tokens": args.max_tokens},
+        extra={
+            "region": args.region,
+            "max_tokens": args.max_tokens,
+            "max_skills": args.max_skills,
+        },
     )
     engine = UnifiedEngine(config, bench)
     engine._operator_state.setdefault("LLMBashEvolve", {})["llm_provider"] = llm
