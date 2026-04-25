@@ -238,7 +238,8 @@ def main():
     print(f"{'=' * 60}")
     print(f"  Pass Rate: {summary['pass_rate_mean']:.1%} ± {summary['pass_rate_std']:.1%}")
     print(f"  Avg Score: {summary['avg_score_mean']:.3f} ± {summary['avg_score_std']:.3f}")
-    print(f"  Per trial: {[f'{r['pass_rate']:.1%}' for r in all_results]}")
+    per_trial = [f"{r['pass_rate']:.1%}" for r in all_results]
+    print(f"  Per trial: {per_trial}")
     print(f"  Wall time: {total_elapsed / 3600:.1f} hours")
     print(f"{'=' * 60}")
 
