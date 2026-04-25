@@ -33,8 +33,10 @@ def solve_one_task(task_dict: dict, args_dict: dict) -> dict:
     sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
     from agent_evolve.agents.swe.env import SWEBenchContainer, pull_image
 
-    # Load tools from seed_workspaces/swe/tools/ (no longer in agent_evolve.agents.swe.tools)
-    _tools_dir = Path(__file__).resolve().parent.parent.parent.parent / "seed_workspaces" / "swe" / "tools"
+    # Load tools from seed_workspaces/swe/tools/ (no longer in agent_evolve.agents.swe.tools).
+    # __file__ is examples/swe_examples/solve_all.py; three .parent levels reach
+    # the V3 repo root (A-EVOLVE-V3/), where seed_workspaces/ lives.
+    _tools_dir = Path(__file__).resolve().parent.parent.parent / "seed_workspaces" / "swe" / "tools"
     import importlib.util as _ilu
 
     def _load_tool_mod(name):
