@@ -27,9 +27,19 @@ class BedrockProvider(LLMProvider):
         except ImportError:
             raise ImportError("pip install boto3  (or: pip install agent-evolve[bedrock])")
 
+        from ._bedrock_config import bedrock_boto_config
+
         self.model_id = model_id
         self.region = region
-        self.client = boto3.client("bedrock-runtime", region_name=region)
+        # retry / timeouts come from BEDROCK_RETRY_MAX_ATTEMPTS /
+        # BEDROCK_READ_TIMEOUT_SEC / BEDROCK_CONNECT_TIMEOUT_SEC env vars
+        # (defaults 15 / 600 / 30, mode=adaptive). Surfaced as visible env
+        # var knobs in every evolve / baseline wrapper script.
+        self.client = boto3.client(
+            "bedrock-runtime",
+            region_name=region,
+            config=bedrock_boto_config(),
+        )
 
     def complete(
         self,

@@ -299,12 +299,19 @@ def react_solve(
     if log is None:
         log = logger
 
-    from botocore.config import Config as BotoConfig
+    from ...llm._bedrock_config import bedrock_boto_config, bedrock_retry_max_attempts
+    # Retries disabled at the boto3 layer — TB has hand-rolled retry below
+    # that respects the task wall-clock budget. read_timeout / connect_timeout
+    # come from BEDROCK_READ_TIMEOUT_SEC / BEDROCK_CONNECT_TIMEOUT_SEC env vars.
     client = boto3.client(
         "bedrock-runtime",
         region_name=region,
-        config=BotoConfig(read_timeout=300, retries={"max_attempts": 0}),
+        config=bedrock_boto_config(disable_retries=True),
     )
+    # Hand-rolled retry cap from BEDROCK_RETRY_MAX_ATTEMPTS env var.
+    # Default 15 from _bedrock_config; clamp to reasonable range so a task's
+    # wall clock isn't entirely consumed by retries.
+    _max_consecutive_errors = max(3, min(bedrock_retry_max_attempts(), 30))
     result = ReactSolverResult()
 
     # Build initial messages
@@ -355,12 +362,12 @@ def react_solve(
                 retry_lost_time += time.time() - call_start + wait
                 # Give up if: too many consecutive errors OR wall clock exceeds 2x timeout
                 wall_elapsed = time.time() - t0 + wait
-                if consecutive_errors >= 5 or wall_elapsed >= timeout_sec * 2.5:
+                if consecutive_errors >= _max_consecutive_errors or wall_elapsed >= timeout_sec * 2.5:
                     log.error("Giving up after %d retries (%.0fs wall, %.0fs paused): %s",
                               consecutive_errors, wall_elapsed, retry_lost_time, err_str[:200])
                     break
-                log.warning("Transient API error (%d/5): %s. Retrying in %ds... (%.0fs paused total)",
-                            consecutive_errors, err_str[:150], wait, retry_lost_time)
+                log.warning("Transient API error (%d/%d): %s. Retrying in %ds... (%.0fs paused total)",
+                            consecutive_errors, _max_consecutive_errors, err_str[:150], wait, retry_lost_time)
                 time.sleep(wait)
                 continue
             else:

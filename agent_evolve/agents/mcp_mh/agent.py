@@ -43,10 +43,13 @@ class McpMHAgent(McpAgent):
     """MCP tool-calling agent with dynamic harness.py hook support."""
 
     def _build_strands_agent(self, tools: list, task_prompt: str | None = None) -> Agent:
+        from ...llm._bedrock_config import bedrock_boto_config
+
         model = BedrockModel(
             model_id=self.model_id,
             region_name=self.region,
             max_tokens=self.max_tokens,
+            boto_client_config=bedrock_boto_config(),
         )
         system_prompt = self._build_system_prompt(task_prompt=task_prompt)
         return Agent(

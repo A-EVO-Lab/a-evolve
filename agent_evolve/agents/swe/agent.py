@@ -134,10 +134,13 @@ class SweAgent(BaseAgent):
         Returns:
             A tuple of (Agent, tool_modules) so the caller can reset modules.
         """
+        from ...llm._bedrock_config import bedrock_boto_config
+
         model = BedrockModel(
             model_id=self.model_id,
             region_name=self.region,
             max_tokens=self.max_tokens,
+            boto_client_config=bedrock_boto_config(),
         )
 
         system_prompt = self._build_system_prompt()
