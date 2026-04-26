@@ -89,12 +89,17 @@ def detect_regime(
 
     extra = getattr(config, "extra", {}) or {}
     allow_solver_proposals = bool(extra.get("solver_proposes", True))
+    proposal_visible_when_masked = bool(
+        extra.get("solver_proposals_visible_when_feedback_masked", False)
+    )
 
     # Solver proposal: runtime evidence, not capability hint.
-    # trajectory_only masks proposals (solver reflection may be shaped by feedback).
+    # By default trajectory_only masks proposals for backward compatibility.
+    # SWE's legacy v32g setting is the exception: feedback=none masks scores
+    # but solver proposals are still a solver-authored artifact to curate.
     # Observation-shape masking does NOT mask proposals (orthogonal signal).
     has_solver_proposal = False
-    if allow_solver_proposals and not trajectory_only:
+    if allow_solver_proposals and (not trajectory_only or proposal_visible_when_masked):
         for o in obs_list:
             proposal = getattr(getattr(o, "trajectory", None), "_skill_proposal", "")
             if proposal and "ACTION: NONE" not in proposal.upper():

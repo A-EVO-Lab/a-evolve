@@ -3,16 +3,16 @@
 Thin counterpart to ``evolve_sequential.py``. Where legacy uses
 ``GuidedSynthesisEngine.evolve()`` with a custom batch loop, this
 runner goes through ``EvolutionLoop + UnifiedEngine`` with the
-``solver_proposal`` recipe (matches ``GuidedSynthesisEngine.step()``).
+``solver_proposal`` recipe (matches ``GuidedSynthesisEngine(write_memory=False)``).
 
 **Axis parity with legacy:**
 
 - Observation: same — ``trajectory._skill_proposal`` attached by SWE agent
-- Update pipeline: ``[WriteEpisodicMemory, SkillCurator]`` (operator equivalents of
-  ``_write_minimal_memory`` + ``_curate_proposals`` + ``_execute_curation``)
+- Update pipeline: ``[SkillCurator]`` over ``ProposalReader`` output (operator
+  equivalent of ``_curate_proposals`` + ``_execute_curation``)
 - Verify: ``NoVerify`` (matches ``GuidedSynthesisEngine.step()`` path)
-- Output: ``skills/<curated_name>/SKILL.md`` + ``memory/episodic.jsonl``
-- Scope: ``{skills: rw, memory: append}`` (no prompt writes)
+- Output: ``skills/<curated_name>/SKILL.md``
+- Scope: ``{skills: rw, memory/prompts/tools: ro}``
 
 See ``docs/algorithms/unified-equivalence-audit.md`` for the full audit.
 
@@ -179,6 +179,7 @@ def main() -> int:
             "max_tokens": args.max_tokens,
             "legacy_profile": "swe",
             "solver_proposes": bool(args.solver_proposes),
+            "solver_proposals_visible_when_feedback_masked": bool(args.solver_proposes),
             "write_memory": False,
             "verification_focus": bool(args.verification_focus),
         },

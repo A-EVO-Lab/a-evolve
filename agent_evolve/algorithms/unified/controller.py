@@ -101,12 +101,36 @@ class RuleBasedController:
         extra = _extra(config)
         legacy_profile = str(extra.get("legacy_profile", "")).lower()
 
+        if (
+            legacy_profile == "swe"
+            and regime.has_solver_proposal
+            and capability.solver_may_propose
+        ):
+            return _plan(
+                readers=("ProposalReader",),
+                operators=("SkillCurator",),
+                verifier="NoVerify",
+                artifact_scope={
+                    "skills": "rw",
+                    "memory": "ro",
+                    "prompts": "ro",
+                    "tools": "ro",
+                },
+                reason_trace=("matched: swe legacy solver proposal curation",),
+                config=config,
+            )
+
         if legacy_profile == "swe" and not regime.has_solver_proposal:
             return _plan(
                 readers=("PassFailReader", "TrajectoryCompressor"),
                 operators=(),
                 verifier="NoVerify",
-                artifact_scope={"skills": "ro", "memory": "ro", "prompts": "ro"},
+                artifact_scope={
+                    "skills": "ro",
+                    "memory": "ro",
+                    "prompts": "ro",
+                    "tools": "ro",
+                },
                 reason_trace=("matched: swe legacy no solver proposals",),
                 config=config,
             )

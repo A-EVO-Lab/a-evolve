@@ -91,6 +91,32 @@ def test_detect_regime_trajectory_only_masks_feedback():
     assert regime.has_solver_proposal is False  # trajectory_only masks proposals too
 
 
+def test_detect_regime_swe_can_read_proposals_under_masked_feedback():
+    cap = FeedbackCapability(has_per_claim=True, solver_may_propose=True)
+    obs = [
+        _Obs(
+            _FakeTask("t"),
+            _FakeTrajectory(skill_proposal="ACTION: NEW\nNAME: verify_before_after"),
+            _FakeFeedback(
+                success=True,
+                score=1.0,
+                raw={"per_claim": [{"claim": "x", "score": 1.0}]},
+            ),
+        )
+    ]
+    cfg = _FakeConfig(
+        trajectory_only=True,
+        extra={
+            "solver_proposes": True,
+            "solver_proposals_visible_when_feedback_masked": True,
+        },
+    )
+    regime = detect_regime(cap, obs, _FakeWorkspace(), cfg)
+    assert regime.has_per_claim is False
+    assert regime.pass_rate is None
+    assert regime.has_solver_proposal is True
+
+
 def test_detect_regime_shape_masked_feedback():
     """Feedback is zeroed by external masking — infer it without a config flag."""
     cap = FeedbackCapability(has_per_claim=True)
@@ -196,6 +222,45 @@ def test_controller_solver_proposal_recipe(controller):
     assert plan.readers == ("PassFailReader", "ProposalReader")
     assert plan.operators == ("WriteEpisodicMemory", "SkillCurator")
     assert plan.verifier == "NoVerify"
+
+
+def test_controller_swe_solver_proposal_recipe(controller):
+    regime = RegimeTag(has_solver_proposal=True)
+    cap = FeedbackCapability(solver_may_propose=True)
+    plan = controller.plan(
+        regime,
+        cap,
+        _FakeConfig(trajectory_only=True, extra={"legacy_profile": "swe"}),
+    )
+    assert plan.readers == ("ProposalReader",)
+    assert plan.operators == ("SkillCurator",)
+    assert plan.verifier == "NoVerify"
+    assert plan.artifact_scope == {
+        "skills": "rw",
+        "memory": "ro",
+        "prompts": "ro",
+        "tools": "ro",
+    }
+    assert plan.reason_trace == ("matched: swe legacy solver proposal curation",)
+
+
+def test_controller_swe_no_proposal_noop_recipe(controller):
+    regime = RegimeTag(has_solver_proposal=False)
+    cap = FeedbackCapability(solver_may_propose=True)
+    plan = controller.plan(
+        regime,
+        cap,
+        _FakeConfig(trajectory_only=True, extra={"legacy_profile": "swe"}),
+    )
+    assert plan.readers == ("PassFailReader", "TrajectoryCompressor")
+    assert plan.operators == ()
+    assert plan.artifact_scope == {
+        "skills": "ro",
+        "memory": "ro",
+        "prompts": "ro",
+        "tools": "ro",
+    }
+    assert plan.reason_trace == ("matched: swe legacy no solver proposals",)
 
 
 def test_controller_drafts_recipe(controller):

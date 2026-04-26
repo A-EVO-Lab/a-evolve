@@ -1,15 +1,15 @@
 #!/usr/bin/env bash
-# Run SWE-bench Verified solve-all as a no-evolution baseline (full 500).
+# Run SWE-bench Verified Mini solve-all as a no-evolution baseline (50 tasks).
 #
 # Invokes examples/swe_examples/solve_all.py directly — no EvolutionEngine,
 # no evolver calls, no workspace mutation. Pure "solve every task once
 # with the baseline agent" pass.
 #
-# Defaults follow the README full-baseline recipe:
-#   dataset = princeton-nlp/SWE-bench_Verified
-#   workers = 16
+# Defaults follow the README "Mini (50 tasks)" baseline recipe:
+#   dataset = MariusHobbhahn/swe-bench-verified-mini
+#   workers = 5
 #   max-turns = 140
-#   limit = 500
+#   limit = 50
 #
 # Env-var configurable; matches the style of run_swe_evolve_unified.sh so
 # EvolverBench's dispatcher can route `--evolver none` to this wrapper.
@@ -25,9 +25,9 @@ export BEDROCK_RETRY_MAX_ATTEMPTS="${BEDROCK_RETRY_MAX_ATTEMPTS:-15}"
 export BEDROCK_READ_TIMEOUT_SEC="${BEDROCK_READ_TIMEOUT_SEC:-600}"
 export BEDROCK_CONNECT_TIMEOUT_SEC="${BEDROCK_CONNECT_TIMEOUT_SEC:-30}"
 MAX_TURNS="${MAX_TURNS:-140}"
-WORKERS="${WORKERS:-16}"
-DATASET="${DATASET:-princeton-nlp/SWE-bench_Verified}"
-LIMIT="${LIMIT:-500}"
+WORKERS="${WORKERS:-5}"
+DATASET="${DATASET:-MariusHobbhahn/swe-bench-verified-mini}"
+LIMIT="${LIMIT:-50}"
 RUN_EVAL="${RUN_EVAL:-true}"
 RUN_ID="${RUN_ID:-$(date -u +%Y%m%d_%H%M%S)_pid$$}"
 OUTPUT_DIR="${OUTPUT_DIR:-${REPO_ROOT}/logs/swe_solve_all_${RUN_ID}}"

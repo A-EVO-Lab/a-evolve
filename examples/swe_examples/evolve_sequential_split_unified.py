@@ -5,9 +5,10 @@ but on the unified engine path:
 
   Phase 1 — TRAIN: ``EvolutionLoop + UnifiedEngine`` walks the FIRST
             ``--evolve-limit`` tasks in train batches of ``--batch-size``.
-            Recipe = ``solver_proposal`` (PassFailReader + ProposalReader
-            | WriteEpisodicMemory + SkillCurator) — same engine path as
-            ``evolve_sequential_unified.py``.
+            Recipe = ``solver_proposal`` (ProposalReader | SkillCurator)
+            when ``--solver-proposes`` is enabled. This mirrors legacy
+            GuidedSynthesisEngine(write_memory=False): feedback may be masked
+            while solver-authored proposals are still curated.
 
   Phase 2 — TEST:  the bench cursor continues into the remaining tasks.
             ``agent.solve()`` + ``bench.evaluate()`` are called directly
@@ -221,6 +222,7 @@ def main() -> int:
             "max_tokens": args.max_tokens,
             "legacy_profile": "swe",
             "solver_proposes": bool(args.solver_proposes),
+            "solver_proposals_visible_when_feedback_masked": bool(args.solver_proposes),
             "write_memory": False,
             "verification_focus": bool(args.verification_focus),
         },
