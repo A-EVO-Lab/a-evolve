@@ -212,7 +212,12 @@ class TerminalAgent(BaseAgent):
 
         # output is the eval result summary for the evolution pipeline
         output = f"passed={passed}\n{eval_output}"
-        return Trajectory(task_id=task.id, output=output, steps=steps)
+        return Trajectory(
+            task_id=task.id,
+            output=output,
+            steps=steps,
+            conversation=conversation,
+        )
 
     def _build_system_prompt(self) -> str:
         """Assemble the full system prompt from workspace files.

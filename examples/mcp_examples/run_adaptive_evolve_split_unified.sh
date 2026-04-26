@@ -12,22 +12,23 @@
 # most $LIMIT ordered MCP tasks, then train on $EVOLVE_LIMIT and evaluate the
 # remaining slice.
 #
-# Defaults: EVOLVE_LIMIT=30, BATCH_SIZE=30, EVAL_LIMIT=""(all remaining).
+# Defaults: EVOLVE_LIMIT=50, BATCH_SIZE=5, LIMIT=200,
+#           EVAL_LIMIT=""(all remaining after train).
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 
-EVOLVE_LIMIT="${EVOLVE_LIMIT:-30}"
+EVOLVE_LIMIT="${EVOLVE_LIMIT:-50}"
 EVAL_LIMIT="${EVAL_LIMIT:-}"
-BATCH_SIZE="${BATCH_SIZE:-30}"
+BATCH_SIZE="${BATCH_SIZE:-5}"
 # Train: max parallel solve workers in each Phase 1 batch.
 # Effective parallelism is min(TRAIN_PARALLEL, BATCH_SIZE).
-TRAIN_PARALLEL="${TRAIN_PARALLEL:-${PARALLEL:-1}}"
+TRAIN_PARALLEL="${TRAIN_PARALLEL:-${PARALLEL:-5}}"
 # Test: explicit worker count for Phase 2 (no evolve, fully parallelizable).
 TEST_PARALLEL="${TEST_PARALLEL:-5}"
 PARALLEL_BACKEND="${PARALLEL_BACKEND:-thread}"
-LIMIT="${LIMIT:-500}"
+LIMIT="${LIMIT:-200}"
 SOLVER_MODEL="${SOLVER_MODEL:-us.anthropic.claude-opus-4-6-v1}"
 EVOLVER_MODEL="${EVOLVER_MODEL:-}"
 REGION="${REGION:-us-west-2}"

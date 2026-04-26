@@ -212,6 +212,52 @@ def test_trajectory_compressor_is_deterministic():
     assert "Commands: 2" in a["per_task"][0]["compressed"]
 
 
+def test_terminal_trajectory_reader_uses_step_conversation_fallback(workspace):
+    conv = [
+        {"role": "assistant", "tool_calls": [{"function": "bash", "arguments": {"cmd": "ls"}}]},
+        {"role": "tool", "content": "ERROR: missing file"},
+        {"role": "assistant", "tool_calls": [{"function": "task_submit", "arguments": {"answer": "done"}}]},
+    ]
+    obs = [
+        _Obs(
+            _FakeTask("tb-task"),
+            _FakeTrajectory(steps=[{"conversation": conv}]),
+            _FakeFeedback(success=True, score=1.0, detail="must stay masked"),
+        )
+    ]
+    out = get_reader("TerminalTrajectoryReader").read(
+        obs, workspace, None, None, EvidenceContext(), {}
+    )
+    row = out["per_task"][0]
+    assert row["task_id"] == "tb-task"
+    assert row["signals"]["n_errors"] == 1
+    assert row["signals"]["submitted"] is True
+    assert "must stay masked" not in json.dumps(row)
+
+
+def test_terminal_trajectory_reader_uses_legacy_compression_format(workspace):
+    conv = [
+        {"role": "assistant", "tool_calls": [{"function": "bash", "arguments": {"cmd": "python solve.py"}}]},
+        {"role": "tool", "content": "Traceback: boom"},
+        {"role": "assistant", "tool_calls": [{"function": "bash", "arguments": {"cmd": "cat out.txt"}}]},
+        {"role": "assistant", "tool_calls": [{"function": "bash", "arguments": {"cmd": "cat out.txt"}}]},
+        {"role": "assistant", "tool_calls": [{"function": "bash", "arguments": {"cmd": "cat out.txt"}}]},
+        {"role": "assistant", "tool_calls": [{"function": "task_submit", "arguments": {"answer": "answer.txt"}}]},
+    ]
+    obs = [_Obs(_FakeTask("tb-task"), _FakeTrajectory(conversation=conv), _FakeFeedback())]
+    out = get_reader("TerminalTrajectoryReader").read(
+        obs, workspace, None, None, EvidenceContext(), {}
+    )
+    compressed = out["per_task"][0]["compressed_trajectory"]
+    assert compressed.startswith("Commands: 4, Errors: 1, Submitted: True")
+    assert "[start] bash(python solve.py)" in compressed
+    assert "--- Errors (1) ---" in compressed
+    assert "err: Traceback: boom" in compressed
+    assert "--- Repeated commands ---" in compressed
+    assert "cat out.txt (x3)" in compressed
+    assert "[submitted] answer.txt" in compressed
+
+
 def test_claim_reader_extracts_per_claim():
     obs = [
         _Obs(
@@ -287,6 +333,62 @@ def test_llm_judge_reader_falls_back_when_provider_missing(monkeypatch):
         {},
     )
     assert out["per_task"][0]["score"] == -1
+
+
+def test_llm_judge_reader_parses_provider_schema(monkeypatch):
+    from agent_evolve.llm import bedrock as bedrock_module
+
+    class _FakeBedrockProvider:
+        def __init__(self, model_id, region):
+            self.model_id = model_id
+            self.region = region
+
+        def complete(self, messages, max_tokens=None, temperature=None):
+            return SimpleNamespace(
+                content=json.dumps(
+                    {
+                        "score": 6,
+                        "category": "debug",
+                        "outcome": "made partial progress",
+                        "failure_reason": "did not verify final output",
+                    }
+                )
+            )
+
+    monkeypatch.setattr(bedrock_module, "BedrockProvider", _FakeBedrockProvider)
+    reader = get_reader("LLMJudgeReader")
+    out = reader.read(
+        [
+            _Obs(
+                _FakeTask("tb-task"),
+                _FakeTrajectory(
+                    conversation=[
+                        {
+                            "role": "assistant",
+                            "tool_calls": [
+                                {"function": "bash", "arguments": {"cmd": "pytest"}}
+                            ],
+                        },
+                        {"role": "tool", "content": "ERROR: failed"},
+                    ]
+                ),
+                _FakeFeedback(),
+            )
+        ],
+        None,
+        None,
+        None,
+        EvidenceContext(),
+        {},
+    )
+    row = out["per_task"][0]
+    assert row == {
+        "task_id": "tb-task",
+        "score": 6,
+        "category": "debug",
+        "outcome": "made partial progress",
+        "failure_reason": "did not verify final output",
+    }
 
 
 # ── Operators ──────────────────────────────────────────────────
@@ -408,6 +510,7 @@ def test_llm_bash_evolve_uses_mock_and_canonicalizes(workspace):
     # produce identical output.
     ctx.entries["ClaimReader"] = {"b": 2, "a": 1}
     ctx.entries["PatternDetector"] = {"names": ["z", "a"]}
+    ctx.entries["__observations__"] = [{"feedback": {"success": True, "detail": "hidden-feedback"}}]
     op = get_operator("LLMBashEvolve")
     state = {"mock": mock}
     op.apply(workspace, ctx, {"skills": "rw"}, state)
@@ -426,6 +529,107 @@ def test_llm_bash_evolve_uses_mock_and_canonicalizes(workspace):
     assert _canon(seen_prompts[0]) == _canon(seen_prompts[1])
     # And sort_keys produces alphabetical key order on the evidence.
     assert '"a": 1, "b": 2' in seen_prompts[0]
+    assert "__observations__" not in seen_prompts[0]
+    assert "hidden-feedback" not in seen_prompts[0]
+
+
+def test_terminal_skill_evolve_adds_skill_with_soft_budget(workspace):
+    workspace.write_skill("existing", "---\nname: existing\ndescription: d\n---\n\nbody\n")
+    ctx = EvidenceContext()
+    ctx.entries["TerminalTrajectoryReader"] = {
+        "per_task": [
+            {
+                "task_id": "tb-task",
+                "signals": {"n_errors": 1, "submitted": False},
+                "compressed_trajectory": "Commands: 1, Errors: 1, Submitted: False",
+            }
+        ],
+    }
+    ctx.entries["LLMJudgeReader"] = {
+        "per_task": [
+            {
+                "task_id": "tb-task",
+                "score": 2,
+                "category": "debug",
+                "outcome": "failed",
+                "failure_reason": "missing verification",
+            }
+        ],
+    }
+
+    from agent_evolve.llm.bedrock import BedrockProvider
+
+    provider = BedrockProvider.__new__(BedrockProvider)
+
+    def converse_loop(system_prompt, user_message, tools, tool_executor, max_tokens=None, temperature=0.0):
+        tool_executor["workspace_bash"](
+            "mkdir -p skills/new-skill && "
+            "printf '%s' '---\nname: new-skill\ndescription: new\n---\n\nbody\n' "
+            "> skills/new-skill/SKILL.md"
+        )
+        return SimpleNamespace(content="created", usage={})
+
+    provider.converse_loop = converse_loop
+    op = get_operator("TerminalSkillEvolve")
+    report = op.apply(
+        workspace,
+        ctx,
+        {"skills": "rw", "prompts": "ro", "memory": "ro", "tools": "ro"},
+        {
+            "llm_provider": provider,
+            "max_skills": 1,
+            "protect_skills": True,
+            "evolve_skills": True,
+        },
+    )
+    assert report.operator_name == "TerminalSkillEvolve"
+    assert report.details["skills_added"] == ["new-skill"]
+    assert report.details["over_budget"] is True
+    assert sorted(s.name for s in workspace.list_skills()) == ["existing", "new-skill"]
+
+
+def test_terminal_skill_evolve_protect_skills_is_prompt_only(workspace):
+    workspace.write_skill("existing", "---\nname: existing\ndescription: d\n---\n\nold body\n")
+    workspace.write_prompt("original prompt")
+    ctx = EvidenceContext()
+    ctx.entries["TerminalTrajectoryReader"] = {
+        "per_task": [
+            {
+                "task_id": "tb-task",
+                "signals": {"n_errors": 1, "submitted": False},
+                "compressed_trajectory": "Commands: 1, Errors: 1, Submitted: False",
+            }
+        ],
+    }
+
+    from agent_evolve.llm.bedrock import BedrockProvider
+
+    provider = BedrockProvider.__new__(BedrockProvider)
+
+    def converse_loop(system_prompt, user_message, tools, tool_executor, max_tokens=None, temperature=0.0):
+        tool_executor["workspace_bash"](
+            "printf '%s' '---\nname: existing\ndescription: d\n---\n\nchanged body\n' "
+            "> skills/existing/SKILL.md && "
+            "printf '%s' 'changed prompt' > prompts/system.md"
+        )
+        return SimpleNamespace(content="changed", usage={})
+
+    provider.converse_loop = converse_loop
+    op = get_operator("TerminalSkillEvolve")
+    report = op.apply(
+        workspace,
+        ctx,
+        {"skills": "rw", "prompts": "ro", "memory": "ro", "tools": "ro"},
+        {
+            "llm_provider": provider,
+            "max_skills": 1,
+            "protect_skills": True,
+            "evolve_skills": True,
+        },
+    )
+    assert "changed body" in workspace.read_skill("existing")
+    assert workspace.read_prompt() == "original prompt"
+    assert report.details["scope_restored"] == ["prompts"]
 
 
 def test_prune_skills_noop_under_3_items(workspace):

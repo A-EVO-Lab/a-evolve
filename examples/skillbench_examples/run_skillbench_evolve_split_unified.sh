@@ -9,7 +9,7 @@
 #   Phase 2 (TEST):  evaluate the next $EVAL_LIMIT tasks once each on the
 #                    evolved workspace — no engine and no retries.
 #
-# Defaults: EVOLVE_LIMIT=20, BATCH_SIZE=1, CYCLES=1, SKILL_SELECT_LIMIT=0,
+# Defaults: EVOLVE_LIMIT=20, BATCH_SIZE=5, CYCLES=1, SKILL_SELECT_LIMIT=0,
 #           EVAL_LIMIT=""(all remaining).
 set -euo pipefail
 
@@ -17,10 +17,10 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 
 CYCLES="${CYCLES:-${MAX_CYCLES:-1}}"
-BATCH_SIZE="${BATCH_SIZE:-1}"
+BATCH_SIZE="${BATCH_SIZE:-5}"
 # Train: max parallel solve workers. Effective parallelism is
 # min(TRAIN_PARALLEL, BATCH_SIZE). Evolve is always serial.
-TRAIN_PARALLEL="${TRAIN_PARALLEL:-1}"
+TRAIN_PARALLEL="${TRAIN_PARALLEL:-5}"
 # Test: explicit worker count for Phase 2 (no evolve, fully parallelizable).
 TEST_PARALLEL="${TEST_PARALLEL:-5}"
 EVOLVE_LIMIT="${EVOLVE_LIMIT:-20}"
@@ -38,16 +38,19 @@ RETRY_MAX_WAIT_SEC="${RETRY_MAX_WAIT_SEC:-150.0}"
 CATEGORY="${CATEGORY:-}"
 DIFFICULTY="${DIFFICULTY:-}"
 FEEDBACK_LEVEL="${FEEDBACK_LEVEL:-tests}"
-TASK_SKILL_MODE="${TASK_SKILL_MODE:-pre_generate_and_retry}"
+TASK_SKILL_MODE="${TASK_SKILL_MODE:-pre_generate}"
 NO_DIRECT_ANSWERS="${NO_DIRECT_ANSWERS:-true}"
-EVOLVE_SKILLS="${EVOLVE_SKILLS:-true}"
-EVOLVE_MEMORY="${EVOLVE_MEMORY:-false}"
-EVOLVE_PROMPTS="${EVOLVE_PROMPTS:-false}"
-EVOLVE_TOOLS="${EVOLVE_TOOLS:-false}"
+# Split experiments only consider skill evolution. Keep other artifact
+# scopes fixed off here so this benchmark matches the other split wrappers'
+# fixed evolve-scope design.
+EVOLVE_SKILLS="true"
+EVOLVE_MEMORY="false"
+EVOLVE_PROMPTS="false"
+EVOLVE_TOOLS="false"
 DISTILL="${DISTILL:-false}"
 SUCCESS_MODE="${SUCCESS_MODE:-gated_promotion}"
 PROMOTION_THRESHOLD="${PROMOTION_THRESHOLD:-1}"
-MODEL_ID="${MODEL_ID:-us.anthropic.claude-opus-4-5-20251101-v1:0}"
+MODEL_ID="${MODEL_ID:-us.anthropic.claude-opus-4-6-v1}"
 EVOLVER_MODEL_ID="${EVOLVER_MODEL_ID:-}"
 REGION="${REGION:-us-west-2}"
 MAX_TOKENS="${MAX_TOKENS:-64000}"

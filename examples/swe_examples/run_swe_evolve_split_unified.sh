@@ -8,22 +8,24 @@
 #   Phase 2 (TEST):  evaluate $EVAL_LIMIT remaining tasks with the evolved
 #                    workspace (no engine).
 #
-# Defaults: EVOLVE_LIMIT=20, BATCH_SIZE=5, EVAL_LIMIT=""(all remaining).
+# Defaults: EVOLVE_LIMIT=50, BATCH_SIZE=5, LIMIT=200,
+#           EVAL_LIMIT=""(all remaining after train).
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 
-EVOLVE_LIMIT="${EVOLVE_LIMIT:-20}"
+EVOLVE_LIMIT="${EVOLVE_LIMIT:-50}"
 EVAL_LIMIT="${EVAL_LIMIT:-}"
+LIMIT="${LIMIT:-200}"
 BATCH_SIZE="${BATCH_SIZE:-5}"
 # Train: max parallel solve workers in each Phase 1 batch.
 # Effective parallelism is min(TRAIN_PARALLEL, BATCH_SIZE).
 TRAIN_PARALLEL="${TRAIN_PARALLEL:-${PARALLEL:-5}}"
 # Test: explicit worker count for Phase 2 (no evolve, fully parallelizable).
-TEST_PARALLEL="${TEST_PARALLEL:-5}"
+TEST_PARALLEL="${TEST_PARALLEL:-16}"
 PARALLEL_BACKEND="${PARALLEL_BACKEND:-process}"
-FEEDBACK="${FEEDBACK:-minimal}"
+FEEDBACK="${FEEDBACK:-none}"
 SOLVER_PROPOSES="${SOLVER_PROPOSES:-false}"
 VERIFICATION_FOCUS="${VERIFICATION_FOCUS:-false}"
 EFFICIENCY_PROMPT="${EFFICIENCY_PROMPT:-false}"
@@ -48,6 +50,7 @@ echo "Run ID:        ${RUN_ID}"
 echo "Output dir:    ${OUTPUT_DIR}"
 echo "Phase1 evolve: ${EVOLVE_LIMIT} tasks, batch ${BATCH_SIZE}"
 echo "Phase2 eval:   ${EVAL_LIMIT:-all remaining}"
+echo "Total cap:     ${LIMIT:-all tasks}"
 echo "Train parallel: ${TRAIN_PARALLEL} (effective=min(${TRAIN_PARALLEL},${BATCH_SIZE}))"
 echo "Test parallel:  ${TEST_PARALLEL}"
 echo "Parallel backend: ${PARALLEL_BACKEND}"
@@ -87,6 +90,7 @@ cmd=(
   -v
 )
 [[ -n "${EVAL_LIMIT}" ]]        && cmd+=(--eval-limit "${EVAL_LIMIT}")
+[[ -n "${LIMIT}" ]]             && cmd+=(--limit "${LIMIT}")
 [[ -n "${EVOLVER_MODEL_ID}" ]] && cmd+=(--evolver-model-id "${EVOLVER_MODEL_ID}")
 [[ "${SOLVER_PROPOSES}" == "true" ]] && cmd+=(--solver-proposes)
 [[ "${VERIFICATION_FOCUS}" == "true" ]] && cmd+=(--verification-focus)

@@ -1,10 +1,15 @@
 #!/usr/bin/env bash
-# Run MCP-Atlas final-eval as a no-evolution baseline.
+# Run MCP-Atlas MetaHarness final-eval.
 #
 # Invokes examples/mcp_examples/run_final_eval.py — reads solver from
 # config.extra.solver_model and runs N trials of the full task suite on
 # a given workspace (typically seed_workspaces/mcp_mh for baseline).
 # No EvolutionEngine, no workspace mutation.
+#
+# For the adaptive/unified MCP no-evolution baseline, use
+# examples/mcp_examples/run_adaptive_evolve_baseline.sh instead. That path
+# uses seed_workspaces/mcp and adaptive_evolve_baseline.py, matching
+# adaptive_evolve_all.py / run_adaptive_evolve_split_unified.sh.
 #
 # Note: solver model is read from the CONFIG yaml (config.extra.solver_model).
 # To override solver per-run (needed by EvolverBench's multi-solver sweep),

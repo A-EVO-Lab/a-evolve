@@ -1076,7 +1076,7 @@ def main() -> int:
     p.add_argument("--score-mode", default="dual",
                    choices=["reward", "binary", "dual"])
     p.add_argument("--model-id", type=str,
-                   default="us.anthropic.claude-opus-4-5-20251101-v1:0")
+                   default="us.anthropic.claude-opus-4-6-v1")
     p.add_argument("--region", type=str, default="us-west-2")
     p.add_argument("--max-tokens", type=int, default=64000)
     p.add_argument("--retry-max", type=int, default=6)

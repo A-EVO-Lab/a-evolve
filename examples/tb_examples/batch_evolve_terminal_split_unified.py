@@ -6,8 +6,8 @@ unified engine path:
   Phase 1 — TRAIN: ``EvolutionLoop + UnifiedEngine`` walks the FIRST
             ``--evolve-limit`` tasks in the dataset, ``--batch-size``
             tasks per train batch.
-            The workspace is mutated by the ``drafts`` recipe branch
-            (matches ``AdaptiveSkillEngine.step()``).
+            The workspace is mutated by the terminal legacy recipe branch
+            (TerminalTrajectoryReader + LLMJudgeReader | TerminalSkillEvolve).
 
   Phase 2 — TEST:  with the workspace already evolved, the bench
             cursor continues into the remaining tasks. ``agent.solve()``
@@ -31,6 +31,7 @@ import logging
 import shutil
 import sys
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from dataclasses import asdict
 from datetime import datetime
 from pathlib import Path
 
@@ -82,11 +83,9 @@ def main() -> int:
     p.add_argument("--parallel-backend", default="thread",
                    choices=["thread", "process", "benchmark"],
                    help="Phase 1 in-batch parallel backend (default thread for TB).")
-    # Skill-budget cap (mirrors the legacy `batch_evolve_terminal.py
-    # --max-skills`). Threaded through EvolveConfig.extra["max_skills"]
-    # so SkillCurator's prompt builder (`agent_evolve.algorithms.skillforge
-    # .prompts._build_*_instructions`) reads it and emits the
-    # "SKILL BUDGET REACHED" guard text.
+    # Skill-budget cap (mirrors legacy `batch_evolve_terminal.py --max-skills`).
+    # Threaded through EvolveConfig.extra["max_skills"] so TerminalSkillEvolve
+    # emits the same "SKILL BUDGET REACHED" soft-budget prompt text.
     p.add_argument("--max-skills", type=int, default=6,
                    help="Maximum total skills the evolver may keep in the "
                         "workspace (default 6; matches the split wrapper "
@@ -241,6 +240,7 @@ def main() -> int:
     )
     engine = UnifiedEngine(config, bench)
     engine._operator_state.setdefault("LLMBashEvolve", {})["llm_provider"] = llm
+    engine._operator_state.setdefault("TerminalSkillEvolve", {})["llm_provider"] = llm
 
     loop = EvolutionLoop(agent=agent, benchmark=bench, engine=engine, config=config)
 
@@ -368,6 +368,7 @@ def main() -> int:
         sum(r.get("score", 0.0) for r in test_results) / n_test if n_test else 0.0
     )
 
+    actual_plan = asdict(engine._last_plan) if engine._last_plan is not None else None
     metrics = {
         "phase1_train": {
             "evolve_limit": args.evolve_limit,
@@ -396,7 +397,8 @@ def main() -> int:
             "protect_skills": True,
             "max_skills": args.max_skills,
         },
-        "recipe": "drafts (PassFailReader+DraftReader+TrajectoryCompressor | LLMBashEvolve)",
+        "recipe": "terminal_legacy (TerminalTrajectoryReader+LLMJudgeReader | TerminalSkillEvolve)",
+        "unified_plan": actual_plan,
         "workspace": str(ws_dir),
     }
     (log_dir / "results.metrics.json").write_text(json.dumps(metrics, indent=2))

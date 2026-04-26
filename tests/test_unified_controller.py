@@ -54,8 +54,9 @@ class _FakeWorkspace:
 
 
 class _FakeConfig:
-    def __init__(self, trajectory_only=False):
+    def __init__(self, trajectory_only=False, extra=None):
         self.trajectory_only = trajectory_only
+        self.extra = extra or {}
 
 
 # ── detect_regime ─────────────────────────────────────────────
@@ -203,6 +204,21 @@ def test_controller_drafts_recipe(controller):
     plan = controller.plan(regime, cap, _FakeConfig())
     assert plan.readers == ("PassFailReader", "DraftReader", "TrajectoryCompressor")
     assert plan.operators == ("LLMBashEvolve",)
+
+
+def test_controller_terminal_legacy_profile_recipe(controller):
+    regime = RegimeTag()
+    cap = FeedbackCapability(has_pass_fail=True, judge_available=True)
+    plan = controller.plan(regime, cap, _FakeConfig(trajectory_only=True, extra={"legacy_profile": "tb"}))
+    assert plan.readers == ("TerminalTrajectoryReader", "LLMJudgeReader")
+    assert plan.operators == ("TerminalSkillEvolve",)
+    assert plan.artifact_scope == {
+        "skills": "rw",
+        "prompts": "ro",
+        "memory": "ro",
+        "tools": "ro",
+    }
+    assert plan.reason_trace == ("matched: terminal legacy profile",)
 
 
 def test_controller_trajectory_only_recipe_via_config(controller):

@@ -56,6 +56,8 @@ def main() -> int:
                    help="Phase 2 (test): cap on remaining tasks to "
                         "evaluate. Default: all remaining tasks in the "
                         "dataset after the train slice.")
+    p.add_argument("--limit", type=int, default=None,
+                   help="Global cap before train/test split. Default: all tasks.")
     p.add_argument("--batch-size", type=int, default=5,
                    help="Tasks per Phase 1 train batch (must divide --evolve-limit).")
     p.add_argument("--train-parallel", type=int, default=5,
@@ -73,7 +75,7 @@ def main() -> int:
     p.add_argument("--parallel-backend", default="process",
                    choices=["thread", "process", "benchmark"],
                    help="Phase 1 in-batch parallel backend (default process; matches legacy SWE).")
-    p.add_argument("--feedback", type=str, default="minimal",
+    p.add_argument("--feedback", type=str, default="none",
                    choices=["none", "minimal"],
                    help="Feedback to evolver: none masks scores; minimal includes scores.")
     p.add_argument("--solver-proposes", action="store_true",
@@ -106,6 +108,8 @@ def main() -> int:
         p.error(f"--evolve-limit must be >= 0 (got {args.evolve_limit})")
     if args.eval_limit is not None and args.eval_limit < 0:
         p.error(f"--eval-limit must be >= 0 or omitted (got {args.eval_limit})")
+    if args.limit is not None and args.limit <= 0:
+        p.error(f"--limit must be > 0 or omitted (got {args.limit})")
     if args.train_parallel <= 0:
         p.error(f"--train-parallel must be > 0 (got {args.train_parallel})")
     if args.test_parallel <= 0:
@@ -137,7 +141,10 @@ def main() -> int:
     _ = bench.get_tasks(split="test", limit=10**9)  # triggers _do_split
     bench._cache["train"] = bench._cache["test"]
     bench._cursor = 0
-    all_tasks = bench.get_tasks(split="train", limit=10**9)
+    all_tasks = bench.get_tasks(
+        split="train",
+        limit=args.limit if args.limit is not None else 10**9,
+    )
     bench._cursor = 0  # reset for Phase 1 EvolutionLoop walk
 
     # ── Validate split parameters ──

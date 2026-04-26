@@ -670,6 +670,8 @@ def main():
     p.add_argument("--model-id", type=str,
                    default="us.anthropic.claude-opus-4-6-v1",
                    help="Bedrock model ID")
+    p.add_argument("--evolver-model-id", type=str, default=None,
+                   help="Bedrock model ID for the evolver (default: same as --model-id)")
     p.add_argument("--region", type=str, default="us-west-2", help="AWS region")
     p.add_argument("--max-tokens", type=int, default=16384,
                    help="Max tokens per model response")
@@ -816,7 +818,7 @@ def main():
     observer = Observer(evolution_dir)
 
     config = EvolveConfig(
-        evolver_model=args.model_id,
+        evolver_model=args.evolver_model_id or args.model_id,
         trajectory_only=args.trajectory_only,
         evolve_prompts=not args.skills_only and not args.prompt_only,
         evolve_skills=not args.prompt_only,

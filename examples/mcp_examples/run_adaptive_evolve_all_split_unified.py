@@ -29,6 +29,7 @@ import argparse
 import atexit
 import json
 import logging
+import os
 import shutil
 import sys
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -289,7 +290,7 @@ def main() -> int:
             raise SystemExit(f"Failed to pull image {args.docker_image}")
         container = McpAtlasContainer(
             args.docker_image,
-            container_name="mcp-atlas-unified-split",
+            container_name=os.environ.get("MCP_CONTAINER_NAME", "mcp-atlas-unified-split"),
             env_vars=all_env_vars,
         )
         container.start()

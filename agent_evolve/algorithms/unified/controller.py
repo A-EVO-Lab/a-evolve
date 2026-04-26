@@ -6,9 +6,10 @@ fallback, matching the plan's AC-4 layout:
 
 1. per-claim feedback → MCP-Atlas-style rich recipe
 2. solver proposals → guided_synth-style curator recipe
-3. drafts → adaptive_skill-style recipe with draft reader
-4. trajectory-only (masked feedback, no drafts) → judge-backed recipe
-5. default → minimal ``LLMBashEvolve`` recipe (SkillBench fits here)
+3. terminal legacy profile → TB-tuned trajectory recipe
+4. drafts → adaptive_skill-style recipe with draft reader
+5. trajectory-only (masked feedback, no drafts) → judge-backed recipe
+6. default → minimal ``LLMBashEvolve`` recipe (SkillBench fits here)
 
 All recipes use atoms registered in the three module-level registries;
 the controller never emits a legacy-engine name.
@@ -55,6 +56,7 @@ _OP_WRITES: dict[str, tuple[str, ...]] = {
     "SanityCheck": ("prompts", "skills"),
     "WriteEpisodicMemory": ("memory",),
     "SkillCurator": ("skills",),
+    "TerminalSkillEvolve": ("skills",),
 }
 
 
@@ -106,6 +108,16 @@ class RuleBasedController:
                 verifier="NoVerify",
                 artifact_scope={"skills": "ro", "memory": "ro", "prompts": "ro"},
                 reason_trace=("matched: swe legacy no solver proposals",),
+                config=config,
+            )
+
+        if legacy_profile in {"tb", "terminal", "terminal-bench"}:
+            return _plan(
+                readers=("TerminalTrajectoryReader", "LLMJudgeReader"),
+                operators=("TerminalSkillEvolve",),
+                verifier="NoVerify",
+                artifact_scope={"skills": "rw", "prompts": "ro", "memory": "ro", "tools": "ro"},
+                reason_trace=("matched: terminal legacy profile",),
                 config=config,
             )
 

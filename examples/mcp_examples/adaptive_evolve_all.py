@@ -275,7 +275,7 @@ def main():
             sys.exit(1)
         container = McpAtlasContainer(
             args.docker_image,
-            container_name="mcp-atlas-adaptive-evolve",
+            container_name=os.environ.get("MCP_CONTAINER_NAME", "mcp-atlas-adaptive-evolve"),
             env_vars=all_env_vars,
         )
         log.info("Starting shared MCP-Atlas container ...")

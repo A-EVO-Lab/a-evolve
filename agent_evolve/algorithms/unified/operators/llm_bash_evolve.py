@@ -320,7 +320,11 @@ class LLMBashEvolve:
             "tools": _snapshot_tree(Path(workspace.root) / "tools"),
         }
 
-        evidence = dict(getattr(context, "entries", {}))
+        evidence = {
+            k: v
+            for k, v in dict(getattr(context, "entries", {})).items()
+            if not str(k).startswith("__")
+        }
         user_prompt = _build_user_prompt(
             evidence,
             cycle_num,

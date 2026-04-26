@@ -19,6 +19,7 @@ from . import (
     patterns,
     proposal,
     score_curve,
+    terminal_trajectory,
     trajectory,
 )
 

@@ -29,7 +29,7 @@ EVAL_LIMIT="${EVAL_LIMIT:-}"
 BATCH_SIZE="${BATCH_SIZE:-5}"
 # Train: max parallel solve workers in each Phase 1 batch.
 # Effective parallelism is min(TRAIN_PARALLEL, BATCH_SIZE).
-TRAIN_PARALLEL="${TRAIN_PARALLEL:-${PARALLEL:-6}}"
+TRAIN_PARALLEL="${TRAIN_PARALLEL:-${PARALLEL:-5}}"
 # Test: explicit worker count for Phase 2 (no evolve, fully parallelizable).
 TEST_PARALLEL="${TEST_PARALLEL:-5}"
 PARALLEL_BACKEND="${PARALLEL_BACKEND:-thread}"

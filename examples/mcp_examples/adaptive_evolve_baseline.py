@@ -13,8 +13,10 @@ import logging
 import os
 import shutil
 import sys
+import threading
 import time
 import traceback
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
@@ -33,6 +35,7 @@ class BaselineCodeExecAgent(McpAgent):
     def solve(self, task, shared_client=None):
         """Standard solve with code executor."""
         from agent_evolve.agents.mcp.tools import create_tool_wrappers
+        from agent_evolve.llm._bedrock_config import bedrock_boto_config
         from strands import Agent
         from strands.models import BedrockModel
 
@@ -76,6 +79,7 @@ class BaselineCodeExecAgent(McpAgent):
             max_tokens=self.max_tokens,
             temperature=1.0,
             stop_sequences=[],
+            boto_client_config=bedrock_boto_config(),
         )
 
         system_prompt = self._build_system_prompt(task_prompt=task.input)
@@ -160,7 +164,7 @@ class BaselineCodeExecAgent(McpAgent):
 def main():
     p = argparse.ArgumentParser(description="Baseline: Solve tasks WITHOUT evolution")
     p.add_argument("--solver-model", type=str, default="us.anthropic.claude-opus-4-6-v1")
-    p.add_argument("--judge-model", type=str, default="us.anthropic.claude-opus-4-6-v1")
+    p.add_argument("--judge-model", type=str, default="us.anthropic.claude-sonnet-4-20250514-v1:0")
     p.add_argument("--region", type=str, default="us-west-2")
     p.add_argument("--max-tokens", type=int, default=16384)
     p.add_argument("--docker-image", type=str, default=None)
@@ -169,10 +173,16 @@ def main():
     p.add_argument("--env-file", type=str, default=None)
     p.add_argument("--limit", type=int, default=500)
     p.add_argument("--batch-size", type=int, default=30)
+    p.add_argument("--workers", type=int, default=5,
+                   help="Maximum number of tasks to solve/evaluate concurrently within each batch")
     p.add_argument("--seed-workspace", type=str, default="seed_workspaces/mcp")
     p.add_argument("--work-dir", type=str, default="./evolution_workdir/adaptive_baseline")
     p.add_argument("--output-dir", type=str, default="results_adaptive_evolve_baseline")
     args = p.parse_args()
+    if args.batch_size <= 0:
+        p.error("--batch-size must be positive")
+    if args.workers <= 0:
+        p.error("--workers must be positive")
 
     logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
     for n in ("botocore", "urllib3", "httpcore", "httpx",
@@ -229,12 +239,12 @@ def main():
         }
 
     container = None
-    shared_client = None
+    shared_base_url = None
 
     if args.external_container_url:
         # Use external container
         log.info("Connecting to external container at %s", args.external_container_url)
-        shared_client = McpClientWrapper(base_url=args.external_container_url)
+        shared_base_url = args.external_container_url.rstrip("/")
         log.info("Connected to external container.")
     elif args.docker_image:
         if not pull_image(args.docker_image):
@@ -242,12 +252,12 @@ def main():
             sys.exit(1)
         container = McpAtlasContainer(
             args.docker_image,
-            container_name="mcp-atlas-adaptive-baseline",
+            container_name=os.environ.get("MCP_CONTAINER_NAME", "mcp-atlas-adaptive-baseline"),
             env_vars=all_env_vars,
         )
         log.info("Starting shared MCP-Atlas container ...")
         container.start()
-        shared_client = McpClientWrapper(base_url=container.base_url)
+        shared_base_url = container.base_url.rstrip("/")
         log.info("Shared container ready.")
 
     remaining = [t for t in tasks if t.id not in done_ids]
@@ -259,6 +269,93 @@ def main():
     total_passed = 0
     total_failed = 0
     total_errors = 0
+    thread_local = threading.local()
+
+    def worker_benchmark() -> McpAtlasBenchmark:
+        benchmark = getattr(thread_local, "benchmark", None)
+        if benchmark is None:
+            benchmark = McpAtlasBenchmark(
+                shuffle=False,
+                eval_model_id=args.judge_model,
+                eval_region=args.region,
+                use_litellm=False,
+            )
+            thread_local.benchmark = benchmark
+        return benchmark
+
+    def solve_and_evaluate(task, task_index: int, batch_len: int) -> dict:
+        sid = task.id.replace("/", "_")
+        client = (
+            McpClientWrapper(base_url=shared_base_url)
+            if shared_base_url
+            else McpClientWrapper()
+        )
+        try:
+            log.info("[%d/%d] Solving task %s ...", task_index, batch_len, task.id)
+            agent = BaselineCodeExecAgent(
+                workspace_dir=work_dir,
+                model_id=args.solver_model,
+                region=args.region,
+                max_tokens=args.max_tokens,
+                docker_image=None,
+                key_registry=key_registry,
+            )
+            t0 = time.time()
+            trajectory = agent.solve(task, shared_client=client)
+            elapsed = time.time() - t0
+            feedback = worker_benchmark().evaluate(task, trajectory)
+            result = "PASS" if feedback.success else "FAIL"
+            return {
+                "task_id": task.id,
+                "sid": sid,
+                "task_index": task_index,
+                "trajectory": trajectory,
+                "feedback": feedback,
+                "result": result,
+                "elapsed": elapsed,
+            }
+        except Exception as e:
+            return {
+                "task_id": task.id,
+                "sid": sid,
+                "task_index": task_index,
+                "error": str(e),
+                "traceback": traceback.format_exc(),
+            }
+        finally:
+            client.close()
+
+    def write_result(record: dict) -> tuple[int, int, int]:
+        task_id = record["task_id"]
+        task_index = record["task_index"]
+        if "error" in record:
+            log.error("[%d] ERROR on task %s: %s",
+                      task_index, task_id, record["error"])
+            log.error(record["traceback"])
+            writer.writerow([task_id, "ERROR", 0, "0", 0, record["error"][:300]])
+            csvfile.flush()
+            return 0, 0, 1
+
+        trajectory = record["trajectory"]
+        feedback = record["feedback"]
+        result = record["result"]
+        elapsed = record["elapsed"]
+        sid = record["sid"]
+
+        (out_dir / f"output_{sid}.txt").write_text(trajectory.output)
+        (out_dir / f"conversation_{sid}.json").write_text(
+            json.dumps(trajectory.steps, indent=2,
+                       ensure_ascii=False, default=str))
+
+        writer.writerow([task_id, result, feedback.score, f"{elapsed:.1f}",
+                         len(trajectory.output), feedback.detail[:300]])
+        csvfile.flush()
+
+        log.info("[%d] %s | %s | Score: %.2f | Time: %.1fs",
+                 task_index, task_id, result, feedback.score, elapsed)
+        if feedback.success:
+            return 1, 0, 0
+        return 0, 1, 0
 
     try:
         with open(summary_path, "a", newline="") as csvfile:
@@ -272,65 +369,34 @@ def main():
                 log.info("BATCH %d/%d (%d tasks) | NO EVOLUTION",
                          batch_idx + 1, len(batches), len(batch))
                 log.info("=" * 70)
+                batch_workers = min(args.workers, len(batch))
+                log.info("Batch workers: %d", batch_workers)
 
-                agent = BaselineCodeExecAgent(
-                    workspace_dir=work_dir,
-                    model_id=args.solver_model,
-                    region=args.region,
-                    max_tokens=args.max_tokens,
-                    docker_image=None,
-                    key_registry=key_registry,
-                )
-
-                for i, task in enumerate(batch, 1):
-                    log.info("[%d/%d] Solving task %s ...", i, len(batch), task.id)
-                    sid = task.id.replace("/", "_")
-
-                    try:
-                        t0 = time.time()
-                        old_stdout = sys.stdout
-                        sys.stdout = open(os.devnull, 'w')
-                        try:
-                            trajectory = agent.solve(task, shared_client=shared_client)
-                        finally:
-                            sys.stdout.close()
-                            sys.stdout = old_stdout
-                        elapsed = time.time() - t0
-
-                        (out_dir / f"output_{sid}.txt").write_text(trajectory.output)
-                        (out_dir / f"conversation_{sid}.json").write_text(
-                            json.dumps(trajectory.steps, indent=2,
-                                       ensure_ascii=False, default=str))
-
-                        fb = bm.evaluate(task, trajectory)
-                        result = "PASS" if fb.success else "FAIL"
-                        writer.writerow([task.id, result, fb.score, f"{elapsed:.1f}",
-                                         len(trajectory.output), fb.detail[:300]])
-                        csvfile.flush()
-
-                        if fb.success:
-                            total_passed += 1
-                        else:
-                            total_failed += 1
-
-                        log.info("[%d/%d] %s | Score: %.2f | Time: %.1fs",
-                                 i, len(batch), result, fb.score, elapsed)
-
-                    except Exception as e:
-                        total_errors += 1
-                        log.error("[%d/%d] ERROR on task %s: %s",
-                                  i, len(batch), task.id, e)
-                        log.error(traceback.format_exc())
-                        writer.writerow([task.id, "ERROR", 0, "0", 0, str(e)[:300]])
-                        csvfile.flush()
+                if batch_workers == 1:
+                    for i, task in enumerate(batch, 1):
+                        passed, failed, errors = write_result(
+                            solve_and_evaluate(task, i, len(batch))
+                        )
+                        total_passed += passed
+                        total_failed += failed
+                        total_errors += errors
+                else:
+                    with ThreadPoolExecutor(max_workers=batch_workers) as executor:
+                        futures = [
+                            executor.submit(solve_and_evaluate, task, i, len(batch))
+                            for i, task in enumerate(batch, 1)
+                        ]
+                        for future in as_completed(futures):
+                            passed, failed, errors = write_result(future.result())
+                            total_passed += passed
+                            total_failed += failed
+                            total_errors += errors
 
                 batch_passed = total_passed
                 log.info("Batch %d completed: %d passed so far",
                          batch_idx + 1, batch_passed)
 
     finally:
-        if shared_client:
-            shared_client.close()
         if container:
             container.stop()
 

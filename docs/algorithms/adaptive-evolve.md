@@ -361,7 +361,7 @@ print(result["rejected"])            # False (True if rolled back due to stagnat
 uv run python examples/mcp_examples/adaptive_evolve_all.py \
     --solver-model us.anthropic.claude-opus-4-6-v1 \
     --evolver-model us.anthropic.claude-opus-4-6-v1 \
-    --judge-model us.anthropic.claude-opus-4-6-v1 \
+    --judge-model us.anthropic.claude-sonnet-4-20250514-v1:0 \
     --region us-west-2 \
     --env-file .env \
     --docker-image ghcr.io/scaleapi/mcp-atlas:latest \
@@ -369,12 +369,8 @@ uv run python examples/mcp_examples/adaptive_evolve_all.py \
     --batch-size 30
 
 # Baseline (no evolution)
-uv run python examples/mcp_examples/adaptive_evolve_baseline.py \
-    --solver-model us.anthropic.claude-opus-4-6-v1 \
-    --judge-model us.anthropic.claude-opus-4-6-v1 \
-    --region us-west-2 \
-    --env-file .env \
-    --docker-image ghcr.io/scaleapi/mcp-atlas:latest \
-    --limit 500 \
-    --batch-size 30
+SOLVER_MODEL=us.anthropic.claude-opus-4-6-v1 \
+JUDGE_MODEL=us.anthropic.claude-sonnet-4-20250514-v1:0 \
+LIMIT=500 BATCH_SIZE=30 WORKERS=5 \
+bash examples/mcp_examples/run_adaptive_evolve_baseline.sh
 ```

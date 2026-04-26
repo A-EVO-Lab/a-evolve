@@ -419,11 +419,57 @@ def _task_skill_path(workspace_root: Path, task_id: str) -> Path:
 
 
 def _should_pre_generate_task_skills(task_skill_mode: str) -> bool:
-    return task_skill_mode == "pre_generate_and_retry"
+    # main() already collapses the legacy "pre_generate_and_retry" alias
+    # to "pre_generate" before this is ever called.
+    return task_skill_mode == "pre_generate"
 
 
-def _should_retry_with_task_skills(task_skill_mode: str) -> bool:
-    return task_skill_mode in {"retry_only", "pre_generate_and_retry"}
+def _pre_generate_skills_parallel(
+    sb_tasks_iter,
+    work_dir,
+    model_id: str,
+    region: str,
+    n_workers: int,
+    log: logging.Logger,
+    label: str = "tasks",
+) -> None:
+    """Pre-generate task-specific skills in parallel.
+
+    Each task writes to a unique workspace/task_skills/<task_id>/SKILL.md, so
+    threads do not contend. _generate_task_skill skips if the file already
+    exists, so re-running is idempotent.
+    """
+    sb_tasks = list(sb_tasks_iter)
+    n = len(sb_tasks)
+    if n == 0:
+        return
+    workers = max(1, min(n_workers, n))
+    log.info(
+        "  Pre-generating task-specific skills for %d %s (workers=%d)",
+        n, label, workers,
+    )
+    if workers <= 1:
+        for sb_task in sb_tasks:
+            category = sb_task.metadata.get("category", "unknown")
+            _generate_task_skill(
+                work_dir, sb_task.name, sb_task.prompt, category,
+                model_id, region, log=log,
+            )
+        return
+    with ThreadPoolExecutor(max_workers=workers) as ex:
+        futures = []
+        for sb_task in sb_tasks:
+            category = sb_task.metadata.get("category", "unknown")
+            futures.append(ex.submit(
+                _generate_task_skill,
+                work_dir, sb_task.name, sb_task.prompt, category,
+                model_id, region, log,
+            ))
+        for fut in as_completed(futures):
+            try:
+                fut.result()
+            except Exception as e:  # noqa: BLE001
+                log.warning("  Task skill pre-gen worker error: %s", e)
 
 
 def _write_observation_for_evolver(
@@ -709,102 +755,6 @@ def _generate_task_skill(
 def _cleanup_task_skills(workspace_root: Path) -> None:
     """Legacy helper retained for compatibility; task skills now persist across batches."""
     return None
-
-
-EVOLVE_TASK_SKILL_PROMPT = """\
-The agent failed to solve this task. Update the task-specific skill to help the retry.
-
-Task: {task_id} ({category})
-Failure class: {failure_class}
-Score: {score}
-{feedback_section}
-
-Current task skill:
-```
-{current_skill}
-```
-
-Rewrite the task skill to address the failure. Focus on:
-1. What the agent likely did wrong (based on the failure class)
-2. What specific approach should be taken instead
-3. Any constraints or gotchas from the task description
-
-{no_answers_instruction}
-
-Output ONLY the updated SKILL.md content (with YAML frontmatter), max 100 lines.
-"""
-
-
-def _evolve_task_skill(
-    workspace_root: Path,
-    task: "Task",
-    feedback: "Feedback",
-    model_id: str,
-    region: str,
-    feedback_level: str = "tests",
-    no_direct_answers: bool = True,
-    log: logging.Logger | None = None,
-) -> bool:
-    """Evolve the task-specific skill based on failure feedback.
-
-    Unlike general skill evolution (which creates category-level knowledge),
-    this updates the per-task skill with specific guidance for retrying
-    THIS task.
-    """
-    from agent_evolve.llm.bedrock import BedrockProvider
-    from agent_evolve.llm.base import LLMMessage
-
-    task_id = task.id
-    category = task.metadata.get("category", "unknown")
-    skill_path = _task_skill_path(workspace_root, task_id)
-    task_skills_dir = skill_path.parent
-    current_skill = ""
-    if skill_path.exists():
-        current_skill = skill_path.read_text(encoding="utf-8", errors="replace")
-
-    raw = feedback.raw or {}
-    failure_class = raw.get("failure_class", "unknown")
-    score = feedback.score
-
-    feedback_section = _build_evolver_feedback_detail(task, feedback, feedback_level)
-
-    no_answers_instruction = ""
-    if no_direct_answers:
-        no_answers_instruction = (
-            "IMPORTANT: Do NOT include specific numeric answers, expected values, "
-            "or test assertions in the skill. The skill should teach the APPROACH, "
-            "not encode the ANSWER."
-        )
-
-    provider = BedrockProvider(model_id=model_id, region=region)
-    messages = [
-        LLMMessage(role="user", content=EVOLVE_TASK_SKILL_PROMPT.format(
-            task_id=task_id,
-            category=category,
-            failure_class=failure_class,
-            score=score,
-            feedback_section=feedback_section,
-            current_skill=current_skill,
-            no_answers_instruction=no_answers_instruction,
-        )),
-    ]
-
-    try:
-        response = provider.complete(messages, max_tokens=2048, temperature=0.3)
-        content = response.content or ""
-        if not content.strip():
-            return False
-        if not content.strip().startswith("---"):
-            content = f"---\nname: {task_id}-guide\ncategory: {category}\n---\n\n{content}"
-        task_skills_dir.mkdir(parents=True, exist_ok=True)
-        skill_path.write_text(content, encoding="utf-8")
-        if log:
-            log.info("  Evolved task skill for %s (%d lines)", task_id, len(content.split("\n")))
-        return True
-    except Exception as e:
-        if log:
-            log.warning("  Task skill evolution failed for %s: %s", task_id, e)
-        return False
 
 
 SUCCESS_DISTILL_PROMPT = """\
@@ -1101,7 +1051,7 @@ def main() -> int:
     p.add_argument("--score-mode", default="dual",
                    choices=["reward", "binary", "dual"])
     p.add_argument("--model-id", type=str,
-                   default="us.anthropic.claude-opus-4-5-20251101-v1:0")
+                   default="us.anthropic.claude-opus-4-6-v1")
     p.add_argument("--region", type=str, default="us-west-2")
     p.add_argument("--max-tokens", type=int, default=64000)
     p.add_argument("--retry-max", type=int, default=6)
@@ -1113,9 +1063,18 @@ def main() -> int:
     p.add_argument(
         "--task-skill-mode",
         type=str,
-        default="pre_generate_and_retry",
-        choices=["off", "retry_only", "pre_generate_and_retry"],
-                   help="How task-specific skills are used during train solves.",
+        default="pre_generate",
+        choices=["off", "pre_generate",
+                 # Deprecated aliases (split mode has no retry):
+                 "pre_generate_and_retry",   # alias of pre_generate
+                 "retry_only"],              # alias of off
+        help="How task-specific skills are used: "
+             "off = no task skills; "
+             "pre_generate = generate per-task skill from instruction "
+             "before solve (Phase 1 train AND Phase 2 test). "
+             "Legacy values 'pre_generate_and_retry' / 'retry_only' are "
+             "accepted for backward compat: split mode has no retry, so "
+             "they collapse to 'pre_generate' / 'off' respectively.",
     )
 
     # Workspace
@@ -1212,6 +1171,21 @@ def main() -> int:
         logging.getLogger(n).setLevel(logging.WARNING)
     log = logging.getLogger("skillbench_split")
 
+    # Collapse deprecated task_skill_mode aliases. Split mode has no retry,
+    # so retry-flavoured values fold into their canonical equivalents.
+    if args.task_skill_mode == "pre_generate_and_retry":
+        log.warning(
+            "--task-skill-mode=pre_generate_and_retry is deprecated in split "
+            "mode (no retry); using 'pre_generate'."
+        )
+        args.task_skill_mode = "pre_generate"
+    elif args.task_skill_mode == "retry_only":
+        log.warning(
+            "--task-skill-mode=retry_only is deprecated in split mode "
+            "(no retry); using 'off'."
+        )
+        args.task_skill_mode = "off"
+
     run_dir = Path(args.run_dir) if args.run_dir else Path(
         f"logs/skillbench_split_{time.strftime('%Y%m%d_%H%M%S')}_pid{os.getpid()}"
     )
@@ -1301,10 +1275,11 @@ def main() -> int:
     log.info("  SkillBench src: %s", resolved_skillbench.source)
     log.info("  SkillBench repo:%s", resolved_skillbench.repo_dir)
     log.info("  SkillBench ref: %s", resolved_skillbench.repo_ref)
-    if args.task_skill_mode == "pre_generate_and_retry":
+    if args.task_skill_mode == "pre_generate":
         log.info(
-            "  Note: train solves may include pre-generated task-specific skills, "
-            "so they are not a pure general-skill transfer signal."
+            "  Note: both train and test solves include pre-generated "
+            "task-specific skills, so the test pass rate reflects general-skill "
+            "transfer + per-task hint sheets (not pure general-skill transfer)."
         )
     log.info("=" * 70)
 
@@ -1531,13 +1506,14 @@ def main() -> int:
             continue
 
         # Pre-generate task-specific skills for all pending tasks when enabled.
+        # Parallelized at train_workers (= effective batch parallelism).
         if _should_pre_generate_task_skills(args.task_skill_mode):
-            for sb_task in pending:
-                category = sb_task.metadata.get("category", "unknown")
-                _generate_task_skill(
-                    work_dir, sb_task.name, sb_task.prompt, category,
-                    args.model_id, args.region, log=log,
-                )
+            _pre_generate_skills_parallel(
+                pending, work_dir,
+                args.model_id, args.region,
+                n_workers=max_workers, log=log,
+                label="train tasks",
+            )
             agent.reload_from_fs()
 
         # Track per-task state for the single train solve pass.
@@ -1855,6 +1831,22 @@ def main() -> int:
         return rec
 
     if test_tasks:
+        # Pre-generate task-specific skills for test tasks too — keeps Phase 2
+        # symmetric with Phase 1 train (where each task gets a hint sheet from
+        # task instruction only). _generate_task_skill reads ONLY task input
+        # (no trajectory / no test output), so this is leak-free. See Q3 in
+        # the design notes.
+        if _should_pre_generate_task_skills(args.task_skill_mode):
+            log.info(
+                "[Phase 2 TEST] pre-generating task-specific skills for %d test tasks",
+                len(test_tasks),
+            )
+            _pre_generate_skills_parallel(
+                test_tasks, work_dir,
+                args.model_id, args.region,
+                n_workers=test_workers, log=log,
+                label="test tasks",
+            )
         agent.reload_from_fs()  # ensure agent sees latest evolved skills
         test_fp = open(test_path, "w")
         try:

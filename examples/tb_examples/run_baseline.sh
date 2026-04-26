@@ -6,7 +6,7 @@ set -euo pipefail
 # Runs tasks without evolution and without any skills (vanilla prompt only).
 #
 # Env-var controlled (for EvolverBench dispatcher integration):
-#   MODEL_ID         solver model id (default: claude-opus-4-5-...)
+#   MODEL_ID         solver model id (default: claude-opus-4-6)
 #   REGION           AWS region (default: us-west-2)
 #   MAX_TOKENS       solver max tokens (default: 16384)
 #   LOG_DIR          output dir for results/errors/log (default: logs/baseline_<RUN_NAME>)
@@ -24,7 +24,7 @@ set -euo pipefail
 RUN_NAME="${1:?Usage: $0 <RUN_NAME> [--workers N] [--limit N] [--exclude task1,task2]}"
 shift
 
-MODEL_ID="${MODEL_ID:-us.anthropic.claude-opus-4-5-20251101-v1:0}"
+MODEL_ID="${MODEL_ID:-us.anthropic.claude-opus-4-6-v1}"
 REGION="${REGION:-us-west-2}"
 MAX_TOKENS="${MAX_TOKENS:-16384}"
 export BEDROCK_RETRY_MAX_ATTEMPTS="${BEDROCK_RETRY_MAX_ATTEMPTS:-15}"

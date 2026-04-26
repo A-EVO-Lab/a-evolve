@@ -15,6 +15,7 @@ from . import (
     prune_skills,
     sanity_check,
     skill_curator,
+    terminal_skill_evolve,
     write_episodic_memory,
 )
 

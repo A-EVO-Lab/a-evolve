@@ -26,6 +26,13 @@ EVAL_LIMIT=""
 MAX_SKILLS=6
 EXCLUDE=""
 EVOLVER="adaptive_skill"
+MODEL_ID="${MODEL_ID:-us.anthropic.claude-opus-4-6-v1}"
+EVOLVER_MODEL_ID="${EVOLVER_MODEL_ID:-}"
+REGION="${REGION:-us-west-2}"
+MAX_TOKENS="${MAX_TOKENS:-16384}"
+export BEDROCK_RETRY_MAX_ATTEMPTS="${BEDROCK_RETRY_MAX_ATTEMPTS:-15}"
+export BEDROCK_READ_TIMEOUT_SEC="${BEDROCK_READ_TIMEOUT_SEC:-600}"
+export BEDROCK_CONNECT_TIMEOUT_SEC="${BEDROCK_CONNECT_TIMEOUT_SEC:-30}"
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -36,6 +43,10 @@ while [[ $# -gt 0 ]]; do
         --max-skills)    MAX_SKILLS="$2";     shift 2 ;;
         --exclude)       EXCLUDE="$2";        shift 2 ;;
         --evolver)       EVOLVER="$2";        shift 2 ;;
+        --model-id)      MODEL_ID="$2";       shift 2 ;;
+        --evolver-model-id) EVOLVER_MODEL_ID="$2"; shift 2 ;;
+        --region)        REGION="$2";         shift 2 ;;
+        --max-tokens)    MAX_TOKENS="$2";     shift 2 ;;
         *) echo "Unknown flag: $1"; exit 1 ;;
     esac
 done
@@ -52,7 +63,11 @@ if [[ -n "$EXCLUDE" ]]; then
     EXCLUDE_FLAG="--exclude $EXCLUDE"
 fi
 
-COMMON="--solver react $EXCLUDE_FLAG --workers $WORKERS"
+COMMON="--solver react $EXCLUDE_FLAG --workers $WORKERS --model-id $MODEL_ID --region $REGION --max-tokens $MAX_TOKENS"
+EVOLVER_MODEL_FLAG=""
+if [[ -n "$EVOLVER_MODEL_ID" ]]; then
+    EVOLVER_MODEL_FLAG="--evolver-model-id $EVOLVER_MODEL_ID"
+fi
 EVOLVE_FLAGS="--trajectory-only --skills-only --protect-skills --max-skills $MAX_SKILLS --evolver $EVOLVER"
 OUTPUT="--log-dir $LOG_DIR --output $LOG_DIR/results.jsonl --errors $LOG_DIR/errors.jsonl"
 
@@ -68,6 +83,10 @@ echo "  Workers:       ${WORKERS}"
 echo "  Max skills:    ${MAX_SKILLS}"
 echo "  Exclude:       ${EXCLUDE:-none}"
 echo "  Evolver:       ${EVOLVER}"
+echo "  Model:         ${MODEL_ID}"
+echo "  Evolver model: ${EVOLVER_MODEL_ID:-<same as model>}"
+echo "  Region:        ${REGION}"
+echo "  Max tokens:    ${MAX_TOKENS}"
 echo "  Evolve flags:  trajectory-only, skills-only, protect-skills"
 echo "============================================================"
 echo ""
@@ -77,6 +96,7 @@ echo ">>> Phase 1: Evolve on ${EVOLVE_LIMIT} tasks (batch-size ${BATCH_SIZE})"
 set +e
 UV_CACHE_DIR=/tmp/uv_cache uv run python examples/tb_examples/batch_evolve_terminal.py \
   $COMMON \
+  $EVOLVER_MODEL_FLAG \
   --limit "$EVOLVE_LIMIT" \
   --batch-size "$BATCH_SIZE" \
   $EVOLVE_FLAGS \
@@ -97,6 +117,7 @@ echo ""
 echo ">>> Phase 2: Evaluate tasks with evolved workspace (--no-evolve)"
 UV_CACHE_DIR=/tmp/uv_cache uv run python examples/tb_examples/batch_evolve_terminal.py \
   $COMMON \
+  $EVOLVER_MODEL_FLAG \
   --no-evolve \
   --work-dir "$WORK_DIR" \
   $PHASE2_LIMIT_FLAG \
