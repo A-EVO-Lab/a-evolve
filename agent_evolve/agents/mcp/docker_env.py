@@ -16,7 +16,9 @@ import requests
 logger = logging.getLogger(__name__)
 
 DEFAULT_PORT = 1984
-STARTUP_TIMEOUT = 600  # seconds to wait for the service (all servers may need to initialize)
+# Cold-start of the MCP-Atlas image with all servers loaded can take 10-15+ min;
+# allow override via env var. Default raised from 600 -> 1200 to absorb slow boots.
+STARTUP_TIMEOUT = int(os.environ.get("MCP_ATLAS_STARTUP_TIMEOUT_SEC", "1200"))
 
 
 class McpAtlasContainer:
