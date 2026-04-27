@@ -31,7 +31,7 @@ import shutil
 import sys
 import time
 import traceback
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from concurrent.futures import ThreadPoolExecutor, TimeoutError as _FutTimeout, as_completed
 from pathlib import Path
 from threading import Lock, local as _thread_local
 
@@ -114,6 +114,7 @@ def _solve_one_task(
     evo_cycle: int,
     task_index: int,
     batch_len: int,
+    task_timeout_sec: int | None,
     log,
 ) -> tuple[int, Observation | None, dict]:
     """Solve a single task in its own thread.
@@ -142,7 +143,36 @@ def _solve_one_task(
             docker_image=None,
             key_registry=key_registry,
         )
-        trajectory = agent.solve(task, shared_client=client)
+        # Wall-clock timeout for the agent.solve() call. The Strands agent has
+        # internal Bedrock retry/backoff but no overall walltime cap; an
+        # MCP server stuck mid-tool-call (or a Bedrock throttle storm
+        # multiplying retries × steps) can hang for tens of minutes.
+        # We bound it via an inner thread whose result we wait on with a
+        # timeout. NOTE: on timeout the inner thread keeps running in the
+        # background until it eventually unwinds; we just stop waiting and
+        # return ERROR for this task. Acceptable because the outer pool has
+        # already moved on.
+        if task_timeout_sec and task_timeout_sec > 0:
+            with ThreadPoolExecutor(max_workers=1,
+                                    thread_name_prefix=f"mcp-solve-{sid}") as inner:
+                inner_fut = inner.submit(agent.solve, task, shared_client=client)
+                try:
+                    trajectory = inner_fut.result(timeout=task_timeout_sec)
+                except _FutTimeout:
+                    elapsed = time.time() - t0
+                    log.error("[%s %d/%d] TIMEOUT after %ds on %s (background "
+                              "thread may still be running)",
+                              phase, task_index, batch_len, task_timeout_sec, task.id)
+                    row = _record(task.id, False, 0.0, elapsed, 0, "", phase,
+                                  evo_cycle,
+                                  f"task_timeout_after_{task_timeout_sec}s")
+                    # Don't wait for the hung thread; let `with` raise on exit
+                    # by issuing a non-blocking shutdown (cancel_futures
+                    # returns immediately for already-running futures).
+                    inner.shutdown(wait=False, cancel_futures=True)
+                    return task_index, None, row
+        else:
+            trajectory = agent.solve(task, shared_client=client)
         elapsed = time.time() - t0
 
         with _io_lock:
@@ -186,6 +216,7 @@ def _solve_batch(
     phase: str,
     evo_cycle: int,
     parallel: int,
+    task_timeout_sec: int | None,
     log,
 ) -> tuple[list, list]:
     """Solve a batch with ``parallel`` threads. Per-thread agent + client.
@@ -204,7 +235,8 @@ def _solve_batch(
             shared_base_url=shared_base_url, work_dir=work_dir,
             solver_model=solver_model, region=region, max_tokens=max_tokens,
             key_registry=key_registry, phase=phase, evo_cycle=evo_cycle,
-            task_index=i, batch_len=len(batch_tasks), log=log,
+            task_index=i, batch_len=len(batch_tasks),
+            task_timeout_sec=task_timeout_sec, log=log,
         )
 
     indexed = list(enumerate(batch_tasks, 1))
@@ -287,6 +319,12 @@ def main() -> int:
                         "Default 1 (legacy parity); shared MCP-Atlas container still rate-limits.")
     p.add_argument("--test-parallel", type=int, default=5,
                    help="Phase 2 parallel solve threads (no batch boundary). Default 5.")
+    p.add_argument("--task-timeout-sec", type=int, default=900,
+                   help="Wall-clock timeout for a single agent.solve() call. "
+                        "On timeout, the task is marked ERROR and the run "
+                        "continues; the underlying thread may still be alive "
+                        "in the background. Default 900 (15 min). Set to 0 "
+                        "or negative to disable.")
     p.add_argument("--seed-workspace", default="seed_workspaces/mcp")
     p.add_argument("--work-dir", default="./evolution_workdir/mcp_split")
     p.add_argument("--output-dir", required=True)
@@ -413,7 +451,8 @@ def main() -> int:
                 solver_model=args.solver_model, region=args.region,
                 max_tokens=args.max_tokens, key_registry=key_registry,
                 phase="train", evo_cycle=evo_cycle,
-                parallel=train_parallel, log=log,
+                parallel=train_parallel,
+                task_timeout_sec=args.task_timeout_sec, log=log,
             )
             train_records.extend(rows)
             # Evolve is SERIAL — one call per batch, regardless of parallelism.
@@ -435,7 +474,8 @@ def main() -> int:
                 solver_model=args.solver_model, region=args.region,
                 max_tokens=args.max_tokens, key_registry=key_registry,
                 phase="test", evo_cycle=evo_cycle,
-                parallel=test_parallel, log=log,
+                parallel=test_parallel,
+                task_timeout_sec=args.task_timeout_sec, log=log,
             )
             test_records.extend(rows)
             test_pass = sum(1 for r in test_records if r["success"])
@@ -493,6 +533,7 @@ def main() -> int:
             "batch_size": args.batch_size,
             "train_parallel": train_parallel,
             "test_parallel": test_parallel,
+            "task_timeout_sec": args.task_timeout_sec,
             "docker_image": args.docker_image,
         },
         "workspace": str(work_dir.resolve()),

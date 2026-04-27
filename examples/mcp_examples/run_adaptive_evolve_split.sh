@@ -32,6 +32,9 @@ BATCH_SIZE="${BATCH_SIZE:-25}"
 TRAIN_PARALLEL="${TRAIN_PARALLEL:-1}"
 # Phase 2 parallel solve threads (no batch boundary, no workspace mutation).
 TEST_PARALLEL="${TEST_PARALLEL:-5}"
+# Wall-clock timeout per task (seconds). 900 = 15 min default. Set to 0 to
+# disable. Recommended >= the agent's max_steps × per-step Bedrock timeout.
+TASK_TIMEOUT_SEC="${TASK_TIMEOUT_SEC:-900}"
 
 # ---------------------------------------------------------------------------
 # Model / region
@@ -70,6 +73,7 @@ echo "  Output dir:    ${OUTPUT_DIR}"
 echo "  Workspace:     ${WORK_DIR}"
 echo "  Phase 1 (train): ${EVOLVE_LIMIT} tasks, batch ${BATCH_SIZE}, train_parallel ${TRAIN_PARALLEL}"
 echo "  Phase 2 (test):  ${EVAL_LIMIT:-all remaining} tasks, test_parallel ${TEST_PARALLEL}"
+echo "  Per-task timeout: ${TASK_TIMEOUT_SEC}s"
 echo "  Total cap:     ${LIMIT} tasks"
 echo "  Solver model:  ${SOLVER_MODEL}"
 echo "  Evolver model: ${EVOLVER_MODEL}"
@@ -103,6 +107,7 @@ cmd=(
   --batch-size    "${BATCH_SIZE}"
   --train-parallel "${TRAIN_PARALLEL}"
   --test-parallel  "${TEST_PARALLEL}"
+  --task-timeout-sec "${TASK_TIMEOUT_SEC}"
   --seed-workspace "${SEED_WORKSPACE}"
   --work-dir      "${WORK_DIR}"
   --output-dir    "${OUTPUT_DIR}"
