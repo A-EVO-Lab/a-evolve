@@ -26,14 +26,16 @@ from __future__ import annotations
 import argparse
 import json
 import logging
+import multiprocessing as mp
 import os
+import pickle
 import shutil
 import sys
 import time
 import traceback
-from concurrent.futures import ThreadPoolExecutor, TimeoutError as _FutTimeout, as_completed
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
-from threading import Lock, local as _thread_local
+from threading import Lock, get_ident as _thread_ident, local as _thread_local
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 
@@ -73,6 +75,117 @@ def _record(task_id: str, success: bool, score: float, elapsed: float,
 
 
 _io_lock = Lock()  # serialize per-task disk writes (output_*.txt / conversation_*.json)
+
+
+def _run_agent_solve_direct(
+    *,
+    task,
+    shared_base_url: str,
+    work_dir: str | Path,
+    solver_model: str,
+    region: str,
+    max_tokens: int,
+    key_registry,
+):
+    """Run one MCP solve with a private agent/client pair."""
+    client = McpClientWrapper(base_url=shared_base_url) if shared_base_url else McpClientWrapper()
+    try:
+        agent = CodeExecMcpAgent(
+            workspace_dir=work_dir,
+            model_id=solver_model,
+            region=region,
+            max_tokens=max_tokens,
+            docker_image=None,
+            key_registry=key_registry,
+        )
+        return agent.solve(task, shared_client=client)
+    finally:
+        try:
+            client.close()
+        except Exception:
+            pass
+
+
+def _solve_agent_child(payload_path: str, kwargs: dict) -> None:
+    """Child-process entrypoint for a hard per-task timeout."""
+    old_stdout, old_stderr = sys.stdout, sys.stderr
+    try:
+        with open(os.devnull, "w") as devnull:
+            # Strands may print the model's final answer directly. Keep parent
+            # logs readable; the parent writes output_*.txt/conversation_*.json.
+            sys.stdout = devnull
+            sys.stderr = devnull
+            trajectory = _run_agent_solve_direct(**kwargs)
+        payload = {"trajectory": trajectory}
+    except BaseException as exc:  # propagate child failures to parent row
+        payload = {
+            "error": str(exc),
+            "traceback": traceback.format_exc(),
+        }
+    finally:
+        sys.stdout = old_stdout
+        sys.stderr = old_stderr
+    Path(payload_path).write_bytes(pickle.dumps(payload))
+
+
+def _solve_with_process_timeout(
+    *,
+    task,
+    sid: str,
+    out_dir: Path,
+    shared_base_url: str,
+    work_dir: Path,
+    solver_model: str,
+    region: str,
+    max_tokens: int,
+    key_registry,
+    task_timeout_sec: int,
+):
+    """Run one solve in a child process and terminate it on wall-clock timeout."""
+    payload_path = (
+        out_dir
+        / f".solve_payload_{sid}_{os.getpid()}_{_thread_ident()}_{int(time.time() * 1000)}.pkl"
+    )
+    kwargs = {
+        "task": task,
+        "shared_base_url": shared_base_url,
+        "work_dir": str(work_dir),
+        "solver_model": solver_model,
+        "region": region,
+        "max_tokens": max_tokens,
+        "key_registry": key_registry,
+    }
+    ctx = mp.get_context("spawn")
+    proc = ctx.Process(target=_solve_agent_child, args=(str(payload_path), kwargs))
+    proc.start()
+    proc.join(task_timeout_sec)
+    if proc.is_alive():
+        proc.terminate()
+        proc.join(5)
+        if proc.is_alive():
+            proc.kill()
+            proc.join(5)
+        try:
+            payload_path.unlink(missing_ok=True)
+        except Exception:
+            pass
+        raise TimeoutError(f"task_timeout_after_{task_timeout_sec}s")
+
+    try:
+        if not payload_path.exists():
+            raise RuntimeError(f"solve child exited without payload (exitcode={proc.exitcode})")
+        payload = pickle.loads(payload_path.read_bytes())
+    finally:
+        try:
+            payload_path.unlink(missing_ok=True)
+        except Exception:
+            pass
+
+    if "error" in payload:
+        raise RuntimeError(
+            f"solve child failed: {payload['error']}\n{payload.get('traceback', '')}"
+        )
+    return payload["trajectory"]
 
 
 def _make_worker_benchmark_factory(judge_model: str, region: str):
@@ -133,46 +246,42 @@ def _solve_one_task(
     sid = task.id.replace("/", "_")
     log.info("[%s %d/%d] Solving %s ...", phase, task_index, batch_len, task.id)
     t0 = time.time()
-    client = McpClientWrapper(base_url=shared_base_url) if shared_base_url else McpClientWrapper()
     try:
-        agent = CodeExecMcpAgent(
-            workspace_dir=work_dir,
-            model_id=solver_model,
-            region=region,
-            max_tokens=max_tokens,
-            docker_image=None,
-            key_registry=key_registry,
-        )
-        # Wall-clock timeout for the agent.solve() call. The Strands agent has
-        # internal Bedrock retry/backoff but no overall walltime cap; an
-        # MCP server stuck mid-tool-call (or a Bedrock throttle storm
-        # multiplying retries × steps) can hang for tens of minutes.
-        # We bound it via an inner thread whose result we wait on with a
-        # timeout. NOTE: on timeout the inner thread keeps running in the
-        # background until it eventually unwinds; we just stop waiting and
-        # return ERROR for this task. Acceptable because the outer pool has
-        # already moved on.
+        # Wall-clock timeout for the agent.solve() call. Threads cannot safely
+        # kill a stuck Strands/MCP call, so the timed path runs the solve in a
+        # child process and terminates that process on timeout.
         if task_timeout_sec and task_timeout_sec > 0:
-            with ThreadPoolExecutor(max_workers=1,
-                                    thread_name_prefix=f"mcp-solve-{sid}") as inner:
-                inner_fut = inner.submit(agent.solve, task, shared_client=client)
-                try:
-                    trajectory = inner_fut.result(timeout=task_timeout_sec)
-                except _FutTimeout:
-                    elapsed = time.time() - t0
-                    log.error("[%s %d/%d] TIMEOUT after %ds on %s (background "
-                              "thread may still be running)",
-                              phase, task_index, batch_len, task_timeout_sec, task.id)
-                    row = _record(task.id, False, 0.0, elapsed, 0, "", phase,
-                                  evo_cycle,
-                                  f"task_timeout_after_{task_timeout_sec}s")
-                    # Don't wait for the hung thread; let `with` raise on exit
-                    # by issuing a non-blocking shutdown (cancel_futures
-                    # returns immediately for already-running futures).
-                    inner.shutdown(wait=False, cancel_futures=True)
-                    return task_index, None, row
+            try:
+                trajectory = _solve_with_process_timeout(
+                    task=task,
+                    sid=sid,
+                    out_dir=out_dir,
+                    shared_base_url=shared_base_url,
+                    work_dir=work_dir,
+                    solver_model=solver_model,
+                    region=region,
+                    max_tokens=max_tokens,
+                    key_registry=key_registry,
+                    task_timeout_sec=task_timeout_sec,
+                )
+            except TimeoutError:
+                elapsed = time.time() - t0
+                log.error("[%s %d/%d] TIMEOUT after %ds on %s",
+                          phase, task_index, batch_len, task_timeout_sec, task.id)
+                row = _record(task.id, False, 0.0, elapsed, 0, "", phase,
+                              evo_cycle,
+                              f"task_timeout_after_{task_timeout_sec}s")
+                return task_index, None, row
         else:
-            trajectory = agent.solve(task, shared_client=client)
+            trajectory = _run_agent_solve_direct(
+                task=task,
+                shared_base_url=shared_base_url,
+                work_dir=work_dir,
+                solver_model=solver_model,
+                region=region,
+                max_tokens=max_tokens,
+                key_registry=key_registry,
+            )
         elapsed = time.time() - t0
 
         with _io_lock:
@@ -195,11 +304,6 @@ def _solve_one_task(
         log.error(traceback.format_exc())
         row = _record(task.id, False, 0.0, elapsed, 0, "", phase, evo_cycle, str(e))
         return task_index, None, row
-    finally:
-        try:
-            client.close()
-        except Exception:
-            pass
 
 
 def _solve_batch(
