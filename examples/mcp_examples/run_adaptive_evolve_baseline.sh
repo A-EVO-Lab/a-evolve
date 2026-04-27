@@ -12,7 +12,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 
 SOLVER_MODEL="${SOLVER_MODEL:-us.anthropic.claude-opus-4-6-v1}"
-JUDGE_MODEL="${JUDGE_MODEL:-${EVAL_MODEL_ID:-us.anthropic.claude-sonnet-4-20250514-v1:0}}"
+JUDGE_MODEL="${JUDGE_MODEL:-${EVAL_MODEL_ID:-us.anthropic.claude-sonnet-4-6}}"
 REGION="${REGION:-us-west-2}"
 MAX_TOKENS="${MAX_TOKENS:-16384}"
 LIMIT="${LIMIT:-500}"

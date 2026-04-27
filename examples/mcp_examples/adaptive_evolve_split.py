@@ -404,7 +404,7 @@ def main() -> int:
                                 formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("--solver-model", default="us.anthropic.claude-opus-4-6-v1")
     p.add_argument("--evolver-model", default="us.anthropic.claude-opus-4-6-v1")
-    p.add_argument("--judge-model", default="us.anthropic.claude-sonnet-4-20250514-v1:0")
+    p.add_argument("--judge-model", default="us.anthropic.claude-sonnet-4-6")
     p.add_argument("--region", default="us-west-2")
     p.add_argument("--max-tokens", type=int, default=16384)
     p.add_argument("--docker-image", default=None)
@@ -423,12 +423,13 @@ def main() -> int:
                         "Default 1 (legacy parity); shared MCP-Atlas container still rate-limits.")
     p.add_argument("--test-parallel", type=int, default=5,
                    help="Phase 2 parallel solve threads (no batch boundary). Default 5.")
-    p.add_argument("--task-timeout-sec", type=int, default=900,
+    p.add_argument("--task-timeout-sec", type=int, default=1800,
                    help="Wall-clock timeout for a single agent.solve() call. "
                         "On timeout, the task is marked ERROR and the run "
                         "continues; the underlying thread may still be alive "
-                        "in the background. Default 900 (15 min). Set to 0 "
-                        "or negative to disable.")
+                        "in the background. Default 1800 (30 min) absorbs "
+                        "Bedrock judge throttle storms. Set to 0 or negative "
+                        "to disable.")
     p.add_argument("--seed-workspace", default="seed_workspaces/mcp")
     p.add_argument("--work-dir", default="./evolution_workdir/mcp_split")
     p.add_argument("--output-dir", required=True)

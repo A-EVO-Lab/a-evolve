@@ -84,7 +84,7 @@ def main() -> int:
     p.add_argument("--region", default="us-west-2")
     p.add_argument("--max-tokens", type=int, default=16384)
     p.add_argument("--judge-model", "--eval-model-id", dest="judge_model",
-                   default="us.anthropic.claude-sonnet-4-20250514-v1:0",
+                   default="us.anthropic.claude-sonnet-4-6",
                    help="Model for the MCP-Atlas LLM-as-judge evaluator")
     p.add_argument("--docker-image", type=str, default=None,
                    help="MCP-Atlas docker image; when set, uses one shared container.")

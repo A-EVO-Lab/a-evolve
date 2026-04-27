@@ -164,7 +164,7 @@ class BaselineCodeExecAgent(McpAgent):
 def main():
     p = argparse.ArgumentParser(description="Baseline: Solve tasks WITHOUT evolution")
     p.add_argument("--solver-model", type=str, default="us.anthropic.claude-opus-4-6-v1")
-    p.add_argument("--judge-model", type=str, default="us.anthropic.claude-sonnet-4-20250514-v1:0")
+    p.add_argument("--judge-model", type=str, default="us.anthropic.claude-sonnet-4-6")
     p.add_argument("--region", type=str, default="us-west-2")
     p.add_argument("--max-tokens", type=int, default=16384)
     p.add_argument("--docker-image", type=str, default=None)

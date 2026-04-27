@@ -195,7 +195,7 @@ def main():
     p.add_argument("--evolver-model", type=str,
                     default="us.anthropic.claude-opus-4-6-v1")
     p.add_argument("--judge-model", type=str,
-                    default="us.anthropic.claude-sonnet-4-20250514-v1:0")
+                    default="us.anthropic.claude-sonnet-4-6")
     p.add_argument("--region", type=str, default="us-west-2")
     p.add_argument("--max-tokens", type=int, default=16384)
     p.add_argument("--docker-image", type=str, default=None)

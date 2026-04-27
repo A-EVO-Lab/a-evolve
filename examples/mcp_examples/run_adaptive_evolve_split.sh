@@ -32,16 +32,17 @@ BATCH_SIZE="${BATCH_SIZE:-25}"
 TRAIN_PARALLEL="${TRAIN_PARALLEL:-1}"
 # Phase 2 parallel solve threads (no batch boundary, no workspace mutation).
 TEST_PARALLEL="${TEST_PARALLEL:-5}"
-# Wall-clock timeout per task (seconds). 900 = 15 min default. Set to 0 to
-# disable. Recommended >= the agent's max_steps × per-step Bedrock timeout.
-TASK_TIMEOUT_SEC="${TASK_TIMEOUT_SEC:-900}"
+# Wall-clock timeout per task (seconds). 1800 = 30 min default to absorb
+# Bedrock judge throttle storms (per-claim retry × N claims can stack to
+# >>10 min in heavy-parallel runs). Set to 0 to disable.
+TASK_TIMEOUT_SEC="${TASK_TIMEOUT_SEC:-1800}"
 
 # ---------------------------------------------------------------------------
 # Model / region
 # ---------------------------------------------------------------------------
 SOLVER_MODEL="${SOLVER_MODEL:-${MODEL_ID:-us.anthropic.claude-opus-4-6-v1}}"
 EVOLVER_MODEL="${EVOLVER_MODEL:-${EVOLVER_MODEL_ID:-${SOLVER_MODEL}}}"
-JUDGE_MODEL="${JUDGE_MODEL:-us.anthropic.claude-sonnet-4-20250514-v1:0}"
+JUDGE_MODEL="${JUDGE_MODEL:-us.anthropic.claude-sonnet-4-6}"
 REGION="${REGION:-us-west-2}"
 MAX_TOKENS="${MAX_TOKENS:-16384}"
 export BEDROCK_RETRY_MAX_ATTEMPTS="${BEDROCK_RETRY_MAX_ATTEMPTS:-15}"
