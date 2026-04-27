@@ -23,6 +23,89 @@ from .tools import BASH_TOOL_SPEC, create_default_llm, make_workspace_bash
 logger = logging.getLogger(__name__)
 
 
+# ── Protected-artifact snapshot/rollback ─────────────────────────────────
+#
+# When EvolveConfig.evolve_{memory,prompts,tools} is False, the prompt
+# instructs the evolver to leave those dirs untouched, but nothing in the
+# tool layer enforces it. Real evolvers (e.g. qwen) occasionally write to
+# `memory/` anyway — once with non-JSONL content, which crashed
+# `agent.reload_from_fs()` and killed the entire cell. These helpers
+# snapshot the protected dirs before each LLM call and roll back any
+# changes after, with try/finally so the rollback fires even if the LLM
+# call itself raises mid-write.
+#
+# Snapshot is content-only (file bytes); skills/ is intentionally NOT
+# snapshotted so legitimate skill mutations survive.
+
+def _snapshot_protected(
+    root: Path, names: list[str],
+) -> dict[str, dict[str, bytes] | None]:
+    snap: dict[str, dict[str, bytes] | None] = {}
+    for name in names:
+        base = root / name
+        if not base.exists():
+            snap[name] = None
+            continue
+        files: dict[str, bytes] = {}
+        for p in base.rglob("*"):
+            if p.is_file():
+                try:
+                    files[str(p.relative_to(base))] = p.read_bytes()
+                except OSError:
+                    pass  # skip unreadable file; restore will recreate from snap
+        snap[name] = files
+    return snap
+
+
+def _restore_protected(
+    root: Path, snap: dict[str, dict[str, bytes] | None],
+) -> None:
+    import shutil
+    for name, files in snap.items():
+        base = root / name
+        if base.exists():
+            shutil.rmtree(base)
+        if files is None:
+            continue
+        base.mkdir(parents=True, exist_ok=True)
+        for rel, data in files.items():
+            p = base / rel
+            p.parent.mkdir(parents=True, exist_ok=True)
+            p.write_bytes(data)
+
+
+def _diff_protected(
+    root: Path, snap: dict[str, dict[str, bytes] | None],
+) -> dict[str, dict[str, list[str]]]:
+    after = _snapshot_protected(root, list(snap.keys()))
+    summary: dict[str, dict[str, list[str]]] = {}
+    for name in snap:
+        before = snap[name] or {}
+        now = after[name] or {}
+        added = sorted(set(now) - set(before))
+        removed = sorted(set(before) - set(now))
+        modified = sorted(k for k in (set(before) & set(now)) if before[k] != now[k])
+        if added or removed or modified:
+            summary[name] = {"added": added, "removed": removed, "modified": modified}
+    return summary
+
+
+def _format_diff(diff: dict[str, dict[str, list[str]]], cap: int = 8) -> str:
+    parts = []
+    for name, changes in diff.items():
+        bits = []
+        for kind in ("added", "removed", "modified"):
+            files = changes.get(kind, [])
+            if not files:
+                continue
+            shown = files[:cap]
+            extra = len(files) - len(shown)
+            tail = f" (+{extra} more)" if extra > 0 else ""
+            bits.append(f"{kind}={shown}{tail}")
+        parts.append(f"{name}: " + "; ".join(bits))
+    return " | ".join(parts)
+
+
 class AEvolveEngine(EvolutionEngine):
     """LLM-driven workspace mutation engine."""
 
@@ -65,7 +148,7 @@ class AEvolveEngine(EvolutionEngine):
             prompt_only=self.config.extra.get("prompt_only", False),
             protect_skills=self.config.extra.get("protect_skills", False),
         )
-        response = self._run_llm(prompt, workspace.root)
+        response = self._run_llm_with_protection(prompt, workspace.root)
 
         skills_after = [s.name for s in workspace.list_skills()]
         new_skills = len(set(skills_after) - set(skills_before))
@@ -129,7 +212,7 @@ class AEvolveEngine(EvolutionEngine):
             protect_skills=self.config.extra.get("protect_skills", False),
         )
         _evo_t0 = _time.time()
-        response = self._run_llm(prompt, workspace.root)
+        response = self._run_llm_with_protection(prompt, workspace.root)
         _evo_elapsed = _time.time() - _evo_t0
 
         skills_after = [s.name for s in workspace.list_skills()]
@@ -174,6 +257,46 @@ class AEvolveEngine(EvolutionEngine):
             "skills_removed": removed,
             "usage": _usage,
         }
+
+    def _protected_dirs(self) -> list[str]:
+        """Dir names under workspace root that the evolver should NOT mutate."""
+        names = []
+        if not self.config.evolve_memory:
+            names.append("memory")
+        if not self.config.evolve_prompts:
+            names.append("prompts")
+        if not self.config.evolve_tools:
+            names.append("tools")
+        return names
+
+    def _run_llm_with_protection(
+        self, prompt: str, workspace_root: Path,
+    ) -> dict[str, Any]:
+        """Wrap _run_llm with snapshot+rollback for protected dirs.
+
+        Restoration runs in `finally` so partial writes are undone even if
+        `_run_llm` raises mid-operation. Skills/ is NEVER protected so
+        legitimate skill mutations always survive.
+        """
+        protected = self._protected_dirs()
+        if not protected:
+            return self._run_llm(prompt, workspace_root)
+
+        snap = _snapshot_protected(workspace_root, protected)
+        try:
+            return self._run_llm(prompt, workspace_root)
+        finally:
+            diff = _diff_protected(workspace_root, snap)
+            if diff:
+                _restore_protected(workspace_root, snap)
+                logger.warning(
+                    "EVOLVER: rolled back protected artifacts | %s | "
+                    "(evolve_memory=%s evolve_prompts=%s evolve_tools=%s)",
+                    _format_diff(diff),
+                    self.config.evolve_memory,
+                    self.config.evolve_prompts,
+                    self.config.evolve_tools,
+                )
 
     def _run_llm(self, prompt: str, workspace_root: Path) -> dict[str, Any]:
         """Run the evolver LLM with bash access to the workspace."""

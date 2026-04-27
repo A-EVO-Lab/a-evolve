@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import re
 from pathlib import Path
 from typing import Any
@@ -10,6 +11,39 @@ from typing import Any
 import yaml
 
 from ..types import SkillMeta
+
+logger = logging.getLogger(__name__)
+
+
+def _safe_read_jsonl_dicts(path: Path, *, source_label: str) -> list[dict[str, Any]]:
+    """Read a JSONL file, skipping malformed lines or non-dict entries with warnings.
+
+    Defensive against contamination: if an evolver (or any other path) writes
+    YAML/text into a `.jsonl` memory file, we don't want one bad line to
+    crash `agent.reload_from_fs()` and nuke the entire cell.
+    """
+    entries: list[dict[str, Any]] = []
+    with open(path) as f:
+        for lineno, raw in enumerate(f, 1):
+            line = raw.strip()
+            if not line:
+                continue
+            try:
+                entry = json.loads(line)
+            except json.JSONDecodeError as exc:
+                logger.warning(
+                    "skip malformed JSONL %s:%d (%s): %s",
+                    path, lineno, source_label, exc,
+                )
+                continue
+            if not isinstance(entry, dict):
+                logger.warning(
+                    "skip non-dict JSONL %s:%d (%s): got %s",
+                    path, lineno, source_label, type(entry).__name__,
+                )
+                continue
+            entries.append(entry)
+    return entries
 
 
 class AgentWorkspace:
@@ -184,11 +218,7 @@ class AgentWorkspace:
         path = self.memory_dir / f"{category}.jsonl"
         if not path.exists():
             return []
-        entries: list[dict[str, Any]] = []
-        with open(path) as f:
-            for line in f:
-                if line.strip():
-                    entries.append(json.loads(line))
+        entries = _safe_read_jsonl_dicts(path, source_label=f"memory[{category}]")
         return entries[-limit:]
 
     def read_all_memories(self, limit: int = 100) -> list[dict[str, Any]]:
@@ -196,12 +226,10 @@ class AgentWorkspace:
         if not self.memory_dir.exists():
             return []
         for jsonl in sorted(self.memory_dir.glob("*.jsonl")):
-            with open(jsonl) as f:
-                for line in f:
-                    if line.strip():
-                        entry = json.loads(line)
-                        entry.setdefault("_category", jsonl.stem)
-                        all_memories.append(entry)
+            entries = _safe_read_jsonl_dicts(jsonl, source_label=f"memory[{jsonl.stem}]")
+            for entry in entries:
+                entry.setdefault("_category", jsonl.stem)
+                all_memories.append(entry)
         return all_memories[-limit:]
 
     # ── Harness (optional scaffolding code, mutated by MetaHarness) ──
