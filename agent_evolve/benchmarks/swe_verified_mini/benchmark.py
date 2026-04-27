@@ -29,7 +29,7 @@ from ..base import BenchmarkAdapter
 
 logger = logging.getLogger(__name__)
 
-DEFAULT_EVAL_TIMEOUT = 300
+DEFAULT_EVAL_TIMEOUT = 1800
 ERROR_MARKERS = (APPLY_PATCH_FAIL, RESET_FAILED, TESTS_ERROR, TESTS_TIMEOUT,
                  "Failed to reset task environment")
 
@@ -251,7 +251,8 @@ class SweVerifiedMiniBenchmark(BenchmarkAdapter):
                 raw={"instance_id": instance_id, "error": str(e)},
             )
 
-        container_name = f"swe-eval-{instance_id.replace('/', '_')}"
+        import uuid as _uuid
+        container_name = f"swe-eval-{instance_id.replace('/', '_')}-{_uuid.uuid4().hex}"
         docker_image = metadata.get("docker_image", "")
 
         if not docker_image:

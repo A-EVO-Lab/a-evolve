@@ -123,6 +123,20 @@ def main() -> int:
     bench = SweVerifiedMiniBenchmark(dataset_name=args.dataset, shuffle=False)
     logger.info("Capability: %s", bench.feedback_capability)
 
+    # Legacy ``evolve_sequential.py`` loads the full ordered SWE list via
+    # ``get_tasks(split="test", limit=args.limit)``. ``EvolutionLoop`` asks
+    # adapters for ``split="train"`` each cycle, so redirect that split to the
+    # same full ordered rows instead of the adapter's default 80/20
+    # train/holdout partition. This keeps unified in-situ runs comparable to
+    # the README legacy recipes.
+    _ = bench.get_tasks(split="test", limit=10**9)
+    bench._cache["train"] = bench._cache["test"][: args.limit]
+    bench._cursor = 0
+    logger.info(
+        "Using full ordered task list for unified in-situ: %d task(s)",
+        len(bench._cache["train"]),
+    )
+
     # Shared workspace (copied from seed)
     ws_dir = out_dir / "workspace"
     seed_dir = Path(args.seed_workspace)

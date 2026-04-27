@@ -8,7 +8,7 @@ REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 # Config (override via env vars)
 # ------------------------------------------------------------------------------
 MODE="${MODE:-native}"                      # native | harbor
-USE_SKILLS="${USE_SKILLS:-true}"            # true | false
+USE_SKILLS="${USE_SKILLS:-false}"            # true | false
 MAX_WORKERS="${MAX_WORKERS:-5}"             # parallel workers
 SPLIT_SEED="${SPLIT_SEED:-42}"
 NATIVE_PROFILE="${NATIVE_PROFILE:-terminus2}"   # strands | terminus2 | terminus2_legacy

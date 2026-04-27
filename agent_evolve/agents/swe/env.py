@@ -18,7 +18,7 @@ class SWEBenchContainer:
 
     def __init__(self, image_name: str, container_name: str | None = None):
         self.image_name = image_name
-        self.container_name = container_name or f"swe-agent-{int(time.time())}-{uuid.uuid4().hex[:8]}"
+        self.container_name = container_name or f"swe-agent-{int(time.time())}-{uuid.uuid4().hex}"
         self._running = False
 
     def start(self) -> str:

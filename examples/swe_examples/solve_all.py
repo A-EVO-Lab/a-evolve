@@ -117,7 +117,11 @@ def solve_one_task(task_dict: dict, args_dict: dict) -> dict:
         if tool_call_count[0] > max_turns:
             event.cancel_tool = f"Turn limit reached ({max_turns}). Call submit now."
 
-    container_name = f"swe-solve-{iid.replace('/', '_').replace('__', '-')}"
+    import hashlib as _hashlib
+    import uuid as _uuid
+    _cell_tag = _hashlib.md5(str(args_dict.get("output_dir", "")).encode()).hexdigest()
+    _per_call_tag = _uuid.uuid4().hex
+    container_name = f"swe-solve-{iid.replace('/', '_').replace('__', '-')}-{_cell_tag}-{_per_call_tag}"
     ctr = SWEBenchContainer(img, container_name=container_name)
     try:
         ctr.start()
