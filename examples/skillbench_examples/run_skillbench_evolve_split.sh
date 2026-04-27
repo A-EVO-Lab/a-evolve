@@ -27,11 +27,11 @@ REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 LIMIT="${LIMIT:-}"                       # Total task cap ('' = all tasks)
 EVOLVE_LIMIT="${EVOLVE_LIMIT:-20}"       # Phase 1 train tasks
 EVAL_LIMIT="${EVAL_LIMIT:-}"             # Phase 2 test tasks ('' = all remaining)
-BATCH_SIZE="${BATCH_SIZE:-2}"
+BATCH_SIZE="${BATCH_SIZE:-1}"
 # Phase 1 parallel workers (effective = min(TRAIN_PARALLEL, BATCH_SIZE)).
-TRAIN_PARALLEL="${TRAIN_PARALLEL:-${MAX_WORKERS:-2}}"
+TRAIN_PARALLEL="${TRAIN_PARALLEL:-${MAX_WORKERS:-1}}"
 # Phase 2 parallel workers (whole test set in one pool, no batch boundary).
-TEST_PARALLEL="${TEST_PARALLEL:-${MAX_WORKERS:-20}}"
+TEST_PARALLEL="${TEST_PARALLEL:-${MAX_WORKERS:-8}}"
 # Legacy backstop: MAX_WORKERS is used as the default for both knobs above
 # when set; if neither TRAIN_PARALLEL nor TEST_PARALLEL is given, both fall
 # back to MAX_WORKERS (default 2 for train, 20 for test if MAX_WORKERS unset).
@@ -128,7 +128,6 @@ cmd=(
   --model-id     "${MODEL_ID}"
   --region       "${REGION}"
   --max-tokens   "${MAX_TOKENS}"
-  --retry-max    "${RETRY_MAX}"
   --retry-min-wait-sec "${RETRY_MIN_WAIT_SEC}"
   --retry-max-wait-sec "${RETRY_MAX_WAIT_SEC}"
   --evolve-skills  "${EVOLVE_SKILLS}"
@@ -141,6 +140,7 @@ cmd=(
 )
 [[ -n "${EVAL_LIMIT}" ]]               && cmd+=(--eval-limit "${EVAL_LIMIT}")
 [[ -n "${LIMIT}" ]]                    && cmd+=(--limit "${LIMIT}")
+[[ -n "${RETRY_MAX}" ]]                && cmd+=(--retry-max "${RETRY_MAX}")
 [[ -n "${EVOLVER_MODEL_ID}" ]]         && cmd+=(--evolver-model-id "${EVOLVER_MODEL_ID}")
 [[ -n "${CATEGORY}" ]]                 && cmd+=(--category "${CATEGORY}")
 [[ -n "${DIFFICULTY}" ]]               && cmd+=(--difficulty "${DIFFICULTY}")

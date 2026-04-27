@@ -9,7 +9,7 @@ REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 # ------------------------------------------------------------------------------
 MODE="${MODE:-native}"                      # native | harbor
 USE_SKILLS="${USE_SKILLS:-false}"            # true | false
-MAX_WORKERS="${MAX_WORKERS:-5}"             # parallel workers
+MAX_WORKERS="${MAX_WORKERS:-8}"             # parallel workers
 SPLIT_SEED="${SPLIT_SEED:-42}"
 NATIVE_PROFILE="${NATIVE_PROFILE:-terminus2}"   # strands | terminus2 | terminus2_legacy
 SCORE_MODE="${SCORE_MODE:-dual}"                # reward | binary | dual
