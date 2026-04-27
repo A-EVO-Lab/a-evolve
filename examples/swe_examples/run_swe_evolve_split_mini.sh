@@ -51,11 +51,13 @@ VERIFICATION_FOCUS="${VERIFICATION_FOCUS:-true}"
 EFFICIENCY_PROMPT="${EFFICIENCY_PROMPT:-true}"
 MAX_STEPS="${MAX_STEPS:-140}"
 WINDOW_SIZE="${WINDOW_SIZE:-40}"
+SHUFFLE_TRAIN_SEED="${SHUFFLE_TRAIN_SEED:-}"
 
 # ---------------------------------------------------------------------------
 # Model / region
 # ---------------------------------------------------------------------------
 MODEL_ID="${MODEL_ID:-us.anthropic.claude-opus-4-6-v1}"
+EVOLVER_MODEL_ID="${EVOLVER_MODEL_ID:-}"
 REGION="${REGION:-us-west-2}"
 MAX_TOKENS="${MAX_TOKENS:-16384}"
 export BEDROCK_RETRY_MAX_ATTEMPTS="${BEDROCK_RETRY_MAX_ATTEMPTS:-15}"
@@ -90,6 +92,7 @@ echo "  Verification-focus: ${VERIFICATION_FOCUS}"
 echo "  Efficiency-prompt:  ${EFFICIENCY_PROMPT}"
 echo "  Max steps / window: ${MAX_STEPS} / ${WINDOW_SIZE}"
 echo "  Model:         ${MODEL_ID}"
+echo "  Evolver model: ${EVOLVER_MODEL_ID:-<same as solver>}"
 echo "  Region:        ${REGION}"
 echo "  Max tokens:    ${MAX_TOKENS}"
 echo "============================================================"
@@ -124,6 +127,8 @@ cmd=(
   -v
 )
 [[ -n "${EVAL_LIMIT}" ]]               && cmd+=(--eval-limit "${EVAL_LIMIT}")
+[[ -n "${SHUFFLE_TRAIN_SEED}" ]]       && cmd+=(--shuffle-train-seed "${SHUFFLE_TRAIN_SEED}")
+[[ -n "${EVOLVER_MODEL_ID}" ]]         && cmd+=(--evolver-model-id "${EVOLVER_MODEL_ID}")
 [[ "${SOLVER_PROPOSES}" == "true" ]]    && cmd+=(--solver-proposes)
 [[ "${VERIFICATION_FOCUS}" == "true" ]] && cmd+=(--verification-focus)
 [[ "${EFFICIENCY_PROMPT}" == "true" ]]  && cmd+=(--efficiency-prompt)

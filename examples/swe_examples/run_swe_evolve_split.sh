@@ -34,7 +34,7 @@ REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 # Split / batch defaults
 # ---------------------------------------------------------------------------
 LIMIT="${LIMIT:-500}"                    # Total tasks (train + test cap)
-EVOLVE_LIMIT="${EVOLVE_LIMIT:-50}"      # Phase 1 train tasks
+EVOLVE_LIMIT="${EVOLVE_LIMIT:-100}"      # Phase 1 train tasks
 EVAL_LIMIT="${EVAL_LIMIT:-}"             # Phase 2 test tasks ('' = all remaining)
 BATCH_SIZE="${BATCH_SIZE:-20}"
 
@@ -56,6 +56,7 @@ WINDOW_SIZE="${WINDOW_SIZE:-70}"
 # Model / region
 # ---------------------------------------------------------------------------
 MODEL_ID="${MODEL_ID:-us.anthropic.claude-opus-4-6-v1}"
+EVOLVER_MODEL_ID="${EVOLVER_MODEL_ID:-}"
 REGION="${REGION:-us-west-2}"
 MAX_TOKENS="${MAX_TOKENS:-16384}"
 export BEDROCK_RETRY_MAX_ATTEMPTS="${BEDROCK_RETRY_MAX_ATTEMPTS:-15}"
@@ -90,6 +91,7 @@ echo "  Verification-focus: ${VERIFICATION_FOCUS}"
 echo "  Efficiency-prompt:  ${EFFICIENCY_PROMPT}"
 echo "  Max steps / window: ${MAX_STEPS} / ${WINDOW_SIZE}"
 echo "  Model:         ${MODEL_ID}"
+echo "  Evolver model: ${EVOLVER_MODEL_ID:-<same as solver>}"
 echo "  Region:        ${REGION}"
 echo "  Max tokens:    ${MAX_TOKENS}"
 echo "============================================================"
@@ -124,6 +126,7 @@ cmd=(
   -v
 )
 [[ -n "${EVAL_LIMIT}" ]]               && cmd+=(--eval-limit "${EVAL_LIMIT}")
+[[ -n "${EVOLVER_MODEL_ID}" ]]         && cmd+=(--evolver-model-id "${EVOLVER_MODEL_ID}")
 [[ "${SOLVER_PROPOSES}" == "true" ]]    && cmd+=(--solver-proposes)
 [[ "${VERIFICATION_FOCUS}" == "true" ]] && cmd+=(--verification-focus)
 [[ "${EFFICIENCY_PROMPT}" == "true" ]]  && cmd+=(--efficiency-prompt)

@@ -254,6 +254,9 @@ def main() -> int:
     p.add_argument("--verification-focus", action="store_true")
     p.add_argument("--efficiency-prompt", action="store_true")
     p.add_argument("--model-id", type=str, default="us.anthropic.claude-opus-4-6-v1")
+    p.add_argument("--evolver-model-id", type=str, default=None,
+                   help="Bedrock model id for the evolver (GuidedSynthesisEngine). "
+                        "Defaults to --model-id when unset.")
     p.add_argument("--region", type=str, default="us-west-2")
     p.add_argument("--max-tokens", type=int, default=16384)
     p.add_argument("--max-steps", type=int, default=140)
@@ -261,6 +264,10 @@ def main() -> int:
     p.add_argument("--seed-workspace", type=str, default="seed_workspaces/swe")
     p.add_argument("--output-dir", type=str, required=True)
     p.add_argument("--dataset", type=str, default="princeton-nlp/SWE-bench_Verified")
+    p.add_argument("--shuffle-train-seed", type=int, default=None,
+                   help="If set, shuffle the train slice (only) with this seed. "
+                        "Test slice order remains unchanged so cross-run comparison "
+                        "stays valid.")
     p.add_argument("-v", "--verbose", action="store_true")
     args = p.parse_args()
 
@@ -288,6 +295,14 @@ def main() -> int:
         test_tasks = all_tasks[args.evolve_limit: args.evolve_limit + args.eval_limit]
     else:
         test_tasks = all_tasks[args.evolve_limit:]
+
+    if args.shuffle_train_seed is not None:
+        import random
+        rng = random.Random(args.shuffle_train_seed)
+        rng.shuffle(train_tasks)
+        logger.info("Shuffled train slice with seed=%d (test slice unchanged)",
+                    args.shuffle_train_seed)
+
     logger.info("Loaded %d total tasks; train=%d, test=%d",
                 len(all_tasks), len(train_tasks), len(test_tasks))
 
@@ -303,7 +318,8 @@ def main() -> int:
     evolution_dir = work_dir / "evolution"
     evolution_dir.mkdir(parents=True, exist_ok=True)
     observer = Observer(evolution_dir)
-    config = EvolveConfig(evolver_model=args.model_id, extra={"region": args.region})
+    evolver_model_id = args.evolver_model_id or args.model_id
+    config = EvolveConfig(evolver_model=evolver_model_id, extra={"region": args.region})
     evolver = GuidedSynthesisEngine(config, write_memory=False,
                                      verification_focus=args.verification_focus)
 
