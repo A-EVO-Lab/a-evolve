@@ -13,13 +13,13 @@
 #   --feedback none --max-steps 140 --window-size 70
 #   --batch-size 20 --parallel 20
 #   dataset = princeton-nlp/SWE-bench_Verified
-#   total LIMIT = 500 (split: EVOLVE_LIMIT=50 train + 450 test)
+#   total LIMIT = 500 (split: EVOLVE_LIMIT=100 train + 400 test)
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 
-EVOLVE_LIMIT="${EVOLVE_LIMIT:-50}"
+EVOLVE_LIMIT="${EVOLVE_LIMIT:-100}"
 EVAL_LIMIT="${EVAL_LIMIT:-}"
 LIMIT="${LIMIT:-500}"
 BATCH_SIZE="${BATCH_SIZE:-20}"

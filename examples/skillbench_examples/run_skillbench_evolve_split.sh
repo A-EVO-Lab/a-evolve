@@ -34,7 +34,7 @@ TRAIN_PARALLEL="${TRAIN_PARALLEL:-${MAX_WORKERS:-1}}"
 TEST_PARALLEL="${TEST_PARALLEL:-${MAX_WORKERS:-8}}"
 # Legacy backstop: MAX_WORKERS is used as the default for both knobs above
 # when set; if neither TRAIN_PARALLEL nor TEST_PARALLEL is given, both fall
-# back to MAX_WORKERS (default 2 for train, 20 for test if MAX_WORKERS unset).
+# back to MAX_WORKERS (default 1 for train, 8 for test if MAX_WORKERS unset).
 # >1 + EVOLVE_MEMORY=true is rejected by the python guard.
 
 # ---------------------------------------------------------------------------
