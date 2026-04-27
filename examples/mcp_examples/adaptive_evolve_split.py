@@ -33,7 +33,7 @@ import time
 import traceback
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
-from threading import Lock
+from threading import Lock, local as _thread_local
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 
@@ -75,10 +75,34 @@ def _record(task_id: str, success: bool, score: float, elapsed: float,
 _io_lock = Lock()  # serialize per-task disk writes (output_*.txt / conversation_*.json)
 
 
+def _make_worker_benchmark_factory(judge_model: str, region: str):
+    """Returns a callable producing a thread-local McpAtlasBenchmark.
+
+    Mirrors adaptive_evolve_baseline.py:272-284. McpAtlasBenchmark holds an
+    internal asyncio loop and a lazy-init Bedrock client; sharing one
+    instance across threads is technically unsafe (TOCTOU on
+    `_bedrock_client`, possible loop reuse). One benchmark per thread keeps
+    each thread's state isolated.
+    """
+    tls = _thread_local()
+
+    def get_bm() -> McpAtlasBenchmark:
+        bm = getattr(tls, "benchmark", None)
+        if bm is None:
+            bm = McpAtlasBenchmark(
+                shuffle=False, eval_model_id=judge_model,
+                eval_region=region, use_litellm=False,
+            )
+            tls.benchmark = bm
+        return bm
+
+    return get_bm
+
+
 def _solve_one_task(
     *,
     task,
-    bm,
+    worker_bm,
     out_dir: Path,
     shared_base_url: str,
     work_dir: Path,
@@ -91,14 +115,19 @@ def _solve_one_task(
     task_index: int,
     batch_len: int,
     log,
-) -> tuple[Observation | None, dict]:
+) -> tuple[int, Observation | None, dict]:
     """Solve a single task in its own thread.
 
-    Each thread creates its own `CodeExecMcpAgent` + `McpClientWrapper`
-    (pattern lifted from `adaptive_evolve_baseline.py:286`). The MCP-Atlas
-    docker container is the only shared resource, accessed via `shared_base_url`.
-    Crucially, NO global ``sys.stdout`` redirect — that pattern is unsafe
-    under threading because ``sys.stdout`` is process-global.
+    Each thread creates its own `CodeExecMcpAgent` + `McpClientWrapper` and
+    uses a thread-local `McpAtlasBenchmark` for evaluation
+    (pattern lifted from `adaptive_evolve_baseline.py:286-326`). The
+    MCP-Atlas docker container is the only shared resource, accessed via
+    `shared_base_url`. Crucially, NO global ``sys.stdout`` redirect — that
+    pattern is unsafe under threading because ``sys.stdout`` is process-global.
+
+    Returns ``(task_index, obs, row)`` so the caller can re-sort batch results
+    back into task order (``as_completed`` returns completion order, which
+    breaks legacy parity for the evolver's observation log).
     """
     sid = task.id.replace("/", "_")
     log.info("[%s %d/%d] Solving %s ...", phase, task_index, batch_len, task.id)
@@ -121,7 +150,7 @@ def _solve_one_task(
             (out_dir / f"conversation_{sid}.json").write_text(
                 json.dumps(trajectory.steps, indent=2, ensure_ascii=False, default=str))
 
-        fb = bm.evaluate(task, trajectory)
+        fb = worker_bm().evaluate(task, trajectory)
         log.info("[%s %d/%d] %s | score=%.2f | %.1fs",
                  phase, task_index, batch_len,
                  "PASS" if fb.success else "FAIL", fb.score, elapsed)
@@ -129,13 +158,13 @@ def _solve_one_task(
         row = _record(task.id, fb.success, fb.score, elapsed,
                       len(trajectory.output), fb.detail, phase, evo_cycle)
         obs = Observation(task=task, trajectory=trajectory, feedback=fb)
-        return obs, row
+        return task_index, obs, row
     except Exception as e:
         elapsed = time.time() - t0
         log.error("[%s %d/%d] ERROR on %s: %s", phase, task_index, batch_len, task.id, e)
         log.error(traceback.format_exc())
         row = _record(task.id, False, 0.0, elapsed, 0, "", phase, evo_cycle, str(e))
-        return None, row
+        return task_index, None, row
     finally:
         try:
             client.close()
@@ -146,7 +175,7 @@ def _solve_one_task(
 def _solve_batch(
     *,
     batch_tasks,
-    bm,
+    worker_bm,
     out_dir: Path,
     shared_base_url: str,
     work_dir: Path,
@@ -159,15 +188,19 @@ def _solve_batch(
     parallel: int,
     log,
 ) -> tuple[list, list]:
-    """Solve a batch with `parallel` threads. Per-thread agent + client."""
+    """Solve a batch with ``parallel`` threads. Per-thread agent + client.
+
+    Returns ``(batch_obs, rows)`` in original task order. ``as_completed``
+    yields futures in completion order, which would change the observation
+    sequence the evolver sees relative to the legacy serial path; we collect
+    ``(task_index, obs, row)`` tuples and re-sort to preserve legacy parity.
+    """
     workers = max(1, min(parallel, len(batch_tasks))) if batch_tasks else 1
-    batch_obs: list[Observation] = []
-    rows: list[dict] = []
 
     def _runner(task_index_task):
         i, task = task_index_task
         return _solve_one_task(
-            task=task, bm=bm, out_dir=out_dir,
+            task=task, worker_bm=worker_bm, out_dir=out_dir,
             shared_base_url=shared_base_url, work_dir=work_dir,
             solver_model=solver_model, region=region, max_tokens=max_tokens,
             key_registry=key_registry, phase=phase, evo_cycle=evo_cycle,
@@ -175,21 +208,21 @@ def _solve_batch(
         )
 
     indexed = list(enumerate(batch_tasks, 1))
+    collected: list[tuple[int, Observation | None, dict]] = []
     if workers == 1:
         for it in indexed:
-            obs, row = _runner(it)
-            if obs is not None:
-                batch_obs.append(obs)
-            rows.append(row)
+            collected.append(_runner(it))
     else:
         log.info("[%s] solving %d tasks with %d threads", phase, len(batch_tasks), workers)
         with ThreadPoolExecutor(max_workers=workers) as pool:
             futures = [pool.submit(_runner, it) for it in indexed]
             for fut in as_completed(futures):
-                obs, row = fut.result()
-                if obs is not None:
-                    batch_obs.append(obs)
-                rows.append(row)
+                collected.append(fut.result())
+
+    # Re-sort to original task order so the evolver sees the legacy sequence.
+    collected.sort(key=lambda t: t[0])
+    batch_obs = [obs for _, obs, _ in collected if obs is not None]
+    rows = [row for _, _, row in collected]
     return batch_obs, rows
 
 
@@ -350,6 +383,9 @@ def main() -> int:
 
     train_parallel = max(1, args.train_parallel)
     test_parallel = max(1, args.test_parallel)
+    # Worker threads each get their own thread-local McpAtlasBenchmark via this
+    # factory; main thread keeps using `bm` for task loading + capability info.
+    worker_bm = _make_worker_benchmark_factory(args.judge_model, args.region)
     # `state_agent` exists only to call evolver.evolve / export_to_fs / reload_from_fs
     # between batches. The actual per-task solving spawns its own thread-local
     # CodeExecMcpAgent inside _solve_batch (see _solve_one_task).
@@ -372,7 +408,7 @@ def main() -> int:
                      batch_num, n_train_batches,
                      batch_idx + 1, batch_idx + len(batch), evo_cycle)
             batch_obs, rows = _solve_batch(
-                batch_tasks=batch, bm=bm, out_dir=out_dir,
+                batch_tasks=batch, worker_bm=worker_bm, out_dir=out_dir,
                 shared_base_url=shared_base_url, work_dir=work_dir,
                 solver_model=args.solver_model, region=args.region,
                 max_tokens=args.max_tokens, key_registry=key_registry,
@@ -394,7 +430,7 @@ def main() -> int:
             log.info("\n>>> Phase 2: TEST  (n=%d, no-evolve, test_parallel=%d)",
                      len(test_tasks), test_parallel)
             _, rows = _solve_batch(
-                batch_tasks=test_tasks, bm=bm, out_dir=out_dir,
+                batch_tasks=test_tasks, worker_bm=worker_bm, out_dir=out_dir,
                 shared_base_url=shared_base_url, work_dir=work_dir,
                 solver_model=args.solver_model, region=args.region,
                 max_tokens=args.max_tokens, key_registry=key_registry,
