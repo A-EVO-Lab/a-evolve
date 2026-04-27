@@ -196,8 +196,15 @@ def main() -> int:
                    help="Total task cap (train + test). Default: all tasks.")
     p.add_argument("--batch-size", type=int, default=5,
                    help="Train batch size (Phase 1). Default 5.")
+    p.add_argument("--train-parallel", type=int, default=None,
+                   help="Phase 1 parallel workers (effective = min(this, batch-size)). "
+                        "Defaults to --max-workers if --train-parallel is unset.")
+    p.add_argument("--test-parallel", type=int, default=None,
+                   help="Phase 2 parallel workers (one big run, no batches). "
+                        "Defaults to --max-workers if --test-parallel is unset.")
     p.add_argument("--max-workers", type=int, default=1,
-                   help="Parallel solve workers within a batch. Default 1.")
+                   help="Legacy alias: backstop for both --train-parallel and "
+                        "--test-parallel when those are unset. Default 1.")
 
     # SkillBench
     p.add_argument("--use-skills", default="false",
@@ -344,30 +351,34 @@ def main() -> int:
     train_records: list[dict] = []
     test_records: list[dict] = []
     evo_counter = 0
-    max_workers = max(1, args.max_workers)
+    backstop = max(1, args.max_workers)
+    train_parallel = max(1, args.train_parallel) if args.train_parallel is not None else backstop
+    test_parallel = max(1, args.test_parallel) if args.test_parallel is not None else backstop
 
     # Thread-safety guard: SkillBenchAgent.remember() appends to a plain list
     # without a lock, so concurrent solves that also write episodic memory race.
-    # Default config (max_workers=1 OR evolve_memory=false) is safe; reject the
+    # Default config (parallel=1 OR evolve_memory=false) is safe; reject the
     # unsafe combo upfront with a clear error.
-    if max_workers > 1 and _bool(args.evolve_memory):
+    if (train_parallel > 1 or test_parallel > 1) and _bool(args.evolve_memory):
         log.error(
-            "Unsafe combination: --max-workers=%d > 1 with --evolve-memory=true. "
-            "SkillBenchAgent.remember() is not thread-safe. Either set "
-            "--max-workers 1, or set --evolve-memory false.",
-            max_workers,
+            "Unsafe combination: train_parallel=%d, test_parallel=%d (>1) with "
+            "--evolve-memory=true. SkillBenchAgent.remember() is not thread-safe. "
+            "Set both parallel knobs to 1, or set --evolve-memory false.",
+            train_parallel, test_parallel,
         )
         return 2
 
     # ── Phase 1: TRAIN (batched evolve) ──
     n_train_batches = (len(train_sb) + args.batch_size - 1) // args.batch_size if train_sb else 0
-    print(f"\n>>> Phase 1: TRAIN  (n={len(train_sb)}, batch={args.batch_size}, parallel={max_workers})\n")
+    train_workers = min(train_parallel, max(1, args.batch_size))
+    print(f"\n>>> Phase 1: TRAIN  (n={len(train_sb)}, batch={args.batch_size}, "
+          f"train_parallel={train_parallel}, effective={train_workers})\n")
     for batch_idx in range(0, len(train_sb), args.batch_size):
         batch = train_sb[batch_idx: batch_idx + args.batch_size]
         batch_num = batch_idx // args.batch_size + 1
         print(f"=== Train batch {batch_num}/{n_train_batches} (tasks {batch_idx+1}-{batch_idx+len(batch)}) ===")
         results = _solve_batch_parallel(batch=batch, agent=agent, bm=bm,
-                                        max_workers=max_workers, log=log)
+                                        max_workers=train_workers, log=log)
         for r in results:
             if r["feedback"] is not None:
                 train_records.append(_record(r["task"], r["feedback"].success,
@@ -389,11 +400,10 @@ def main() -> int:
 
     # ── Phase 2: TEST (no-evolve) ──
     if test_sb:
-        # Larger pool fine for test since no batch-evolve boundary.
-        test_workers = max(max_workers, 1)
-        print(f"\n>>> Phase 2: TEST   (n={len(test_sb)}, parallel={test_workers}, no-evolve)\n")
+        # No batch-evolve boundary; can run with higher parallelism than train.
+        print(f"\n>>> Phase 2: TEST   (n={len(test_sb)}, test_parallel={test_parallel}, no-evolve)\n")
         results = _solve_batch_parallel(batch=test_sb, agent=agent, bm=bm,
-                                        max_workers=test_workers, log=log)
+                                        max_workers=test_parallel, log=log)
         for r in results:
             if r["feedback"] is not None:
                 test_records.append(_record(r["task"], r["feedback"].success,
@@ -453,7 +463,8 @@ def main() -> int:
             "evolve_memory": _bool(args.evolve_memory),
             "evolve_prompts": _bool(args.evolve_prompts),
             "evolve_tools": _bool(args.evolve_tools),
-            "max_workers": max_workers,
+            "train_parallel": train_parallel,
+            "test_parallel": test_parallel,
             "model_id": args.model_id,
             "evolver_model_id": args.evolver_model_id or args.model_id,
         },

@@ -28,7 +28,14 @@ LIMIT="${LIMIT:-}"                       # Total task cap ('' = all tasks)
 EVOLVE_LIMIT="${EVOLVE_LIMIT:-20}"       # Phase 1 train tasks
 EVAL_LIMIT="${EVAL_LIMIT:-}"             # Phase 2 test tasks ('' = all remaining)
 BATCH_SIZE="${BATCH_SIZE:-2}"
-MAX_WORKERS="${MAX_WORKERS:-2}"          # Parallel solve workers within a batch (>1 + EVOLVE_MEMORY=true is rejected by python guard)
+# Phase 1 parallel workers (effective = min(TRAIN_PARALLEL, BATCH_SIZE)).
+TRAIN_PARALLEL="${TRAIN_PARALLEL:-${MAX_WORKERS:-2}}"
+# Phase 2 parallel workers (whole test set in one pool, no batch boundary).
+TEST_PARALLEL="${TEST_PARALLEL:-${MAX_WORKERS:-20}}"
+# Legacy backstop: MAX_WORKERS is used as the default for both knobs above
+# when set; if neither TRAIN_PARALLEL nor TEST_PARALLEL is given, both fall
+# back to MAX_WORKERS (default 2 for train, 20 for test if MAX_WORKERS unset).
+# >1 + EVOLVE_MEMORY=true is rejected by the python guard.
 
 # ---------------------------------------------------------------------------
 # SkillBench knobs
@@ -58,7 +65,7 @@ MODEL_ID="${MODEL_ID:-us.anthropic.claude-opus-4-6-v1}"
 EVOLVER_MODEL_ID="${EVOLVER_MODEL_ID:-}"
 REGION="${REGION:-us-west-2}"
 MAX_TOKENS="${MAX_TOKENS:-64000}"
-RETRY_MAX="${RETRY_MAX:-6}"
+RETRY_MAX="${RETRY_MAX:-}"
 RETRY_MIN_WAIT_SEC="${RETRY_MIN_WAIT_SEC:-1.0}"
 RETRY_MAX_WAIT_SEC="${RETRY_MAX_WAIT_SEC:-150.0}"
 export BEDROCK_RETRY_MAX_ATTEMPTS="${BEDROCK_RETRY_MAX_ATTEMPTS:-15}"
@@ -82,8 +89,8 @@ echo "============================================================"
 echo "  SkillBench Train/Test Split (legacy AEvolveEngine)"
 echo "  Run ID:        ${RUN_ID}"
 echo "  Run dir:       ${RUN_DIR}"
-echo "  Phase 1 (train): ${EVOLVE_LIMIT} tasks, batch ${BATCH_SIZE}, parallel ${MAX_WORKERS}"
-echo "  Phase 2 (test):  ${EVAL_LIMIT:-all remaining} tasks"
+echo "  Phase 1 (train): ${EVOLVE_LIMIT} tasks, batch ${BATCH_SIZE}, train_parallel ${TRAIN_PARALLEL}"
+echo "  Phase 2 (test):  ${EVAL_LIMIT:-all remaining} tasks, test_parallel ${TEST_PARALLEL}"
 echo "  Total cap:     ${LIMIT:-all tasks}"
 echo "  Use skills:    ${USE_SKILLS}"
 echo "  Split seed:    ${SPLIT_SEED}"
@@ -111,7 +118,8 @@ cmd=(
   "${REPO_ROOT}/examples/skillbench_examples/skillbench_evolve_split.py"
   --evolve-limit "${EVOLVE_LIMIT}"
   --batch-size   "${BATCH_SIZE}"
-  --max-workers  "${MAX_WORKERS}"
+  --train-parallel "${TRAIN_PARALLEL}"
+  --test-parallel  "${TEST_PARALLEL}"
   --use-skills   "${USE_SKILLS}"
   --split-seed   "${SPLIT_SEED}"
   --native-profile "${NATIVE_PROFILE}"
