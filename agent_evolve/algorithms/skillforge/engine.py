@@ -8,6 +8,7 @@ default EvolutionEngine implementation.
 from __future__ import annotations
 
 import logging
+import sys
 from pathlib import Path
 from typing import Any
 
@@ -76,24 +77,45 @@ def _restore_protected(
 
 def _diff_protected(
     root: Path, snap: dict[str, dict[str, bytes] | None],
-) -> dict[str, dict[str, list[str]]]:
+) -> dict[str, Any]:
+    """Detect file-level diffs AND dir creation/deletion against the snapshot.
+
+    Distinguishes "dir didn't exist before" (snap value None) from "dir was
+    empty before" (snap value {}) so a newly-created empty dir is still
+    flagged for rollback.
+    """
     after = _snapshot_protected(root, list(snap.keys()))
-    summary: dict[str, dict[str, list[str]]] = {}
+    summary: dict[str, Any] = {}
     for name in snap:
-        before = snap[name] or {}
-        now = after[name] or {}
+        before_state = snap[name]
+        after_state = after[name]
+        before = before_state if before_state is not None else {}
+        now = after_state if after_state is not None else {}
         added = sorted(set(now) - set(before))
         removed = sorted(set(before) - set(now))
         modified = sorted(k for k in (set(before) & set(now)) if before[k] != now[k])
-        if added or removed or modified:
-            summary[name] = {"added": added, "removed": removed, "modified": modified}
+        dir_created = before_state is None and after_state is not None
+        dir_deleted = before_state is not None and after_state is None
+        if added or removed or modified or dir_created or dir_deleted:
+            entry: dict[str, Any] = {
+                "added": added, "removed": removed, "modified": modified,
+            }
+            if dir_created:
+                entry["created"] = True
+            if dir_deleted:
+                entry["deleted"] = True
+            summary[name] = entry
     return summary
 
 
-def _format_diff(diff: dict[str, dict[str, list[str]]], cap: int = 8) -> str:
+def _format_diff(diff: dict[str, Any], cap: int = 8) -> str:
     parts = []
     for name, changes in diff.items():
         bits = []
+        if changes.get("created"):
+            bits.append("dir-created")
+        if changes.get("deleted"):
+            bits.append("dir-deleted")
         for kind in ("added", "removed", "modified"):
             files = changes.get(kind, [])
             if not files:
@@ -286,17 +308,35 @@ class AEvolveEngine(EvolutionEngine):
         try:
             return self._run_llm(prompt, workspace_root)
         finally:
-            diff = _diff_protected(workspace_root, snap)
-            if diff:
-                _restore_protected(workspace_root, snap)
-                logger.warning(
-                    "EVOLVER: rolled back protected artifacts | %s | "
-                    "(evolve_memory=%s evolve_prompts=%s evolve_tools=%s)",
-                    _format_diff(diff),
-                    self.config.evolve_memory,
-                    self.config.evolve_prompts,
-                    self.config.evolve_tools,
-                )
+            # `sys.exc_info()[0]` is non-None iff this `finally` is unwinding
+            # a primary exception from `_run_llm`. Suppress secondary errors
+            # ONLY in that case — if `_run_llm` succeeded, a rollback failure
+            # is itself the primary problem and must propagate.
+            primary_exc_type = sys.exc_info()[0]
+            try:
+                diff = _diff_protected(workspace_root, snap)
+                if diff:
+                    _restore_protected(workspace_root, snap)
+                    logger.warning(
+                        "EVOLVER: rolled back protected artifacts | %s | "
+                        "(evolve_memory=%s evolve_prompts=%s evolve_tools=%s)",
+                        _format_diff(diff),
+                        self.config.evolve_memory,
+                        self.config.evolve_prompts,
+                        self.config.evolve_tools,
+                    )
+            except Exception as exc:  # noqa: BLE001
+                if primary_exc_type is not None:
+                    # Primary exception is unwinding; preserve it, log the
+                    # secondary so it isn't silently lost.
+                    logger.warning(
+                        "EVOLVER: rollback bookkeeping failed "
+                        "(original %s exception preserved): %s",
+                        primary_exc_type.__name__, exc,
+                    )
+                else:
+                    # Clean LLM run; rollback failure is the primary problem.
+                    raise
 
     def _run_llm(self, prompt: str, workspace_root: Path) -> dict[str, Any]:
         """Run the evolver LLM with bash access to the workspace."""
