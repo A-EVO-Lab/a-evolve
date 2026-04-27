@@ -31,7 +31,9 @@ import shutil
 import sys
 import time
 import traceback
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
+from threading import Lock
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 
@@ -70,51 +72,124 @@ def _record(task_id: str, success: bool, score: float, elapsed: float,
     }
 
 
-def _solve_batch(
+_io_lock = Lock()  # serialize per-task disk writes (output_*.txt / conversation_*.json)
+
+
+def _solve_one_task(
     *,
-    batch_tasks,
-    agent,
+    task,
     bm,
     out_dir: Path,
-    shared_client,
+    shared_base_url: str,
+    work_dir: Path,
+    solver_model: str,
+    region: str,
+    max_tokens: int,
+    key_registry,
     phase: str,
     evo_cycle: int,
+    task_index: int,
+    batch_len: int,
     log,
-) -> list:
-    """Solve a batch sequentially (MCP shares one container — no parallel here)."""
-    batch_obs: list[Observation] = []
-    rows: list[dict] = []
-    for i, task in enumerate(batch_tasks, 1):
-        sid = task.id.replace("/", "_")
-        log.info("[%s %d/%d] Solving %s ...", phase, i, len(batch_tasks), task.id)
-        t0 = time.time()
-        try:
-            old_stdout = sys.stdout
-            sys.stdout = open(os.devnull, "w")
-            try:
-                trajectory = agent.solve(task, shared_client=shared_client)
-            finally:
-                sys.stdout.close()
-                sys.stdout = old_stdout
-            elapsed = time.time() - t0
+) -> tuple[Observation | None, dict]:
+    """Solve a single task in its own thread.
 
+    Each thread creates its own `CodeExecMcpAgent` + `McpClientWrapper`
+    (pattern lifted from `adaptive_evolve_baseline.py:286`). The MCP-Atlas
+    docker container is the only shared resource, accessed via `shared_base_url`.
+    Crucially, NO global ``sys.stdout`` redirect — that pattern is unsafe
+    under threading because ``sys.stdout`` is process-global.
+    """
+    sid = task.id.replace("/", "_")
+    log.info("[%s %d/%d] Solving %s ...", phase, task_index, batch_len, task.id)
+    t0 = time.time()
+    client = McpClientWrapper(base_url=shared_base_url) if shared_base_url else McpClientWrapper()
+    try:
+        agent = CodeExecMcpAgent(
+            workspace_dir=work_dir,
+            model_id=solver_model,
+            region=region,
+            max_tokens=max_tokens,
+            docker_image=None,
+            key_registry=key_registry,
+        )
+        trajectory = agent.solve(task, shared_client=client)
+        elapsed = time.time() - t0
+
+        with _io_lock:
             (out_dir / f"output_{sid}.txt").write_text(trajectory.output)
             (out_dir / f"conversation_{sid}.json").write_text(
                 json.dumps(trajectory.steps, indent=2, ensure_ascii=False, default=str))
 
-            fb = bm.evaluate(task, trajectory)
-            log.info("[%s %d/%d] %s | score=%.2f | %.1fs",
-                     phase, i, len(batch_tasks),
-                     "PASS" if fb.success else "FAIL", fb.score, elapsed)
+        fb = bm.evaluate(task, trajectory)
+        log.info("[%s %d/%d] %s | score=%.2f | %.1fs",
+                 phase, task_index, batch_len,
+                 "PASS" if fb.success else "FAIL", fb.score, elapsed)
 
-            rows.append(_record(task.id, fb.success, fb.score, elapsed,
-                                len(trajectory.output), fb.detail, phase, evo_cycle))
-            batch_obs.append(Observation(task=task, trajectory=trajectory, feedback=fb))
-        except Exception as e:
-            elapsed = time.time() - t0
-            log.error("[%s %d/%d] ERROR on %s: %s", phase, i, len(batch_tasks), task.id, e)
-            log.error(traceback.format_exc())
-            rows.append(_record(task.id, False, 0.0, elapsed, 0, "", phase, evo_cycle, str(e)))
+        row = _record(task.id, fb.success, fb.score, elapsed,
+                      len(trajectory.output), fb.detail, phase, evo_cycle)
+        obs = Observation(task=task, trajectory=trajectory, feedback=fb)
+        return obs, row
+    except Exception as e:
+        elapsed = time.time() - t0
+        log.error("[%s %d/%d] ERROR on %s: %s", phase, task_index, batch_len, task.id, e)
+        log.error(traceback.format_exc())
+        row = _record(task.id, False, 0.0, elapsed, 0, "", phase, evo_cycle, str(e))
+        return None, row
+    finally:
+        try:
+            client.close()
+        except Exception:
+            pass
+
+
+def _solve_batch(
+    *,
+    batch_tasks,
+    bm,
+    out_dir: Path,
+    shared_base_url: str,
+    work_dir: Path,
+    solver_model: str,
+    region: str,
+    max_tokens: int,
+    key_registry,
+    phase: str,
+    evo_cycle: int,
+    parallel: int,
+    log,
+) -> tuple[list, list]:
+    """Solve a batch with `parallel` threads. Per-thread agent + client."""
+    workers = max(1, min(parallel, len(batch_tasks))) if batch_tasks else 1
+    batch_obs: list[Observation] = []
+    rows: list[dict] = []
+
+    def _runner(task_index_task):
+        i, task = task_index_task
+        return _solve_one_task(
+            task=task, bm=bm, out_dir=out_dir,
+            shared_base_url=shared_base_url, work_dir=work_dir,
+            solver_model=solver_model, region=region, max_tokens=max_tokens,
+            key_registry=key_registry, phase=phase, evo_cycle=evo_cycle,
+            task_index=i, batch_len=len(batch_tasks), log=log,
+        )
+
+    indexed = list(enumerate(batch_tasks, 1))
+    if workers == 1:
+        for it in indexed:
+            obs, row = _runner(it)
+            if obs is not None:
+                batch_obs.append(obs)
+            rows.append(row)
+    else:
+        log.info("[%s] solving %d tasks with %d threads", phase, len(batch_tasks), workers)
+        with ThreadPoolExecutor(max_workers=workers) as pool:
+            futures = [pool.submit(_runner, it) for it in indexed]
+            for fut in as_completed(futures):
+                obs, row = fut.result()
+                if obs is not None:
+                    batch_obs.append(obs)
+                rows.append(row)
     return batch_obs, rows
 
 
@@ -174,6 +249,11 @@ def main() -> int:
                    help="Tasks for Phase 2 (test). Default: all remaining up to --limit.")
     p.add_argument("--batch-size", type=int, default=5,
                    help="Train batch size (Phase 1). Default 5.")
+    p.add_argument("--train-parallel", type=int, default=1,
+                   help="Phase 1 parallel solve threads (effective = min(this, batch-size)). "
+                        "Default 1 (legacy parity); shared MCP-Atlas container still rate-limits.")
+    p.add_argument("--test-parallel", type=int, default=5,
+                   help="Phase 2 parallel solve threads (no batch boundary). Default 5.")
     p.add_argument("--seed-workspace", default="seed_workspaces/mcp")
     p.add_argument("--work-dir", default="./evolution_workdir/mcp_split")
     p.add_argument("--output-dir", required=True)
@@ -214,15 +294,18 @@ def main() -> int:
     log.info("Loaded %d total tasks; train=%d, test=%d",
              len(all_tasks), len(train_tasks), len(test_tasks))
 
-    # Container + shared MCP client (mirrors adaptive_evolve_all).
+    # Container + shared MCP-Atlas base URL.
     # external_container_url takes priority over docker_image so a caller can
-    # reuse an already-warm container across runs (the cold-start of the
-    # MCP-Atlas image takes 10-15+ min).
+    # reuse an already-warm container across runs (cold-start ~10-15+ min).
+    # NOTE: in the parallel-solve world we no longer keep a process-wide
+    # `shared_client`; each thread builds its own `McpClientWrapper(base_url)`
+    # (matches adaptive_evolve_baseline.py:288-292). We just need the base URL
+    # to hand to threads.
     container = None
-    shared_client = None
+    shared_base_url: str = ""
     if args.external_container_url:
         log.info("Using external MCP-Atlas container at %s", args.external_container_url)
-        shared_client = McpClientWrapper(base_url=args.external_container_url)
+        shared_base_url = args.external_container_url
     elif args.docker_image:
         all_env_vars = {}
         if key_registry:
@@ -237,8 +320,8 @@ def main() -> int:
         )
         log.info("Starting shared MCP-Atlas container ...")
         container.start()
-        shared_client = McpClientWrapper(base_url=container.base_url)
-        log.info("Shared container ready.")
+        shared_base_url = container.base_url
+        log.info("Shared container ready at %s", shared_base_url)
 
     # Engine setup (mirrors adaptive_evolve_all)
     evolution_dir = work_dir / "evolution"
@@ -265,10 +348,22 @@ def main() -> int:
     evo_cycle = 0
     agent = None
 
+    train_parallel = max(1, args.train_parallel)
+    test_parallel = max(1, args.test_parallel)
+    # `state_agent` exists only to call evolver.evolve / export_to_fs / reload_from_fs
+    # between batches. The actual per-task solving spawns its own thread-local
+    # CodeExecMcpAgent inside _solve_batch (see _solve_one_task).
+    state_agent = CodeExecMcpAgent(
+        workspace_dir=work_dir, model_id=args.solver_model,
+        region=args.region, max_tokens=args.max_tokens,
+        docker_image=None, key_registry=key_registry,
+    )
+
     try:
         # ── Phase 1: TRAIN (batched evolve) ──────────────────────────
         n_train_batches = (len(train_tasks) + args.batch_size - 1) // args.batch_size
-        log.info("\n>>> Phase 1: TRAIN  (n=%d, batch=%d)", len(train_tasks), args.batch_size)
+        log.info("\n>>> Phase 1: TRAIN  (n=%d, batch=%d, train_parallel=%d)",
+                 len(train_tasks), args.batch_size, train_parallel)
         for batch_idx in range(0, len(train_tasks), args.batch_size):
             batch = train_tasks[batch_idx: batch_idx + args.batch_size]
             batch_num = batch_idx // args.batch_size + 1
@@ -276,17 +371,17 @@ def main() -> int:
             log.info("Train batch %d/%d (tasks %d-%d) | evo_cycle=%d",
                      batch_num, n_train_batches,
                      batch_idx + 1, batch_idx + len(batch), evo_cycle)
-            agent = CodeExecMcpAgent(
-                workspace_dir=work_dir, model_id=args.solver_model,
-                region=args.region, max_tokens=args.max_tokens,
-                docker_image=None, key_registry=key_registry,
-            )
             batch_obs, rows = _solve_batch(
-                batch_tasks=batch, agent=agent, bm=bm, out_dir=out_dir,
-                shared_client=shared_client, phase="train", evo_cycle=evo_cycle, log=log,
+                batch_tasks=batch, bm=bm, out_dir=out_dir,
+                shared_base_url=shared_base_url, work_dir=work_dir,
+                solver_model=args.solver_model, region=args.region,
+                max_tokens=args.max_tokens, key_registry=key_registry,
+                phase="train", evo_cycle=evo_cycle,
+                parallel=train_parallel, log=log,
             )
             train_records.extend(rows)
-            _evolve_after_batch(evolver=evolver, agent=agent, observer=observer,
+            # Evolve is SERIAL — one call per batch, regardless of parallelism.
+            _evolve_after_batch(evolver=evolver, agent=state_agent, observer=observer,
                                 batch_obs=batch_obs, evo_cycle=evo_cycle, log=log)
             evo_cycle += 1
         train_pass = sum(1 for r in train_records if r["success"])
@@ -296,15 +391,15 @@ def main() -> int:
 
         # ── Phase 2: TEST (no-evolve) ────────────────────────────────
         if test_tasks:
-            log.info("\n>>> Phase 2: TEST  (n=%d, no-evolve)", len(test_tasks))
-            agent = CodeExecMcpAgent(
-                workspace_dir=work_dir, model_id=args.solver_model,
-                region=args.region, max_tokens=args.max_tokens,
-                docker_image=None, key_registry=key_registry,
-            )
+            log.info("\n>>> Phase 2: TEST  (n=%d, no-evolve, test_parallel=%d)",
+                     len(test_tasks), test_parallel)
             _, rows = _solve_batch(
-                batch_tasks=test_tasks, agent=agent, bm=bm, out_dir=out_dir,
-                shared_client=shared_client, phase="test", evo_cycle=evo_cycle, log=log,
+                batch_tasks=test_tasks, bm=bm, out_dir=out_dir,
+                shared_base_url=shared_base_url, work_dir=work_dir,
+                solver_model=args.solver_model, region=args.region,
+                max_tokens=args.max_tokens, key_registry=key_registry,
+                phase="test", evo_cycle=evo_cycle,
+                parallel=test_parallel, log=log,
             )
             test_records.extend(rows)
             test_pass = sum(1 for r in test_records if r["success"])
@@ -315,8 +410,6 @@ def main() -> int:
             log.info("\n>>> Phase 2: SKIPPED (no test tasks)")
 
     finally:
-        if shared_client:
-            shared_client.close()
         if container:
             container.stop()
 
@@ -362,6 +455,8 @@ def main() -> int:
             "judge_model": args.judge_model,
             "max_tokens": args.max_tokens,
             "batch_size": args.batch_size,
+            "train_parallel": train_parallel,
+            "test_parallel": test_parallel,
             "docker_image": args.docker_image,
         },
         "workspace": str(work_dir.resolve()),

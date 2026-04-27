@@ -26,6 +26,12 @@ LIMIT="${LIMIT:-500}"                    # Total tasks (train + test cap; 500 = 
 EVOLVE_LIMIT="${EVOLVE_LIMIT:-100}"      # Phase 1 train tasks
 EVAL_LIMIT="${EVAL_LIMIT:-}"             # Phase 2 test tasks ('' = all remaining)
 BATCH_SIZE="${BATCH_SIZE:-25}"
+# Phase 1 parallel solve threads (effective = min(TRAIN_PARALLEL, BATCH_SIZE)).
+# Default 1 for legacy parity; shared MCP-Atlas container + servers may have
+# rate limits / state interference, so train phase stays conservative.
+TRAIN_PARALLEL="${TRAIN_PARALLEL:-1}"
+# Phase 2 parallel solve threads (no batch boundary, no workspace mutation).
+TEST_PARALLEL="${TEST_PARALLEL:-5}"
 
 # ---------------------------------------------------------------------------
 # Model / region
@@ -62,8 +68,8 @@ echo "  MCP-Atlas Train/Test Split (legacy AdaptiveEvolveEngine)"
 echo "  Run ID:        ${RUN_ID}"
 echo "  Output dir:    ${OUTPUT_DIR}"
 echo "  Workspace:     ${WORK_DIR}"
-echo "  Phase 1 (train): ${EVOLVE_LIMIT} tasks, batch ${BATCH_SIZE}"
-echo "  Phase 2 (test):  ${EVAL_LIMIT:-all remaining} tasks"
+echo "  Phase 1 (train): ${EVOLVE_LIMIT} tasks, batch ${BATCH_SIZE}, train_parallel ${TRAIN_PARALLEL}"
+echo "  Phase 2 (test):  ${EVAL_LIMIT:-all remaining} tasks, test_parallel ${TEST_PARALLEL}"
 echo "  Total cap:     ${LIMIT} tasks"
 echo "  Solver model:  ${SOLVER_MODEL}"
 echo "  Evolver model: ${EVOLVER_MODEL}"
@@ -95,6 +101,8 @@ cmd=(
   --limit         "${LIMIT}"
   --evolve-limit  "${EVOLVE_LIMIT}"
   --batch-size    "${BATCH_SIZE}"
+  --train-parallel "${TRAIN_PARALLEL}"
+  --test-parallel  "${TEST_PARALLEL}"
   --seed-workspace "${SEED_WORKSPACE}"
   --work-dir      "${WORK_DIR}"
   --output-dir    "${OUTPUT_DIR}"
