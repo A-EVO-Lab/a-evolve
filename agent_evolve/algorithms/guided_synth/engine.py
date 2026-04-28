@@ -111,7 +111,7 @@ SKIP: <name>
     @property
     def llm(self) -> LLMProvider:
         if self._llm is None:
-            from ..aevolve.tools import create_default_llm
+            from ..adaptive_skill.tools import create_default_llm
             self._llm = create_default_llm(self.config)
         return self._llm
 

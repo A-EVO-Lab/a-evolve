@@ -1434,6 +1434,12 @@ class NativeSkillBenchBackend:
         if self.base_system_prompt.strip():
             messages.append(LLMMessage(role="system", content=self.base_system_prompt.strip()))
         messages.append(LLMMessage(role="user", content=initial_prompt))
+        logger.info(
+            "TERMINUS2_OFFICIAL: initial messages: roles=%s, system_chars=%d, user_chars=%d",
+            [m.role for m in messages],
+            sum(len(m.content) for m in messages if m.role == "system"),
+            sum(len(m.content) for m in messages if m.role == "user"),
+        )
         prompt = initial_prompt
         episode = 0
 

@@ -247,10 +247,10 @@ def main():
         sys.exit(1)
 
     prompt_path = workspace_dir / "prompts" / "system.md"
-    if not prompt_path.exists() or not prompt_path.read_text().strip():
+    if not prompt_path.exists():
         print(
-            f"Invalid workspace prompt: {prompt_path}\n"
-            "prompts/system.md must exist and be non-empty."
+            f"Workspace prompt missing: {prompt_path}\n"
+            "prompts/system.md must exist (it may be empty for upstream-parity baselines)."
         )
         sys.exit(1)
 
