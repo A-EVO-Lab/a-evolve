@@ -44,13 +44,12 @@ from agent_evolve.benchmarks.cl_bench import (
 )
 from agent_evolve.config import EvolveConfig
 from agent_evolve.contract.workspace import AgentWorkspace
-from agent_evolve.engine.observer import Observer
 from agent_evolve.types import Feedback, Observation, Task, Trajectory
 
 logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
-# Prompts
+# Skill proposal prompt (IDENTICAL to original evolve_cl_bench.py)
 # ---------------------------------------------------------------------------
 
 PROPOSE_SKILL_PROMPT = """\
@@ -74,20 +73,137 @@ CONTENT:
 
 Rules:
 - Bullet points, not paragraphs. CONTENT must be under 200 words.
-- Reference exact terms, numbers, sections from the document
-- Focus ONLY on what the feedback flagged
+- Reference exact terms, numbers, sections from the document — you just read it
+- Focus ONLY on what the feedback flagged — don't write general advice
 - Prefer ENHANCE over NEW if an existing skill is related
 - If nothing useful, output ACTION: NONE"""
+
+# ---------------------------------------------------------------------------
+# Rephrase feedback prompt (IDENTICAL to original evolve_cl_bench.py)
+# ---------------------------------------------------------------------------
 
 REPHRASE_FEEDBACK_PROMPT = """\
 You are simulating a real user giving feedback on an AI assistant's response. \
 The user asked a question and the AI's answer had some problems.
 
 Given the list of issues below, write a natural user feedback message as if you \
-are the user who is unsatisfied. Address EVERY issue listed. Be specific about \
-what was wrong. Sound like a real person, not a rubric checklist.
+are the user who is unsatisfied. You MUST address EVERY issue listed — do not \
+skip or merge any. Be specific about what was wrong for each point.
+
+Sound like a real person, not a rubric checklist. Do NOT mention "rubrics", \
+"criteria", or "requirements". Use phrases like "you didn't mention...", \
+"you got X wrong...", "I also needed...".
 
 Output ONLY the feedback text, nothing else."""
+
+# ---------------------------------------------------------------------------
+# Curator prompts (IDENTICAL to original evolve_cl_bench.py)
+# ---------------------------------------------------------------------------
+
+CURATOR_PROMPT = """\
+You are a skill curator for a Q&A agent. You review skill proposals and decide \
+which to keep in the skill library for a specific context document.
+
+## Current Skill Library for this context ({n_skills}/{max_skills} slots used):
+{existing_skills_list}
+
+## Proposals from this batch:
+{proposals_list}
+
+For each proposal, output ONE of:
+
+ACCEPT: <proposal_name>
+(skill is added as-is)
+
+MERGE: <proposal_name> INTO <existing_skill_name>
+NEW_CONTENT:
+(merged content combining both, under 500 words)
+
+SKIP: <proposal_name>
+REASON: <brief reason>
+
+Decision criteria:
+- HIGH confidence → lean ACCEPT
+- LOW confidence → lean SKIP
+- Overlaps existing → MERGE (preferred over ACCEPT)
+- Budget full ({n_skills}/{max_skills}) → can only ENHANCE/MERGE existing, or SKIP
+- Keep skills focused: one skill = one specific pattern/rule set
+- Few broad skills better than many narrow ones
+
+If no proposals, output: NO_PROPOSALS"""
+
+GENERAL_CURATOR_PROMPT = """\
+You are a meta-learning curator. You analyze failure patterns ACROSS contexts \
+to distill general skills that help the agent on ANY task.
+
+## Failed Task Analysis ({n_failed} failed tasks this batch):
+{failed_summaries}
+
+## Current General Skill Library ({n_general}/{max_general} slots used):
+{general_skills_list}
+
+## Your Job:
+1. **Analyze failure patterns**: Look for REPEATED failure types across different contexts.
+   - What types of issues appear across 3+ different contexts?
+   - Are there systematic mistakes? (e.g., always missing multi-part questions, wrong tone, etc.)
+   - Focus on the feedback analysis and solver proposals — they show what went wrong.
+
+2. **Propose or update general skills**: Only for patterns that are NOT context-specific.
+   - A general skill should help on tasks the agent hasn't seen before.
+   - Do NOT create skills for context-specific knowledge (that's what context skills are for).
+   - MERGE into existing general skills when the pattern overlaps.
+
+Output your decisions:
+
+For new skills:
+NEW_GENERAL: <kebab-name>
+DESCRIPTION: <one line, under 100 chars>
+CONTENT:
+## Pattern
+- (what failure pattern this addresses, one line)
+## Strategy
+- (specific actionable bullet points, 3-5 max)
+(Keep CONTENT under 200 words — bullet points only, no paragraphs)
+
+For updating existing skills:
+UPDATE_GENERAL: <existing-skill-name>
+NEW_CONTENT:
+(updated content, under 200 words, bullet points only)
+
+For removing stale skills:
+DELETE_GENERAL: <existing-skill-name>
+REASON: <why>
+
+If no general patterns found:
+NO_PATTERNS
+
+Rules:
+- Maximum {max_general} general skills total. Quality over quantity.
+- Each skill must address a pattern seen in 3+ different contexts.
+- Be SPECIFIC and ACTIONABLE — not generic advice like "read carefully".
+- Keep each skill SHORT: description < 100 chars, content < 200 words, bullet points only.
+- Reference the actual failure patterns you observed.
+- Prefer UPDATE over NEW if an existing skill is related."""
+
+
+# ---------------------------------------------------------------------------
+# Format failed summary for general curator (matches original logic)
+# ---------------------------------------------------------------------------
+
+
+def _format_failed_summary_cl_bench(s: dict) -> str:
+    """Format failed task summary for the general curator — matches original."""
+    parts = [
+        f"### Task {s.get('task_id', s.get('task_name', '?'))[:8]} [{s.get('category', '')}]",
+        f"Context: {s.get('context_id', '')[:8]}",
+    ]
+    if s.get("feedback_detail") or s.get("feedback_analysis"):
+        text = s.get("feedback_detail") or s.get("feedback_analysis", "")
+        parts.append(f"Feedback: {_truncate(text, 300)}")
+    if s.get("proposal_summary"):
+        parts.append(f"Solver proposal: {_truncate(s['proposal_summary'], 200)}")
+    return "\n".join(parts)
+
 
 # ---------------------------------------------------------------------------
 # Agent (simplified from original CLBenchAgent)
@@ -189,6 +305,7 @@ class CLBenchSolver:
 # Per-task pipeline
 # ---------------------------------------------------------------------------
 
+
 def _process_one_task(
     solver: CLBenchSolver,
     bench: CLBenchBenchmark,
@@ -199,13 +316,13 @@ def _process_one_task(
     _init_worker(region)
 
     # 1. Solve
+    conv_state = {}
     try:
         solver.system_prompt = solver.build_system_prompt(task)
         traj, conv_state = solver.solve_raw(task)
     except Exception as e:
         logger.error("Solve failed for %s: %s", task.id, e)
         traj = Trajectory(task_id=task.id, output=f"[ERROR] {e}")
-        conv_state = {}
 
     # 2. Judge
     try:
@@ -214,8 +331,11 @@ def _process_one_task(
         logger.error("Judge failed for %s: %s", task.id, e)
         fb = Feedback(success=False, score=0.0, detail=str(e), raw={})
 
-    # 3. Rephrase feedback
-    detail = "Result: PASS" if fb.success else _rephrase_feedback(task, fb, region)
+    # 3. Rephrase feedback (for failures)
+    if fb.success:
+        detail = "Result: PASS"
+    else:
+        detail = _rephrase_feedback(task, fb, region)
 
     # 4. Propose (in-context, failures only)
     proposal = None
@@ -232,7 +352,7 @@ def _process_one_task(
 
 
 def _rephrase_feedback(task: Task, fb: Feedback, region: str) -> str:
-    """Convert rubric failures into natural user feedback."""
+    """Convert rubric failures into natural user feedback (matches original)."""
     rubrics = task.metadata.get("rubrics", [])
     req_status = fb.raw.get("requirement_status", [])
 
@@ -248,7 +368,10 @@ def _rephrase_feedback(task: Task, fb: Feedback, region: str) -> str:
 
     issues_text = "\n".join(f"- {r}" for r in failed_rubrics)
     task_question = task.metadata.get("task_text", "")[:300]
-    user_msg = f"Task:\n{task_question}\n\nIssues:\n{issues_text}"
+    user_msg = (
+        f"Task the user asked:\n{task_question}\n\n"
+        f"Issues with the AI's response:\n{issues_text}"
+    )
 
     try:
         client = _get_client(region)
@@ -257,17 +380,18 @@ def _rephrase_feedback(task: Task, fb: Feedback, region: str) -> str:
             REPHRASE_FEEDBACK_PROMPT, user_msg,
             max_tokens=1024, temperature=0.3,
         )
-        if not err and rephrased:
+        if not err and rephrased and rephrased.strip():
             return f"Result: FAIL\nUser feedback: {rephrased.strip()}"
-    except Exception:
-        pass
-    return "Result: FAIL"
+    except Exception as e:
+        logger.debug("Feedback rephrase failed: %s", e)
+
+    return f"Result: FAIL\nUser feedback: The response had issues — it didn't fully address what I asked."
 
 
 def _propose_in_context(
     task: Task, conv_state: dict, feedback_detail: str, workspace_dir: Path, region: str,
 ) -> dict | None:
-    """Propose a skill continuing the solver conversation."""
+    """Propose a skill continuing the solver conversation (matches original)."""
     feedback_text = feedback_detail
     if "User feedback:" in feedback_detail:
         feedback_text = feedback_detail.split("User feedback:", 1)[1].strip()
@@ -289,10 +413,12 @@ def _propose_in_context(
                     break
             existing.append((name, desc))
 
-    existing_section = (
-        "Current skills for this context:\n" + "\n".join(f"- **{n}**: {d}" for n, d in existing)
-        if existing else "No existing skills for this context yet."
-    )
+    if existing:
+        existing_section = "Current skills for this context:\n" + "\n".join(
+            f"- **{n}**: {d}" for n, d in existing
+        )
+    else:
+        existing_section = "No existing skills for this context yet."
 
     prompt = PROPOSE_SKILL_PROMPT.format(
         feedback=feedback_text,
@@ -312,16 +438,22 @@ def _propose_in_context(
     if err or not resp:
         return None
 
-    return _parse_proposal(resp, task.id, context_id)
+    return _parse_proposal(resp, task)
 
 
-def _parse_proposal(resp: str, task_id: str, context_id: str) -> dict | None:
+def _parse_proposal(resp: str, task: Task) -> dict | None:
+    """Parse a skill proposal response into a structured dict (matches original)."""
     if "ACTION: NONE" in resp.upper():
         return None
 
+    meta = task.metadata
+    context_id = meta.get("context_id", "")
     proposal = {
-        "source_task": task_id,
+        "source_task": task.id,
         "topic": context_id,
+        "context_id": context_id,
+        "raw": resp,
+        "confidence": "MEDIUM",
         "action": "NEW",
         "target": "",
         "name": "",
@@ -330,17 +462,19 @@ def _parse_proposal(resp: str, task_id: str, context_id: str) -> dict | None:
     }
 
     for line in resp.split("\n"):
-        s = line.strip()
-        u = s.upper()
-        if u.startswith("ACTION:"):
-            proposal["action"] = s.split(":", 1)[1].strip().upper()
-        elif u.startswith("TARGET:"):
-            proposal["target"] = s.split(":", 1)[1].strip()
-        elif u.startswith("NAME:"):
-            raw = s.split(":", 1)[1].strip()
-            proposal["name"] = re.sub(r"[^a-z0-9-]", "-", raw.lower()).strip("-")
-        elif u.startswith("DESCRIPTION:"):
-            proposal["description"] = s.split(":", 1)[1].strip()[:150]
+        stripped = line.strip()
+        upper = stripped.upper()
+        if upper.startswith("CONFIDENCE:"):
+            proposal["confidence"] = stripped.split(":", 1)[1].strip().upper()
+        elif upper.startswith("ACTION:"):
+            proposal["action"] = stripped.split(":", 1)[1].strip().upper()
+        elif upper.startswith("TARGET:"):
+            proposal["target"] = stripped.split(":", 1)[1].strip()
+        elif upper.startswith("NAME:"):
+            raw_name = stripped.split(":", 1)[1].strip()
+            proposal["name"] = re.sub(r"[^a-z0-9-]", "-", raw_name.lower()).strip("-")
+        elif upper.startswith("DESCRIPTION:"):
+            proposal["description"] = stripped.split(":", 1)[1].strip()[:150]
 
     idx = resp.upper().find("CONTENT:")
     if idx >= 0:
@@ -349,15 +483,17 @@ def _parse_proposal(resp: str, task_id: str, context_id: str) -> dict | None:
     if proposal["action"] == "ENHANCE" and proposal["target"] and not proposal["name"]:
         proposal["name"] = proposal["target"]
     if not proposal["name"] and proposal["action"] != "NONE":
-        proposal["name"] = f"skill-{task_id[:8]}"
+        proposal["name"] = f"skill-{task.id[:8]}"
     if not proposal["content"]:
         return None
+
     return proposal
 
 
 # ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
+
 
 def main():
     p = argparse.ArgumentParser(description="CL-bench + ProposeCurateEngine")
@@ -423,7 +559,7 @@ def main():
         random.shuffle(ctx_pools[cid])
     total_tasks = sum(len(v) for v in ctx_pools.values())
 
-    # Engine
+    # Engine with EXACT original prompts
     config = EvolveConfig(
         evolver_model=curator_model_id,
         extra={"region": args.region},
@@ -434,6 +570,9 @@ def main():
         max_general_skills=args.max_general_skills,
         skill_layout="context",
         curator_model=curator_model_id,
+        topic_curator_prompt=CURATOR_PROMPT,
+        general_curator_prompt=GENERAL_CURATOR_PROMPT,
+        format_failed_summary=_format_failed_summary_cl_bench,
     )
     workspace = AgentWorkspace(workspace_dir)
 
@@ -489,6 +628,16 @@ def main():
             if out["proposal"]:
                 raw["proposal"] = out["proposal"]
             raw["category"] = t.metadata.get("context_category", "")
+            raw["context_id"] = t.metadata.get("context_id", "")
+            raw["task_name"] = t.id
+            # For general curator: include feedback detail and proposal summary
+            raw["feedback_detail"] = out["detail"]
+            if out["proposal"]:
+                p = out["proposal"]
+                raw["proposal_summary"] = (
+                    f"[{p.get('action', 'NEW')}] {p.get('name', '')}: "
+                    f"{p.get('description', '')}"
+                )
 
             observations.append(Observation(
                 task=t,

@@ -1,15 +1,15 @@
 """ProposeCurateEngine -- unified evolution engine for propose+curate pipelines.
 
 Shared pipeline:
-  1. Extract proposals from observations (via metadata or trajectory attributes)
+  1. Extract proposals from observations (via feedback.raw["proposal"])
   2. Group proposals by topic/context
   3. Per-topic curation (LLM decides ACCEPT/MERGE/SKIP per group)
   4. General curation (cross-topic failure pattern analysis)
   5. Write skills to workspace
 
-This engine is benchmark-agnostic. The proposal extraction is done by the
-caller (solver) and attached to Observation metadata. The engine only handles
-curation and skill management.
+This engine is benchmark-agnostic. Prompts are passed in as parameters so
+callers can use their exact domain-specific prompts (OSWorld GUI prompts,
+CL-bench Q&A prompts, etc.) without modification.
 """
 
 from __future__ import annotations
@@ -19,12 +19,11 @@ import re
 import shutil
 from collections import defaultdict
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 from ...config import EvolveConfig
 from ...engine.base import EvolutionEngine
 from ...types import Observation, StepResult
-from .prompts import TOPIC_CURATOR_PROMPT, GENERAL_CURATOR_PROMPT
 
 logger = logging.getLogger(__name__)
 
@@ -32,7 +31,7 @@ logger = logging.getLogger(__name__)
 class ProposeCurateEngine(EvolutionEngine):
     """Propose+Curate evolution engine.
 
-    Observations must carry proposals in their metadata:
+    Observations must carry proposals in their feedback.raw:
         obs.feedback.raw["proposal"] = {
             "topic": str,         # grouping key (e.g. "libreoffice-calc", context_id)
             "action": "NEW" | "ENHANCE",
@@ -41,11 +40,10 @@ class ProposeCurateEngine(EvolutionEngine):
             "description": str,   # one-line description
             "content": str,       # skill body (markdown)
             "source_task": str,   # task ID that generated this
-            "confidence": str,    # HIGH/MEDIUM/LOW (optional)
         }
 
-    Observations that fail without a proposal still contribute to general
-    curation via their feedback detail.
+    Observations without proposals still contribute to general curation
+    via their feedback detail.
     """
 
     def __init__(
@@ -57,6 +55,9 @@ class ProposeCurateEngine(EvolutionEngine):
         curator_model: str | None = None,
         general_curator_model: str | None = None,
         evolve_passed: bool = False,
+        topic_curator_prompt: str | None = None,
+        general_curator_prompt: str | None = None,
+        format_failed_summary: Callable[[dict], str] | None = None,
     ):
         """
         Args:
@@ -66,9 +67,18 @@ class ProposeCurateEngine(EvolutionEngine):
             skill_layout: "topic" for skills/topic/<topic>/<name>/SKILL.md,
                           "context" for skills/context/<ctx>/<name>/SKILL.md,
                           "flat" for skills/evolved/<name>/SKILL.md.
-            curator_model: Model ID for per-topic curation (default: config.evolver_model).
-            general_curator_model: Model ID for general curation (default: curator_model).
+            curator_model: Model ID for per-topic curation.
+            general_curator_model: Model ID for general curation.
             evolve_passed: Whether to curate proposals from passed tasks too.
+            topic_curator_prompt: Prompt template for per-topic curation.
+                Must have placeholders: {topic}, {n_skills}, {max_skills},
+                {existing_skills_list}, {proposals_list}.
+            general_curator_prompt: Prompt template for general curation.
+                Must have placeholders: {n_failed}, {failed_summaries},
+                {n_general}, {max_general}, {general_skills_list}.
+            format_failed_summary: Optional function to format a failed summary
+                dict into a string for the general curator prompt. If None, uses
+                a default formatter.
         """
         self.config = config
         self.max_skills_per_topic = max_skills_per_topic
@@ -79,6 +89,12 @@ class ProposeCurateEngine(EvolutionEngine):
         self.evolve_passed = evolve_passed
         self._cycle_count = 0
         self._region = config.extra.get("region", "us-west-2")
+
+        # Use caller-provided prompts or fall back to minimal defaults
+        from .prompts import DEFAULT_TOPIC_CURATOR_PROMPT, DEFAULT_GENERAL_CURATOR_PROMPT
+        self._topic_curator_prompt = topic_curator_prompt or DEFAULT_TOPIC_CURATOR_PROMPT
+        self._general_curator_prompt = general_curator_prompt or DEFAULT_GENERAL_CURATOR_PROMPT
+        self._format_failed_summary = format_failed_summary or _default_format_failed_summary
 
     def step(
         self,
@@ -199,9 +215,11 @@ class ProposeCurateEngine(EvolutionEngine):
                     f"[{p.get('action', 'NEW')}] {p.get('name', '')}: "
                     f"{p.get('description', '')}"
                 )
+            # Pass through any extra keys the caller puts in raw
             for key in ("domain", "category", "topic", "trajectory_signals",
                         "compressed_trajectory", "eval_metric", "failure_reason",
-                        "bot_detection", "feedback_analysis"):
+                        "bot_detection", "feedback_analysis", "task_name",
+                        "context_id", "sub_category"):
                 if key in raw:
                     summary[key] = raw[key]
             summaries.append(summary)
@@ -254,7 +272,7 @@ class ProposeCurateEngine(EvolutionEngine):
                 f"  Content: {_truncate(p.get('content', ''), 300)}"
             )
 
-        prompt = TOPIC_CURATOR_PROMPT.format(
+        prompt = self._topic_curator_prompt.format(
             topic=topic,
             n_skills=len(existing),
             max_skills=self.max_skills_per_topic,
@@ -359,28 +377,17 @@ class ProposeCurateEngine(EvolutionEngine):
                         body = content[end + 3:].strip()
                 existing.append((sn, sd, body[:300]))
 
-        # Build summary text
+        # Build summary text using the caller-provided formatter
         summary_lines = []
         for s in failed_summaries[:30]:
-            parts = [f"### {s.get('task_id', '?')}"]
-            if s.get("domain") or s.get("category"):
-                parts.append(f"Domain: {s.get('domain', s.get('category', ''))}")
-            if s.get("feedback_detail"):
-                parts.append(f"Feedback: {_truncate(s['feedback_detail'], 400)}")
-            if s.get("trajectory_signals"):
-                sig = s["trajectory_signals"]
-                if isinstance(sig, dict):
-                    parts.append(f"Signals: actions={sig.get('n_actions', '?')}, errors={sig.get('n_errors', '?')}")
-            if s.get("proposal_summary"):
-                parts.append(f"Proposal: {_truncate(s['proposal_summary'], 200)}")
-            summary_lines.append("\n".join(parts))
+            summary_lines.append(self._format_failed_summary(s))
 
         gen_list = (
             "\n".join(f"- **{n}**: {d}" for n, d, _ in existing)
             if existing else "(empty)"
         )
 
-        prompt = GENERAL_CURATOR_PROMPT.format(
+        prompt = self._general_curator_prompt.format(
             n_failed=len(failed_summaries),
             failed_summaries="\n\n".join(summary_lines),
             n_general=len(existing),
@@ -551,6 +558,34 @@ class ProposeCurateEngine(EvolutionEngine):
                     logger.error("LLM call exhausted retries: %s", err[:200])
                     return None
         return None
+
+
+def _default_format_failed_summary(s: dict) -> str:
+    """Default formatter for failed task summaries in the general curator prompt."""
+    parts = [f"### {s.get('task_name', s.get('task_id', '?'))}"]
+    if s.get("domain") or s.get("category"):
+        parts.append(f"Domain: {s.get('domain', s.get('category', ''))}")
+    if s.get("eval_metric"):
+        parts.append(f"Eval metric: {s['eval_metric']}")
+    if s.get("failure_reason"):
+        parts.append(f"Failure reason: {s['failure_reason']}")
+    if s.get("bot_detection"):
+        parts.append(f"Bot detection: {s['bot_detection']}")
+    if s.get("trajectory_signals"):
+        sig = s["trajectory_signals"]
+        if isinstance(sig, dict):
+            parts.append(
+                f"Signals: turns={sig.get('n_turns', '?')}, "
+                f"actions={sig.get('n_actions', '?')}, "
+                f"errors={sig.get('n_errors', '?')}"
+            )
+    if s.get("compressed_trajectory"):
+        parts.append(f"Trajectory:\n{_truncate(s['compressed_trajectory'], 400)}")
+    if s.get("feedback_analysis"):
+        parts.append(f"Analysis:\n{_truncate(s['feedback_analysis'], 400)}")
+    if s.get("proposal_summary"):
+        parts.append(f"Proposal: {_truncate(s['proposal_summary'], 200)}")
+    return "\n".join(parts)
 
 
 def _truncate(s: str, n: int = 300) -> str:

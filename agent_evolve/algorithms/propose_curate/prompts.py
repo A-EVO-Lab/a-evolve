@@ -5,7 +5,7 @@ Q&A agents (CL-bench), code agents, etc. Benchmark-specific prompts (propose
 templates, system prompts) remain in the example scripts.
 """
 
-TOPIC_CURATOR_PROMPT = """\
+DEFAULT_TOPIC_CURATOR_PROMPT = """\
 You are a skill curator. You review skill proposals and decide which to keep \
 in the skill library for topic: {topic}.
 
@@ -38,7 +38,7 @@ Rules:
 If no proposals: NO_PROPOSALS"""
 
 
-GENERAL_CURATOR_PROMPT = """\
+DEFAULT_GENERAL_CURATOR_PROMPT = """\
 You are a meta-learning curator. You analyze failure patterns ACROSS tasks \
 to distill general skills that help the agent on ANY task.
 
