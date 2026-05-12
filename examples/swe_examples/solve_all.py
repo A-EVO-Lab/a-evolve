@@ -10,6 +10,10 @@ import time
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from pathlib import Path
 
+# Strands SDK uses recursive event_loop dispatch + recursive JSON telemetry
+# serialization; Python's default limit (1000) is too shallow for long tool chains.
+sys.setrecursionlimit(10000)
+
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 # SYSTEM_PROMPT = """\

@@ -43,7 +43,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 os.environ["BYPASS_TOOL_CONSENT"] = "true"
-sys.setrecursionlimit(4000)
+sys.setrecursionlimit(10000)
 
 from agent_evolve.agents.terminal.agent import TerminalAgent, _extract_conversation
 from agent_evolve.agents.terminal.dataset import load_all_tasks, TB2Task

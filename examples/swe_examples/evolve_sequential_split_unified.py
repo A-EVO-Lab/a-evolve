@@ -31,6 +31,10 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
 from pathlib import Path
 
+# Strands SDK uses recursive event_loop dispatch + recursive JSON telemetry
+# serialization; Python's default limit (1000) is too shallow for long tool chains.
+sys.setrecursionlimit(10000)
+
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(REPO_ROOT))
 

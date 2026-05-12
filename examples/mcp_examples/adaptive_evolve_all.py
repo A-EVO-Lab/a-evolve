@@ -28,6 +28,12 @@ import time
 import traceback
 from pathlib import Path
 
+# Strands SDK uses recursive event_loop dispatch + recursive JSON telemetry
+# serialization; Python's default limit (1000) is too shallow for long tool
+# chains. Raise process-wide so agent.solve() is protected — the scoped block
+# further down only wraps post-solve trajectory serialization.
+sys.setrecursionlimit(10000)
+
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 
 from agent_evolve.benchmarks.mcp_atlas import McpAtlasBenchmark
@@ -128,7 +134,7 @@ class CodeExecMcpAgent(McpAgent):
 
             # Increase recursion limit temporarily to handle deep tool call chains
             old_recursion_limit = sys.getrecursionlimit()
-            sys.setrecursionlimit(5000)
+            sys.setrecursionlimit(max(old_recursion_limit, 10000))
 
             try:
                 for msg in agent.messages:

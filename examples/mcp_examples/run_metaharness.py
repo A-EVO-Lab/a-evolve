@@ -35,7 +35,7 @@ import shutil
 import sys
 import time
 
-sys.setrecursionlimit(4000)
+sys.setrecursionlimit(10000)
 from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime

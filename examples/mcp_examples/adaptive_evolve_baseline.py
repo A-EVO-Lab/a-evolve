@@ -19,6 +19,12 @@ import traceback
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
+# Strands SDK uses recursive event_loop dispatch + recursive JSON telemetry
+# serialization; Python's default limit (1000) is too shallow for long tool
+# chains. Raise process-wide so agent.solve() is protected — the scoped block
+# further down in this file does not cover agent.solve().
+sys.setrecursionlimit(10000)
+
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 
 from agent_evolve.benchmarks.mcp_atlas import McpAtlasBenchmark
@@ -102,7 +108,7 @@ class BaselineCodeExecAgent(McpAgent):
         try:
             from agent_evolve.agents.mcp.key_registry import redact_secrets
             old_limit = sys.getrecursionlimit()
-            sys.setrecursionlimit(5000)
+            sys.setrecursionlimit(max(old_limit, 10000))
 
             try:
                 for msg in agent.messages:

@@ -37,6 +37,10 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 from threading import Lock, get_ident as _thread_ident, local as _thread_local
 
+# Strands SDK uses recursive event_loop dispatch + recursive JSON telemetry
+# serialization; Python's default limit (1000) is too shallow for long tool chains.
+sys.setrecursionlimit(10000)
+
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 
 from agent_evolve.config import EvolveConfig

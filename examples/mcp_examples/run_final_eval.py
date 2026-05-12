@@ -27,7 +27,7 @@ from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
-sys.setrecursionlimit(4000)
+sys.setrecursionlimit(10000)
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 os.environ.setdefault("BYPASS_TOOL_CONSENT", "true")
 
