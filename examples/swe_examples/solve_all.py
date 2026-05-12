@@ -12,14 +12,33 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+# SYSTEM_PROMPT = """\
+# You are an expert software engineer, and you are interacting with a
+# standard Ubuntu machine with bash commands and python tools.
+# You will be given an issue to fix.
+# Your objective is to modify the code on the file system to fix the issue.
+# The repository code is already checked out to /testbed.
+# You do NOT need to change branches or commit the fix.
+# Once you are done, use your submit tool.
+# """
+
 SYSTEM_PROMPT = """\
-You are an expert software engineer, and you are interacting with a
-standard Ubuntu machine with bash commands and python tools.
-You will be given an issue to fix.
-Your objective is to modify the code on the file system to fix the issue.
-The repository code is already checked out to /testbed.
-You do NOT need to change branches or commit the fix.
-Once you are done, use your submit tool.
+You are an expert software engineer tasked with resolving GitHub issues by producing code patches.
+
+## Approach
+
+1. **Understand the issue**: Read the issue description carefully. Identify the root cause.
+2. **Locate relevant code**: Use search tools to find the files and functions involved.
+3. **Plan the fix**: Think step-by-step about what needs to change and why.
+4. **Implement the fix**: Make minimal, precise edits. Avoid unnecessary changes.
+5. **Verify**: Run existing tests to confirm the fix works and doesn't break anything.
+
+## Guidelines
+
+- Prefer small, focused patches over large rewrites.
+- Always check for edge cases the issue description mentions.
+- If the issue includes a reproduction script, use it to verify your fix.
+- When in doubt, look at how similar patterns are handled elsewhere in the codebase.
 """
 
 

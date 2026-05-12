@@ -47,6 +47,8 @@ def solve_one_task(
     window_size: int = 40,
     verification_focus: bool = False,
     efficiency_prompt: bool = False,
+    verify_fix_prompt: bool = True,
+    solver_proposes: bool = True,
 ) -> dict:
     """Solve a single task in its own process. Workspace is read-only during batch."""
     import logging
@@ -80,6 +82,8 @@ def solve_one_task(
         window_size=window_size,
         verification_focus=verification_focus,
         efficiency_prompt=efficiency_prompt,
+        verify_fix_prompt=verify_fix_prompt,
+        solver_proposes=solver_proposes,
     )
 
     bm = SweVerifiedMiniBenchmark(shuffle=False)
@@ -189,7 +193,14 @@ def main():
                    help="V21: solver only proposes verification skills, evolver only curates verification")
     p.add_argument("--efficiency-prompt", action="store_true",
                    help="V22: add hypothesis-first efficiency constraints to system prompt")
+    p.add_argument("--verify-fix-prompt", default=True,
+                   action=argparse.BooleanOptionalAction,
+                   help="Append the '## Verify Your Fix' section to the system prompt. "
+                        "Default: on (preserves prior unconditional behaviour). "
+                        "Use --no-verify-fix-prompt to drop it for a tighter baseline.")
     p.add_argument("--model-id", type=str, default="us.anthropic.claude-opus-4-6-v1")
+    p.add_argument("--evolver-model-id", type=str, default=None,
+                   help="Evolver model id; defaults to --model-id when omitted.")
     p.add_argument("--region", type=str, default="us-west-2")
     p.add_argument("--max-tokens", type=int, default=16384)
     p.add_argument("--max-steps", type=int, default=0,
@@ -234,7 +245,8 @@ def main():
     evolution_dir.mkdir(parents=True, exist_ok=True)
     observer = Observer(evolution_dir)
 
-    config = EvolveConfig(evolver_model=args.model_id, extra={"region": args.region})
+    evolver_model_id = args.evolver_model_id or args.model_id
+    config = EvolveConfig(evolver_model=evolver_model_id, extra={"region": args.region})
     evolver = GuidedSynthesisEngine(config, write_memory=False,
                                      verification_focus=getattr(args, 'verification_focus', False))
     n_batches = (len(tasks) + args.batch_size - 1) // args.batch_size
@@ -274,6 +286,8 @@ def main():
                     args.max_steps, args.window_size,
                     args.verification_focus,
                     getattr(args, 'efficiency_prompt', False),
+                    getattr(args, 'verify_fix_prompt', True),
+                    getattr(args, 'solver_proposes', True),
                 ): td["id"]
                 for td in task_dicts
             }
@@ -372,7 +386,7 @@ def main():
             print(f"  [evolved gen{evolve_count}] prompt={prompt_len} chars, skills={n_skills}")
 
         # V11: Solver proposes skills → evolver curates (accept/reject/merge)
-        if args.solver_proposes:
+        if args.solver_proposes and not args.no_evolve:
             # Attach proposals to trajectory objects for evolver
             for r in batch_results:
                 proposal = r.get("skill_proposal", "")

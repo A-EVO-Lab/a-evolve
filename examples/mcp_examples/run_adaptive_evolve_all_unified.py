@@ -29,6 +29,7 @@ import argparse
 import json
 import logging
 import math
+import os
 import shutil
 import sys
 from datetime import datetime
@@ -165,6 +166,18 @@ def main() -> int:
     evolver_model = args.evolver_model or args.solver_model
     llm = BedrockProvider(model_id=evolver_model, region=args.region)
 
+    # Single env-var ablation switch. When MCP_BLANK_SKILL_ONLY_EVOLVE=1:
+    #   - Only skills evolve (evolve_prompts=False, evolve_memory=False)
+    #   - AutoSeedSkills is dropped from per_claim recipe (in controller.py)
+    #   - improvement_threshold / stagnation_window are irrelevant under
+    #     NoVerify but left in extra for legacy parity.
+    blank_skill_only = os.environ.get("MCP_BLANK_SKILL_ONLY_EVOLVE") == "1"
+    if blank_skill_only:
+        logger.info(
+            "MCP_BLANK_SKILL_ONLY_EVOLVE=1 — evolve_prompts=False, "
+            "evolve_memory=False, AutoSeedSkills dropped in controller."
+        )
+
     # Resolve effective max_cycles. If --passes or --cycle-per-batch is
     # set explicitly, the unified formula wins; otherwise honour --cycles.
     if args.passes is not None or args.cycle_per_batch is not None:
@@ -193,9 +206,9 @@ def main() -> int:
         parallel_backend=args.parallel_backend,
         evolver_model=evolver_model,
         evolver_max_tokens=8000,
-        evolve_prompts=True,
+        evolve_prompts=not blank_skill_only,
         evolve_skills=True,
-        evolve_memory=True,
+        evolve_memory=not blank_skill_only,
         evolve_tools=False,
         extra={
             "region": args.region,
@@ -229,7 +242,7 @@ def main() -> int:
                 raise SystemExit(f"Failed to pull image {args.docker_image}")
             container = McpAtlasContainer(
                 args.docker_image,
-                container_name="mcp-atlas-unified-evolve",
+                container_name=os.environ.get("MCP_CONTAINER_NAME") or "mcp-atlas-unified-evolve",
                 env_vars=all_env_vars,
             )
             container.start()

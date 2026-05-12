@@ -342,23 +342,19 @@ class AEvolveEngine(EvolutionEngine):
         """Run the evolver LLM with bash access to the workspace."""
         bash_fn = make_workspace_bash(workspace_root)
 
-        try:
-            from ...llm.bedrock import BedrockProvider
-
-            if isinstance(self.llm, BedrockProvider):
-                response = self.llm.converse_loop(
-                    system_prompt=DEFAULT_EVOLVER_SYSTEM_PROMPT,
-                    user_message=prompt,
-                    tools=[BASH_TOOL_SPEC],
-                    tool_executor={"workspace_bash": lambda command: bash_fn(command)},
-                    max_tokens=self.config.evolver_max_tokens,
-                )
-                return {
-                    "content": response.content,
-                    "usage": response.usage,
-                }
-        except ImportError:
-            pass
+        converse_loop = getattr(self.llm, "converse_loop", None)
+        if callable(converse_loop):
+            response = converse_loop(
+                system_prompt=DEFAULT_EVOLVER_SYSTEM_PROMPT,
+                user_message=prompt,
+                tools=[BASH_TOOL_SPEC],
+                tool_executor={"workspace_bash": lambda command: bash_fn(command)},
+                max_tokens=self.config.evolver_max_tokens,
+            )
+            return {
+                "content": response.content,
+                "usage": response.usage,
+            }
 
         messages = [
             LLMMessage(role="system", content=DEFAULT_EVOLVER_SYSTEM_PROMPT),

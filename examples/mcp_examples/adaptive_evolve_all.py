@@ -91,13 +91,16 @@ class CodeExecMcpAgent(McpAgent):
         logger.info("Solving %s with %d tools", task.id, len(tools))
 
         # Build agent
+        # NOTE: stop_sequences=[] breaks models that don't support the
+        # stopSequences field on Converse (gpt-oss-120b, qwen3-235b/32b,
+        # minimax, kimi) — they return ValidationException. Omitting the
+        # kwarg lets Bedrock use the default (no stop sequences) which
+        # all models accept.
         model = BedrockModel(
             model_id=self.model_id,
             region_name=self.region,
             max_tokens=self.max_tokens,
-            # Ensure model doesn't stop prematurely (reduces empty_output failures)
             temperature=1.0,  # Default reasoning temperature
-            stop_sequences=[],  # Don't allow early stopping
         )
         # Pass task.input for skill selection (filters skills by relevance)
         system_prompt = self._build_system_prompt(task_prompt=task.input)
@@ -225,8 +228,18 @@ def main():
         shutil.copytree(seed_dir, work_dir)
         log.info("Copied seed workspace %s -> %s", seed_dir, work_dir)
 
-    # Patch workspace for code execution BEFORE first solve
-    AdaptiveEvolveEngine.prepare_workspace(work_dir)
+    # Patch workspace for code execution BEFORE first solve.
+    # Skip when MCP_SKIP_PREPARE_WORKSPACE=1 to run a blank-slate evolve
+    # (raw 1309-byte seed prompt, empty skills/) — used in ablations that
+    # measure the contribution of V3's prepare_workspace patch separately
+    # from the evolution loop. Mirrors the gate added to
+    # adaptive_evolve_baseline.py:202-213 so baseline + evolve stay in sync.
+    import os as _os
+    if _os.environ.get("MCP_SKIP_PREPARE_WORKSPACE") in ("1", "true", "True"):
+        log.info("MCP_SKIP_PREPARE_WORKSPACE=1 — skipping prepare_workspace "
+                 "(blank-slate evolve: raw seed prompt + empty skills)")
+    else:
+        AdaptiveEvolveEngine.prepare_workspace(work_dir)
 
     # ── Load benchmark & keys ────────────────────────────────
     # Use Bedrock for evaluation (not LiteLLM) when using Bedrock model IDs
@@ -248,11 +261,20 @@ def main():
 
     # ── Resume support ───────────────────────────────────────
     summary_path = out_dir / "summary.csv"
+    complete_path = out_dir / "RUN_COMPLETE.json"
     done_ids = set()
     if summary_path.exists():
-        with open(summary_path) as f:
-            for row in csv.DictReader(f):
-                done_ids.add(row["task_id"])
+        try:
+            with open(summary_path) as f:
+                for row in csv.DictReader(f):
+                    tid = row.get("task_id")
+                    if tid:
+                        done_ids.add(tid)
+        except Exception as e:
+            log.warning(
+                "summary.csv resume read encountered %s; using partial done_ids (%d)",
+                e, len(done_ids),
+            )
         log.info("Resuming: %d tasks already completed", len(done_ids))
 
     write_header = not summary_path.exists()
@@ -478,6 +500,18 @@ def main():
         log.info("Overall pass rate: %.1f%%", total_passed / total * 100)
     log.info("Results: %s", summary_path)
     log.info("Evolution workspace: %s", work_dir)
+
+    sentinel_payload = json.dumps({
+        "total": total,
+        "passed": total_passed,
+        "failed": total_failed,
+        "errors": total_errors,
+        "summary_csv": str(summary_path),
+    }, indent=2)
+    sentinel_tmp = complete_path.with_suffix(complete_path.suffix + ".tmp")
+    sentinel_tmp.write_text(sentinel_payload)
+    os.replace(sentinel_tmp, complete_path)
+    log.info("Wrote completion sentinel: %s", complete_path)
 
 
 if __name__ == "__main__":

@@ -9,20 +9,21 @@
 #   Phase 2 (TEST):  evaluate the next $EVAL_LIMIT tasks once each on the
 #                    evolved workspace — no engine and no retries.
 #
-# Defaults: EVOLVE_LIMIT=20, BATCH_SIZE=5, CYCLES=1, SKILL_SELECT_LIMIT=0,
-#           EVAL_LIMIT=""(all remaining).
+# Defaults: EVOLVE_LIMIT=20, BATCH_SIZE=1, CYCLES=1, TASK_SKILL_MODE=off,
+#           SKILL_SELECT_LIMIT=0,
+#           TRAIN_PARALLEL=1, TEST_PARALLEL=8, EVAL_LIMIT=""(all remaining).
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 
 CYCLES="${CYCLES:-${MAX_CYCLES:-1}}"
-BATCH_SIZE="${BATCH_SIZE:-5}"
+BATCH_SIZE="${BATCH_SIZE:-1}"
 # Train: max parallel solve workers. Effective parallelism is
 # min(TRAIN_PARALLEL, BATCH_SIZE). Evolve is always serial.
-TRAIN_PARALLEL="${TRAIN_PARALLEL:-5}"
+TRAIN_PARALLEL="${TRAIN_PARALLEL:-${MAX_WORKERS:-1}}"
 # Test: explicit worker count for Phase 2 (no evolve, fully parallelizable).
-TEST_PARALLEL="${TEST_PARALLEL:-5}"
+TEST_PARALLEL="${TEST_PARALLEL:-${MAX_WORKERS:-8}}"
 EVOLVE_LIMIT="${EVOLVE_LIMIT:-20}"
 EVAL_LIMIT="${EVAL_LIMIT:-}"
 LIMIT="${LIMIT:-}"
@@ -38,7 +39,7 @@ RETRY_MAX_WAIT_SEC="${RETRY_MAX_WAIT_SEC:-150.0}"
 CATEGORY="${CATEGORY:-}"
 DIFFICULTY="${DIFFICULTY:-}"
 FEEDBACK_LEVEL="${FEEDBACK_LEVEL:-tests}"
-TASK_SKILL_MODE="${TASK_SKILL_MODE:-pre_generate}"
+TASK_SKILL_MODE="${TASK_SKILL_MODE:-off}"
 NO_DIRECT_ANSWERS="${NO_DIRECT_ANSWERS:-true}"
 # Split experiments only consider skill evolution. Keep other artifact
 # scopes fixed off here so this benchmark matches the other split wrappers'
@@ -53,7 +54,7 @@ PROMOTION_THRESHOLD="${PROMOTION_THRESHOLD:-1}"
 MODEL_ID="${MODEL_ID:-us.anthropic.claude-opus-4-6-v1}"
 EVOLVER_MODEL_ID="${EVOLVER_MODEL_ID:-}"
 REGION="${REGION:-us-west-2}"
-MAX_TOKENS="${MAX_TOKENS:-64000}"
+MAX_TOKENS="${MAX_TOKENS:-16384}"
 export BEDROCK_RETRY_MAX_ATTEMPTS="${BEDROCK_RETRY_MAX_ATTEMPTS:-15}"
 export BEDROCK_READ_TIMEOUT_SEC="${BEDROCK_READ_TIMEOUT_SEC:-600}"
 export BEDROCK_CONNECT_TIMEOUT_SEC="${BEDROCK_CONNECT_TIMEOUT_SEC:-30}"

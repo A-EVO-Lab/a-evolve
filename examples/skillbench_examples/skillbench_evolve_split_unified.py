@@ -1063,7 +1063,7 @@ def main() -> int:
     p.add_argument(
         "--task-skill-mode",
         type=str,
-        default="pre_generate",
+        default="off",
         choices=["off", "pre_generate",
                  # Deprecated aliases (split mode has no retry):
                  "pre_generate_and_retry",   # alias of pre_generate

@@ -1,26 +1,21 @@
 #!/usr/bin/env bash
-# SWE legacy train/test split wrapper.
+# SWE legacy in-situ evolution wrapper.
 #
-# Two-phase orchestrator (single-process) around
-# examples/swe_examples/evolve_sequential_split.py:
+# Runs examples/swe_examples/evolve_sequential.py: solve tasks in batches with
+# GuidedSynthesisEngine evolution between batches over one in-situ task stream.
 #
-#   Phase 1 (TRAIN): evolve on first $EVOLVE_LIMIT tasks with batches of
-#                    $BATCH_SIZE, using GuidedSynthesisEngine.
-#   Phase 2 (TEST):  evaluate $EVAL_LIMIT remaining tasks (or all remaining
-#                    when EVAL_LIMIT is empty) with the evolved workspace,
-#                    no further evolution.
-#
-# Defaults follow the README "Mini (50 tasks)" quick-test recipe:
+# Defaults follow docs/algorithms/guided-synth.md recommendations:
 #   --solver-proposes --verification-focus --efficiency-prompt
-#   --feedback none --max-steps 140 --window-size 40
-#   --batch-size 5 --parallel 5
-#   dataset = MariusHobbhahn/swe-bench-verified-mini
-#   total LIMIT = 50 (split: EVOLVE_LIMIT=10 train + 40 test)
+#   --feedback none --max-steps 140 --window-size 70
+#   --batch-size 20 --parallel 20
+#   dataset = princeton-nlp/SWE-bench_Verified
+#   total LIMIT = 500
 #
 # Usage:
-#   bash examples/swe_examples/run_swe_evolve_split_mini.sh             # all defaults
-#   EVOLVE_LIMIT=20 bash examples/swe_examples/run_swe_evolve_split_mini.sh
-#   nohup bash examples/swe_examples/run_swe_evolve_split_mini.sh &
+#   bash examples/swe_examples/run_swe_evolve_in-situ.sh
+#   LIMIT=50 BATCH_SIZE=5 PARALLEL=5 bash examples/swe_examples/run_swe_evolve_in-situ.sh
+#   NO_EVOLVE=true bash examples/swe_examples/run_swe_evolve_in-situ.sh
+#   nohup bash examples/swe_examples/run_swe_evolve_in-situ.sh &
 #
 # All knobs are env-var configurable (no CLI parsing here -- mirrors TB's
 # run_evolution.sh shape).
@@ -31,28 +26,23 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 
 # ---------------------------------------------------------------------------
-# Split / batch defaults
+# In-situ batch defaults
 # ---------------------------------------------------------------------------
-LIMIT="${LIMIT:-50}"                    # Total tasks (train + test cap)
-EVOLVE_LIMIT="${EVOLVE_LIMIT:-10}"      # Phase 1 train tasks
-EVAL_LIMIT="${EVAL_LIMIT:-}"             # Phase 2 test tasks ('' = all remaining)
-BATCH_SIZE="${BATCH_SIZE:-5}"
-
-# Parallelism: Phase 1 effective = min(TRAIN_PARALLEL, BATCH_SIZE).
-TRAIN_PARALLEL="${TRAIN_PARALLEL:-${PARALLEL:-5}}"
-TEST_PARALLEL="${TEST_PARALLEL:-20}"
+LIMIT="${LIMIT:-500}"
+BATCH_SIZE="${BATCH_SIZE:-20}"
+PARALLEL="${PARALLEL:-20}"
 
 # ---------------------------------------------------------------------------
 # Agent / evolver knobs (guided-synth recommended setting)
 # ---------------------------------------------------------------------------
 FEEDBACK="${FEEDBACK:-none}"
-SOLVER_PROPOSES="${SOLVER_PROPOSES:-true}"
-VERIFICATION_FOCUS="${VERIFICATION_FOCUS:-true}"
-EFFICIENCY_PROMPT="${EFFICIENCY_PROMPT:-true}"
-VERIFY_FIX_PROMPT="${VERIFY_FIX_PROMPT:-true}"
+SOLVER_PROPOSES="${SOLVER_PROPOSES:-false}"
+VERIFICATION_FOCUS="${VERIFICATION_FOCUS:-false}"
+EFFICIENCY_PROMPT="${EFFICIENCY_PROMPT:-false}"
+VERIFY_FIX_PROMPT="${VERIFY_FIX_PROMPT:-false}"
 MAX_STEPS="${MAX_STEPS:-140}"
-WINDOW_SIZE="${WINDOW_SIZE:-40}"
-SHUFFLE_TRAIN_SEED="${SHUFFLE_TRAIN_SEED:-}"
+WINDOW_SIZE="${WINDOW_SIZE:-70}"
+NO_EVOLVE="${NO_EVOLVE:-false}"
 
 # ---------------------------------------------------------------------------
 # Model / region
@@ -68,10 +58,10 @@ export BEDROCK_CONNECT_TIMEOUT_SEC="${BEDROCK_CONNECT_TIMEOUT_SEC:-30}"
 # ---------------------------------------------------------------------------
 # Dataset / workspace / output
 # ---------------------------------------------------------------------------
-DATASET="${DATASET:-MariusHobbhahn/swe-bench-verified-mini}"
+DATASET="${DATASET:-princeton-nlp/SWE-bench_Verified}"
 SEED_WORKSPACE="${SEED_WORKSPACE:-${REPO_ROOT}/seed_workspaces/swe}"
 RUN_ID="${RUN_ID:-$(date -u +%Y%m%d_%H%M%S)_pid$$}"
-OUTPUT_DIR="${OUTPUT_DIR:-${REPO_ROOT}/logs/swe_split_${RUN_ID}}"
+OUTPUT_DIR="${OUTPUT_DIR:-${REPO_ROOT}/logs/swe_in_situ_${RUN_ID}}"
 
 mkdir -p "$(dirname "${OUTPUT_DIR}")"
 mkdir -p "${OUTPUT_DIR}"
@@ -80,18 +70,19 @@ mkdir -p "${OUTPUT_DIR}"
 # Banner
 # ---------------------------------------------------------------------------
 echo "============================================================"
-echo "  SWE Train/Test Split (legacy GuidedSynthesisEngine)"
+echo "  SWE In-Situ Evolution (legacy GuidedSynthesisEngine)"
 echo "  Run ID:        ${RUN_ID}"
 echo "  Output dir:    ${OUTPUT_DIR}"
-echo "  Phase 1 (train): ${EVOLVE_LIMIT} tasks, batch ${BATCH_SIZE}, parallel ${TRAIN_PARALLEL}"
-echo "  Phase 2 (test):  ${EVAL_LIMIT:-all remaining} tasks, parallel ${TEST_PARALLEL}"
-echo "  Total cap:     ${LIMIT} tasks"
+echo "  Tasks:         ${LIMIT} tasks"
+echo "  Batch size:    ${BATCH_SIZE}"
+echo "  Parallel:      ${PARALLEL}"
 echo "  Dataset:       ${DATASET}"
 echo "  Feedback:      ${FEEDBACK}"
 echo "  Solver-proposes:    ${SOLVER_PROPOSES}"
 echo "  Verification-focus: ${VERIFICATION_FOCUS}"
 echo "  Efficiency-prompt:  ${EFFICIENCY_PROMPT}"
 echo "  Verify-fix prompt:  ${VERIFY_FIX_PROMPT}"
+echo "  No evolve:          ${NO_EVOLVE}"
 echo "  Max steps / window: ${MAX_STEPS} / ${WINDOW_SIZE}"
 echo "  Model:         ${MODEL_ID}"
 echo "  Evolver model: ${EVOLVER_MODEL_ID:-<same as solver>}"
@@ -111,12 +102,9 @@ fi
 
 cmd=(
   "${PY_CMD[@]}"
-  "${REPO_ROOT}/examples/swe_examples/evolve_sequential_split.py"
-  --evolve-limit "${EVOLVE_LIMIT}"
-  --limit "${LIMIT}"
+  "${REPO_ROOT}/examples/swe_examples/evolve_sequential.py"
   --batch-size "${BATCH_SIZE}"
-  --train-parallel "${TRAIN_PARALLEL}"
-  --test-parallel "${TEST_PARALLEL}"
+  --parallel "${PARALLEL}"
   --feedback "${FEEDBACK}"
   --max-steps "${MAX_STEPS}"
   --window-size "${WINDOW_SIZE}"
@@ -126,15 +114,15 @@ cmd=(
   --dataset "${DATASET}"
   --seed-workspace "${SEED_WORKSPACE}"
   --output-dir "${OUTPUT_DIR}"
+  --limit "${LIMIT}"
   -v
 )
-[[ -n "${EVAL_LIMIT}" ]]               && cmd+=(--eval-limit "${EVAL_LIMIT}")
-[[ -n "${SHUFFLE_TRAIN_SEED}" ]]       && cmd+=(--shuffle-train-seed "${SHUFFLE_TRAIN_SEED}")
 [[ -n "${EVOLVER_MODEL_ID}" ]]         && cmd+=(--evolver-model-id "${EVOLVER_MODEL_ID}")
 [[ "${SOLVER_PROPOSES}" == "true" ]]    && cmd+=(--solver-proposes)
 [[ "${VERIFICATION_FOCUS}" == "true" ]] && cmd+=(--verification-focus)
 [[ "${EFFICIENCY_PROMPT}" == "true" ]]  && cmd+=(--efficiency-prompt)
 [[ "${VERIFY_FIX_PROMPT}" == "false" ]] && cmd+=(--no-verify-fix-prompt)
+[[ "${NO_EVOLVE}" == "true" ]]          && cmd+=(--no-evolve)
 
 LOG="${OUTPUT_DIR}/evolve.log"
 echo "Running: ${cmd[*]}"
@@ -152,12 +140,9 @@ set -e
 
 echo ""
 echo "============================================================"
-echo "  SWE split run completed"
+echo "  SWE in-situ run completed"
 echo "  Exit code:  ${exit_code}"
-echo "  Train:      ${OUTPUT_DIR}/results.train.jsonl"
-echo "  Test:       ${OUTPUT_DIR}/results.test.jsonl"
-echo "  Combined:   ${OUTPUT_DIR}/results.jsonl"
-echo "  Metrics:    ${OUTPUT_DIR}/results.metrics.json"
+echo "  Results:    ${OUTPUT_DIR}/results.json"
 echo "  Log:        ${LOG}"
 echo "============================================================"
 exit "${exit_code}"

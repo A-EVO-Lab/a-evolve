@@ -49,6 +49,7 @@ FEEDBACK="${FEEDBACK:-none}"
 SOLVER_PROPOSES="${SOLVER_PROPOSES:-true}"
 VERIFICATION_FOCUS="${VERIFICATION_FOCUS:-true}"
 EFFICIENCY_PROMPT="${EFFICIENCY_PROMPT:-true}"
+VERIFY_FIX_PROMPT="${VERIFY_FIX_PROMPT:-true}"
 MAX_STEPS="${MAX_STEPS:-140}"
 WINDOW_SIZE="${WINDOW_SIZE:-70}"
 
@@ -89,6 +90,7 @@ echo "  Feedback:      ${FEEDBACK}"
 echo "  Solver-proposes:    ${SOLVER_PROPOSES}"
 echo "  Verification-focus: ${VERIFICATION_FOCUS}"
 echo "  Efficiency-prompt:  ${EFFICIENCY_PROMPT}"
+echo "  Verify-fix prompt:  ${VERIFY_FIX_PROMPT}"
 echo "  Max steps / window: ${MAX_STEPS} / ${WINDOW_SIZE}"
 echo "  Model:         ${MODEL_ID}"
 echo "  Evolver model: ${EVOLVER_MODEL_ID:-<same as solver>}"
@@ -130,6 +132,7 @@ cmd=(
 [[ "${SOLVER_PROPOSES}" == "true" ]]    && cmd+=(--solver-proposes)
 [[ "${VERIFICATION_FOCUS}" == "true" ]] && cmd+=(--verification-focus)
 [[ "${EFFICIENCY_PROMPT}" == "true" ]]  && cmd+=(--efficiency-prompt)
+[[ "${VERIFY_FIX_PROMPT}" == "false" ]] && cmd+=(--no-verify-fix-prompt)
 
 LOG="${OUTPUT_DIR}/evolve.log"
 echo "Running: ${cmd[*]}"

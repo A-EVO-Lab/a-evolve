@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import shutil
 import subprocess
 from pathlib import Path
@@ -89,6 +90,29 @@ def _make_workspace_bash(workspace_root: str | Path):
 
 
 def _resolve_llm(model: str, region: str):
+    if (
+        model.startswith("openai:")
+        or model.startswith("/")
+        or model.startswith("file:")
+    ):
+        from ....llm.openai import OpenAIProvider
+
+        base_url = (
+            os.environ.get("EVOLVER_OPENAI_BASE_URL")
+            or os.environ.get("OPENAI_BASE_URL")
+        )
+        if (model.startswith("/") or model.startswith("file:")) and not base_url:
+            raise ValueError(
+                "Local/path evolver models require EVOLVER_OPENAI_BASE_URL "
+                "or OPENAI_BASE_URL pointing at an OpenAI-compatible server."
+            )
+        return (
+            OpenAIProvider(
+                model=model.removeprefix("openai:").removeprefix("file:"),
+                base_url=base_url,
+            ),
+            "openai",
+        )
     if "." in model and ("anthropic" in model or "amazon" in model or "meta" in model):
         from ....llm.bedrock import BedrockProvider
 
@@ -336,9 +360,9 @@ class LLMBashEvolve:
         bash_fn = _make_workspace_bash(workspace.root)
 
         # Resolution priority for the LLM backend:
-        # 1. ``state["llm_provider"]`` — full provider object; if it is a
-        #    ``BedrockProvider`` subclass the legacy converse_loop + bash
-        #    tool path is used, otherwise the ``.complete()`` path.
+        # 1. ``state["llm_provider"]`` — full provider object; if it exposes
+        #    ``converse_loop`` the bash tool path is used, otherwise
+        #    ``.complete()`` is used.
         # 2. ``state["mock"]`` — string-only shortcut for simple tests
         #    that only need the LLM to return a fixed reply. No bash.
         # 3. Real provider constructed from ``state["model_id"]``.
@@ -347,10 +371,9 @@ class LLMBashEvolve:
 
         if provider is not None:
             try:
-                from ....llm.bedrock import BedrockProvider
-
-                if isinstance(provider, BedrockProvider):
-                    response = provider.converse_loop(
+                converse_loop = getattr(provider, "converse_loop", None)
+                if callable(converse_loop):
+                    response = converse_loop(
                         system_prompt=DEFAULT_EVOLVER_SYSTEM_PROMPT,
                         user_message=user_prompt,
                         tools=[BASH_TOOL_SPEC],
@@ -391,10 +414,9 @@ class LLMBashEvolve:
                     details={"error": f"provider unavailable: {e}"},
                 )
             try:
-                from ....llm.bedrock import BedrockProvider
-
-                if kind == "bedrock" and isinstance(llm, BedrockProvider):
-                    response = llm.converse_loop(
+                converse_loop = getattr(llm, "converse_loop", None)
+                if callable(converse_loop):
+                    response = converse_loop(
                         system_prompt=DEFAULT_EVOLVER_SYSTEM_PROMPT,
                         user_message=user_prompt,
                         tools=[BASH_TOOL_SPEC],

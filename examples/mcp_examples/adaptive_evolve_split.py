@@ -450,7 +450,13 @@ def main() -> int:
         work_dir.parent.mkdir(parents=True, exist_ok=True)
         shutil.copytree(seed_dir, work_dir)
         log.info("Copied seed workspace %s -> %s", seed_dir, work_dir)
-    AdaptiveEvolveEngine.prepare_workspace(work_dir)
+    # Same env-var gate as adaptive_evolve_all.py / adaptive_evolve_baseline.py.
+    import os as _os
+    if _os.environ.get("MCP_SKIP_PREPARE_WORKSPACE") in ("1", "true", "True"):
+        log.info("MCP_SKIP_PREPARE_WORKSPACE=1 — skipping prepare_workspace "
+                 "(blank-slate split: raw seed prompt + empty skills)")
+    else:
+        AdaptiveEvolveEngine.prepare_workspace(work_dir)
 
     # Benchmark + key registry
     bm = McpAtlasBenchmark(shuffle=False, eval_model_id=args.judge_model,

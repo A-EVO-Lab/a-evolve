@@ -92,6 +92,8 @@ def _solve_batch(
                 args.max_steps, args.window_size,
                 args.verification_focus,
                 getattr(args, "efficiency_prompt", False),
+                getattr(args, "verify_fix_prompt", True),
+                getattr(args, "solver_proposes", True),
             ): td["id"]
             for td in task_dicts
         }
@@ -253,6 +255,11 @@ def main() -> int:
     p.add_argument("--solver-proposes", action="store_true")
     p.add_argument("--verification-focus", action="store_true")
     p.add_argument("--efficiency-prompt", action="store_true")
+    p.add_argument("--verify-fix-prompt", default=True,
+                   action=argparse.BooleanOptionalAction,
+                   help="Append the '## Verify Your Fix' section to the system prompt. "
+                        "Default: on (preserves prior unconditional behaviour). "
+                        "Use --no-verify-fix-prompt to drop it for a tighter baseline.")
     p.add_argument("--model-id", type=str, default="us.anthropic.claude-opus-4-6-v1")
     p.add_argument("--evolver-model-id", type=str, default=None,
                    help="Bedrock model id for the evolver (GuidedSynthesisEngine). "

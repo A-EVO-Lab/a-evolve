@@ -11,6 +11,7 @@ Key improvements over code_evolve:
 from __future__ import annotations
 
 import logging
+import os
 import subprocess
 from pathlib import Path
 from typing import Any
@@ -81,6 +82,28 @@ def _make_workspace_bash(workspace_root: str | Path):
 def _create_default_llm(config: EvolveConfig) -> LLMProvider:
     """Create default LLM provider based on config."""
     model = config.evolver_model
+    if (
+        model.startswith("openai:")
+        or model.startswith("/")
+        or model.startswith("file:")
+    ):
+        from ...llm.openai import OpenAIProvider
+
+        base_url = (
+            config.extra.get("openai_base_url")
+            or config.extra.get("base_url")
+            or os.environ.get("EVOLVER_OPENAI_BASE_URL")
+            or os.environ.get("OPENAI_BASE_URL")
+        )
+        if (model.startswith("/") or model.startswith("file:")) and not base_url:
+            raise ValueError(
+                "Local/path evolver models require EVOLVER_OPENAI_BASE_URL "
+                "or OPENAI_BASE_URL pointing at an OpenAI-compatible server."
+            )
+        return OpenAIProvider(
+            model=model.removeprefix("openai:").removeprefix("file:"),
+            base_url=base_url,
+        )
     if "." in model and ("anthropic" in model or "amazon" in model or "meta" in model):
         from ...llm.bedrock import BedrockProvider
         return BedrockProvider(model_id=model, region=config.extra.get("region", "us-west-2"))
@@ -757,19 +780,16 @@ class AdaptiveEvolveEngine(EvolutionEngine):
     def _run_llm(self, prompt: str, workspace_root: Path) -> dict[str, Any]:
         """Run LLM with bash tool access."""
         bash_fn = _make_workspace_bash(workspace_root)
-        try:
-            from ...llm.bedrock import BedrockProvider
-            if isinstance(self.llm, BedrockProvider):
-                response = self.llm.converse_loop(
-                    system_prompt=self._system_prompt,
-                    user_message=prompt,
-                    tools=[BASH_TOOL_SPEC],
-                    tool_executor={"workspace_bash": lambda command: bash_fn(command)},
-                    max_tokens=self.config.evolver_max_tokens,
-                )
-                return {"content": response.content, "usage": response.usage}
-        except ImportError:
-            pass
+        converse_loop = getattr(self.llm, "converse_loop", None)
+        if callable(converse_loop):
+            response = converse_loop(
+                system_prompt=self._system_prompt,
+                user_message=prompt,
+                tools=[BASH_TOOL_SPEC],
+                tool_executor={"workspace_bash": lambda command: bash_fn(command)},
+                max_tokens=self.config.evolver_max_tokens,
+            )
+            return {"content": response.content, "usage": response.usage}
         from ...llm.base import LLMMessage
         messages = [
             LLMMessage(role="system", content=self._system_prompt),

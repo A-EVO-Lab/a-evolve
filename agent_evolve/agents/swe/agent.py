@@ -45,6 +45,8 @@ class SweAgent(BaseAgent):
         window_size: int = 40,
         verification_focus: bool = False,
         efficiency_prompt: bool = False,
+        verify_fix_prompt: bool = True,
+        solver_proposes: bool = True,
     ):
         super().__init__(workspace_dir)
         self.model_id = model_id
@@ -54,6 +56,8 @@ class SweAgent(BaseAgent):
         self.window_size = window_size
         self.efficiency_prompt = efficiency_prompt
         self.verification_focus = verification_focus
+        self.verify_fix_prompt = verify_fix_prompt
+        self.solver_proposes = solver_proposes
 
     def _load_tools_from_workspace(self) -> tuple[list, list]:
         """Load tool functions from the workspace tools/registry.yaml.
@@ -282,100 +286,101 @@ class SweAgent(BaseAgent):
 
             # Skill evolution: analyze used skills + propose enhancement or new skill
             skill_proposal = ""
-            try:
-                # Build skill context for the proposal prompt
-                skill_context = ""
-                if self.skills:
-                    skill_list = "\n".join(f"- {s.name}: {s.description}" for s in self.skills)
-                    skill_context = (
-                        f"You had these skills available (you may have read some via read_skill):\n"
-                        f"{skill_list}\n\n"
-                    )
+            if self.solver_proposes:
+                try:
+                    # Build skill context for the proposal prompt
+                    skill_context = ""
+                    if self.skills:
+                        skill_list = "\n".join(f"- {s.name}: {s.description}" for s in self.skills)
+                        skill_context = (
+                            f"You had these skills available (you may have read some via read_skill):\n"
+                            f"{skill_list}\n\n"
+                        )
 
-                if self.verification_focus:
-                    proposal_response = agent(
-                        f"{skill_context}"
-                        "Reflect on your VERIFICATION process — how you tested and validated your fix.\n\n"
-                        "Think about:\n"
-                        "- How did you find the right test file? Was it easy or did you guess?\n"
-                        "- Did you run tests before AND after your edit?\n"
-                        "- Did your repro script catch the real issue, or was it too simple?\n"
-                        "- Were there edge cases in the issue that you didn't test?\n"
-                        "- Did you verify your fix doesn't break adjacent functionality?\n\n"
-                        "Propose a VERIFICATION skill that helps future solvers test more thoroughly.\n"
-                        "Focus ONLY on how to verify/test — not on how to find or write the fix.\n\n"
-                        "CRITICAL: The skill must be GENERALIZABLE — applicable to many different tasks, "
-                        "not just this one. Abstract away the specific framework/module details.\n"
-                        "  GOOD names: verify_falsy_edge_cases, verify_before_after_edit, verify_inheritance_chain, "
-                        "verify_roundtrip_integrity, verify_mutable_state_isolation\n"
-                        "  BAD names: verify_admin_kwargs_passthrough, verify_django_enum_str, verify_sphinx_toctree\n"
-                        "  GOOD content: general methodology (e.g., 'test all falsy-but-valid values: 0, False, \"\", [], {}')\n"
-                        "  BAD content: specific code paths (e.g., 'check django/contrib/admin/options.py line 200')\n\n"
-                        "OPTION A — ENHANCE an existing verification skill:\n"
+                    if self.verification_focus:
+                        proposal_response = agent(
+                            f"{skill_context}"
+                            "Reflect on your VERIFICATION process — how you tested and validated your fix.\n\n"
+                            "Think about:\n"
+                            "- How did you find the right test file? Was it easy or did you guess?\n"
+                            "- Did you run tests before AND after your edit?\n"
+                            "- Did your repro script catch the real issue, or was it too simple?\n"
+                            "- Were there edge cases in the issue that you didn't test?\n"
+                            "- Did you verify your fix doesn't break adjacent functionality?\n\n"
+                            "Propose a VERIFICATION skill that helps future solvers test more thoroughly.\n"
+                            "Focus ONLY on how to verify/test — not on how to find or write the fix.\n\n"
+                            "CRITICAL: The skill must be GENERALIZABLE — applicable to many different tasks, "
+                            "not just this one. Abstract away the specific framework/module details.\n"
+                            "  GOOD names: verify_falsy_edge_cases, verify_before_after_edit, verify_inheritance_chain, "
+                            "verify_roundtrip_integrity, verify_mutable_state_isolation\n"
+                            "  BAD names: verify_admin_kwargs_passthrough, verify_django_enum_str, verify_sphinx_toctree\n"
+                            "  GOOD content: general methodology (e.g., 'test all falsy-but-valid values: 0, False, \"\", [], {}')\n"
+                            "  BAD content: specific code paths (e.g., 'check django/contrib/admin/options.py line 200')\n\n"
+                            "OPTION A — ENHANCE an existing verification skill:\n"
+                            "CONFIDENCE: HIGH/MEDIUM/LOW\n"
+                            "ACTION: ENHANCE\n"
+                            "TARGET: existing_skill_name\n"
+                            "ANALYSIS: what was missing in the verification approach\n"
+                            "TYPE: skill\n"
+                            "NAME: same_skill_name\n"
+                            "DESCRIPTION: TRIGGER when / DO NOT TRIGGER when (one sentence)\n"
+                            "CONTENT:\n"
+                            "(verification methodology, under 500 words)\n\n"
+                            "OPTION B — NEW verification skill:\n"
+                            "CONFIDENCE: HIGH/MEDIUM/LOW\n"
+                            "ACTION: NEW\n"
+                            "TYPE: skill\n"
+                            "NAME: verify_<general_pattern>\n"
+                            "DESCRIPTION: TRIGGER when / DO NOT TRIGGER when (one sentence)\n"
+                            "CONTENT:\n"
+                            "(verification methodology, under 500 words)\n\n"
+                            "OPTION C — No proposal:\n"
+                            "CONFIDENCE: HIGH/MEDIUM/LOW\n"
+                            "ACTION: NONE"
+                        )
+                    else:
+                        proposal_response = agent(
+                            f"{skill_context}"
+                            "Help FUTURE solvers by proposing or enhancing a skill.\n\n"
+                        "IMPORTANT RULES:\n"
+                        "- NAME must be GENERIC and reusable.\n"
+                        "  GOOD: fix_shallow_copy_mutation, align_parallel_code_paths\n"
+                        "  BAD:  django_mti_pk_fix, sphinx_autodoc_classmethod\n"
+                        "- DESCRIPTION must include TRIGGER and DO NOT TRIGGER conditions so the solver knows when to load it:\n"
+                        "  GOOD: 'TRIGGER when: copied objects share mutable state, or __deepcopy__ is defined. "
+                        "DO NOT TRIGGER when: simple value assignment or immutable types.'\n"
+                        "  BAD:  'Fix for deep copy issues' (too vague, no trigger conditions)\n"
+                        "- Prefer OPTION A (enhance existing) over OPTION B (new).\n\n"
+                        "OPTION A — ENHANCE an existing skill:\n"
                         "CONFIDENCE: HIGH/MEDIUM/LOW\n"
                         "ACTION: ENHANCE\n"
                         "TARGET: existing_skill_name\n"
-                        "ANALYSIS: what was missing in the verification approach\n"
+                        "ANALYSIS: one sentence on what to improve\n"
                         "TYPE: skill\n"
                         "NAME: same_skill_name\n"
-                        "DESCRIPTION: TRIGGER when / DO NOT TRIGGER when (one sentence)\n"
+                        "DESCRIPTION: one sentence, max 15 words\n"
                         "CONTENT:\n"
-                        "(verification methodology, under 500 words)\n\n"
-                        "OPTION B — NEW verification skill:\n"
+                        "(enhanced methodology, under 500 words)\n\n"
+                        "OPTION B — NEW skill (only if nothing existing covers this):\n"
                         "CONFIDENCE: HIGH/MEDIUM/LOW\n"
                         "ACTION: NEW\n"
                         "TYPE: skill\n"
-                        "NAME: verify_<general_pattern>\n"
-                        "DESCRIPTION: TRIGGER when / DO NOT TRIGGER when (one sentence)\n"
+                        "NAME: pattern_name\n"
+                        "DESCRIPTION: one sentence, max 15 words\n"
                         "CONTENT:\n"
-                        "(verification methodology, under 500 words)\n\n"
+                        "(methodology, under 500 words)\n\n"
                         "OPTION C — No proposal:\n"
                         "CONFIDENCE: HIGH/MEDIUM/LOW\n"
                         "ACTION: NONE"
                     )
-                else:
-                    proposal_response = agent(
-                        f"{skill_context}"
-                        "Help FUTURE solvers by proposing or enhancing a skill.\n\n"
-                    "IMPORTANT RULES:\n"
-                    "- NAME must be GENERIC and reusable.\n"
-                    "  GOOD: fix_shallow_copy_mutation, align_parallel_code_paths\n"
-                    "  BAD:  django_mti_pk_fix, sphinx_autodoc_classmethod\n"
-                    "- DESCRIPTION must include TRIGGER and DO NOT TRIGGER conditions so the solver knows when to load it:\n"
-                    "  GOOD: 'TRIGGER when: copied objects share mutable state, or __deepcopy__ is defined. "
-                    "DO NOT TRIGGER when: simple value assignment or immutable types.'\n"
-                    "  BAD:  'Fix for deep copy issues' (too vague, no trigger conditions)\n"
-                    "- Prefer OPTION A (enhance existing) over OPTION B (new).\n\n"
-                    "OPTION A — ENHANCE an existing skill:\n"
-                    "CONFIDENCE: HIGH/MEDIUM/LOW\n"
-                    "ACTION: ENHANCE\n"
-                    "TARGET: existing_skill_name\n"
-                    "ANALYSIS: one sentence on what to improve\n"
-                    "TYPE: skill\n"
-                    "NAME: same_skill_name\n"
-                    "DESCRIPTION: one sentence, max 15 words\n"
-                    "CONTENT:\n"
-                    "(enhanced methodology, under 500 words)\n\n"
-                    "OPTION B — NEW skill (only if nothing existing covers this):\n"
-                    "CONFIDENCE: HIGH/MEDIUM/LOW\n"
-                    "ACTION: NEW\n"
-                    "TYPE: skill\n"
-                    "NAME: pattern_name\n"
-                    "DESCRIPTION: one sentence, max 15 words\n"
-                    "CONTENT:\n"
-                    "(methodology, under 500 words)\n\n"
-                    "OPTION C — No proposal:\n"
-                    "CONFIDENCE: HIGH/MEDIUM/LOW\n"
-                    "ACTION: NONE"
-                )
-                skill_proposal = str(proposal_response).strip()[:2500]
-                if "ACTION: NONE" not in skill_proposal.upper():
-                    action = "ENHANCE" if "ACTION: ENHANCE" in skill_proposal.upper() else "NEW"
-                    logger.info("Skill proposal (%s) for %s: %s", action, instance_id, skill_proposal[:100])
-                else:
-                    skill_proposal = skill_proposal if "CONFIDENCE:" in skill_proposal else ""
-            except Exception as e:
-                logger.warning("Skill proposal failed for %s: %s", instance_id, e)
+                    skill_proposal = str(proposal_response).strip()[:2500]
+                    if "ACTION: NONE" not in skill_proposal.upper():
+                        action = "ENHANCE" if "ACTION: ENHANCE" in skill_proposal.upper() else "NEW"
+                        logger.info("Skill proposal (%s) for %s: %s", action, instance_id, skill_proposal[:100])
+                    else:
+                        skill_proposal = skill_proposal if "CONFIDENCE:" in skill_proposal else ""
+                except Exception as e:
+                    logger.warning("Skill proposal failed for %s: %s", instance_id, e)
 
         traj = Trajectory(task_id=task.id, output=patch, steps=steps)
         traj._conversation = conversation
@@ -471,17 +476,18 @@ class SweAgent(BaseAgent):
         """
         parts = [self.system_prompt]
 
-        # Verify-fix loop instruction
-        parts.append(
-            "\n\n## Verify Your Fix\n"
-            "Before editing, find the existing test file for the module you're changing. Use "
-            "`grep -r 'def test_' tests/ --include='*.py' -l` or check `tests/test_<module>.py`. "
-            "Run these tests BEFORE your edit to see the baseline, then AFTER to confirm your fix "
-            "passes and doesn't break other tests.\n\n"
-            "Also write a small reproduction script from the issue description and run it. "
-            "If it still fails after your edit, read the traceback — there may be another "
-            "file that needs changing. Repeat until both the repro and existing tests pass."
-        )
+        # Verify-fix loop instruction (gated by verify_fix_prompt flag)
+        if self.verify_fix_prompt:
+            parts.append(
+                "\n\n## Verify Your Fix\n"
+                "Before editing, find the existing test file for the module you're changing. Use "
+                "`grep -r 'def test_' tests/ --include='*.py' -l` or check `tests/test_<module>.py`. "
+                "Run these tests BEFORE your edit to see the baseline, then AFTER to confirm your fix "
+                "passes and doesn't break other tests.\n\n"
+                "Also write a small reproduction script from the issue description and run it. "
+                "If it still fails after your edit, read the traceback — there may be another "
+                "file that needs changing. Repeat until both the repro and existing tests pass."
+            )
 
         if self.efficiency_prompt:
             parts.append(

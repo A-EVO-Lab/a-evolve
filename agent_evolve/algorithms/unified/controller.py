@@ -17,9 +17,19 @@ the controller never emits a legacy-engine name.
 
 from __future__ import annotations
 
+import os
 from typing import Any
 
 from .types import FeedbackCapability, Plan, RegimeTag
+
+
+def _mcp_blank_skill_only() -> bool:
+    """Single env-var ablation switch consumed by per_claim recipe.
+
+    When set to "1", drops AutoSeedSkills from the operator pipeline so the
+    workspace begins skill-empty and only LLMBashEvolve writes new skills.
+    """
+    return os.environ.get("MCP_BLANK_SKILL_ONLY_EVOLVE") == "1"
 
 
 def _extra(config: Any) -> dict[str, Any]:
@@ -146,6 +156,18 @@ class RuleBasedController:
             )
 
         if regime.has_per_claim:
+            blank_skill_only = _mcp_blank_skill_only()
+            ops: tuple[str, ...] = (
+                "FixHallucinations",
+                *(() if blank_skill_only else ("AutoSeedSkills",)),
+                "LLMBashEvolve",
+                "SanityCheck",
+            )
+            trace: tuple[str, ...] = ("matched: per_claim regime",)
+            if blank_skill_only:
+                trace = trace + (
+                    "MCP_BLANK_SKILL_ONLY_EVOLVE=1: dropped AutoSeedSkills",
+                )
             return _plan(
                 readers=(
                     "PassFailReader",
@@ -154,15 +176,10 @@ class RuleBasedController:
                     "ClaimTypeAnalyzer",
                     "ScoreCurveReader",
                 ),
-                operators=(
-                    "FixHallucinations",
-                    "AutoSeedSkills",
-                    "LLMBashEvolve",
-                    "SanityCheck",
-                ),
+                operators=ops,
                 verifier="NoVerify",
                 artifact_scope={"prompts": "rw", "skills": "rw", "memory": "append"},
-                reason_trace=("matched: per_claim regime",),
+                reason_trace=trace,
                 config=config,
             )
 

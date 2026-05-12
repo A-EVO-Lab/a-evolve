@@ -1,0 +1,27 @@
+tools:
+  - name: bash
+    description: "Use this function to execute bash commands."
+    parameters:
+      cmd:
+        type: string
+        description: "The bash command to execute."
+    required: [cmd]
+
+  - name: python
+    description: >
+      Use the python function to execute Python code.
+      Each execution is independent - no state is preserved between runs.
+      You must explicitly use print() statements to see any output.
+    parameters:
+      code:
+        type: string
+        description: "The python code to execute."
+    required: [code]
+
+  - name: submit
+    description: "Submit an answer for evaluation."
+    parameters:
+      answer:
+        type: string
+        description: "Submitted answer."
+    required: [answer]

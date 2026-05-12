@@ -18,7 +18,7 @@ REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 #   PASSES    → --passes      (outer dataset sweeps; currently no-op
 #                              with a warning when >1; see python runner
 #                              for context)
-CYCLES="${CYCLES:-${MAX_CYCLES:-1}}"
+CYCLES="${CYCLES:-${MAX_CYCLES:-2}}"
 PASSES="${PASSES:-}"
 BATCH_SIZE="${BATCH_SIZE:-1}"
 MAX_WORKERS="${MAX_WORKERS:-${PARALLEL:-1}}"

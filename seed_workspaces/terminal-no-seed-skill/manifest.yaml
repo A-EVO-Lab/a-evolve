@@ -1,0 +1,14 @@
+name: terminal-bench-agent
+version: 0.1.0
+contract_version: "1.0"
+
+agent:
+  type: reference
+  entrypoint: agent_evolve.agents.terminal.agent.TerminalAgent
+
+evolvable_layers:
+  - prompts
+  - skills
+  - memory
+
+reload_strategy: hot

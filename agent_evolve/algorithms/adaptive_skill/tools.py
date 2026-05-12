@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import subprocess
 from pathlib import Path
 
@@ -49,9 +50,40 @@ def make_workspace_bash(workspace_root: str | Path):
     return bash
 
 
+def _is_openai_compatible_model(model: str) -> bool:
+    return (
+        model.startswith("openai:")
+        or model.startswith("/")
+        or model.startswith("file:")
+    )
+
+
+def _openai_base_url(config: EvolveConfig) -> str | None:
+    return (
+        config.extra.get("openai_base_url")
+        or config.extra.get("base_url")
+        or os.environ.get("EVOLVER_OPENAI_BASE_URL")
+        or os.environ.get("OPENAI_BASE_URL")
+    )
+
+
 def create_default_llm(config: EvolveConfig) -> LLMProvider:
     """Create the default LLM provider based on the evolver_model config string."""
     model = config.evolver_model
+
+    if _is_openai_compatible_model(model):
+        from ...llm.openai import OpenAIProvider
+
+        base_url = _openai_base_url(config)
+        if (model.startswith("/") or model.startswith("file:")) and not base_url:
+            raise ValueError(
+                "Local/path evolver models require EVOLVER_OPENAI_BASE_URL "
+                "or OPENAI_BASE_URL pointing at an OpenAI-compatible server."
+            )
+        return OpenAIProvider(
+            model=model.removeprefix("openai:").removeprefix("file:"),
+            base_url=base_url,
+        )
 
     if "." in model and ("anthropic" in model or "amazon" in model or "meta" in model):
         from ...llm.bedrock import BedrockProvider

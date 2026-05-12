@@ -19,6 +19,15 @@ DEFAULT_PORT = 1984
 # Cold-start of the MCP-Atlas image with all servers loaded can take 10-15+ min;
 # allow override via env var. Default raised from 600 -> 1200 to absorb slow boots.
 STARTUP_TIMEOUT = int(os.environ.get("MCP_ATLAS_STARTUP_TIMEOUT_SEC", "1200"))
+# Minimum number of MCP backend servers that must be online before the runner
+# is allowed to start solving. The /enabled-servers endpoint returns 200 as
+# soon as the HTTP layer is up, regardless of how many backends finished
+# booting -- without this floor the runner can start with 3/36 servers ready
+# and silently fail every task as "Empty output" because the agent has no
+# tools to call. Default 30/36 (~83%); tune via MCP_MIN_SERVERS_READY.
+# Use a small absolute count, NOT a ratio, so the threshold survives backend
+# additions/removals.
+MIN_SERVERS_READY = int(os.environ.get("MCP_MIN_SERVERS_READY", "30"))
 
 
 class McpAtlasContainer:
@@ -107,10 +116,17 @@ class McpAtlasContainer:
                     data = r.json()
                     online = data.get("online", 0)
                     total = data.get("total", 0)
-                    logger.info(
-                        "MCP-Atlas ready: %d/%d servers online", online, total
+                    if online >= MIN_SERVERS_READY:
+                        logger.info(
+                            "MCP-Atlas ready: %d/%d servers online (>= MCP_MIN_SERVERS_READY=%d)",
+                            online, total, MIN_SERVERS_READY,
+                        )
+                        return
+                    # HTTP up but not enough backends booted yet — keep waiting.
+                    last_error = (
+                        f"only {online}/{total} servers online "
+                        f"(need >= {MIN_SERVERS_READY})"
                     )
-                    return
                 else:
                     last_error = f"HTTP {r.status_code}"
             except requests.ConnectionError:

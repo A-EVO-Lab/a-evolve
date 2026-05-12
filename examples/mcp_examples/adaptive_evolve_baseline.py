@@ -78,7 +78,6 @@ class BaselineCodeExecAgent(McpAgent):
             region_name=self.region,
             max_tokens=self.max_tokens,
             temperature=1.0,
-            stop_sequences=[],
             boto_client_config=bedrock_boto_config(),
         )
 
@@ -200,9 +199,18 @@ def main():
         shutil.copytree(seed_dir, work_dir)
         log.info("Copied seed workspace %s -> %s", seed_dir, work_dir)
 
-    # Prepare workspace with code execution support (same as adaptive_evolve)
-    from agent_evolve.algorithms.adaptive_evolve import AdaptiveEvolveEngine
-    AdaptiveEvolveEngine.prepare_workspace(work_dir)
+    # Prepare workspace with code execution support (same as adaptive_evolve).
+    # Skip when MCP_SKIP_PREPARE_WORKSPACE=1 to run a blank-slate baseline
+    # (raw 1309-byte seed prompt, empty skills/) — used for ablations that
+    # measure the contribution of V3's prepare_workspace patch separately
+    # from the evolution loop.
+    import os as _os
+    if _os.environ.get("MCP_SKIP_PREPARE_WORKSPACE") in ("1", "true", "True"):
+        log.info("MCP_SKIP_PREPARE_WORKSPACE=1 — skipping prepare_workspace "
+                 "(blank-slate baseline: raw seed prompt + empty skills)")
+    else:
+        from agent_evolve.algorithms.adaptive_evolve import AdaptiveEvolveEngine
+        AdaptiveEvolveEngine.prepare_workspace(work_dir)
 
     bm = McpAtlasBenchmark(
         shuffle=False,
@@ -221,11 +229,20 @@ def main():
     log.info("Tasks after key_registry filter: %d", len(tasks))
 
     summary_path = out_dir / "summary.csv"
+    complete_path = out_dir / "RUN_COMPLETE.json"
     done_ids = set()
     if summary_path.exists():
-        with open(summary_path) as f:
-            for row in csv.DictReader(f):
-                done_ids.add(row["task_id"])
+        try:
+            with open(summary_path) as f:
+                for row in csv.DictReader(f):
+                    tid = row.get("task_id")
+                    if tid:
+                        done_ids.add(tid)
+        except Exception as e:
+            log.warning(
+                "summary.csv resume read encountered %s; using partial done_ids (%d)",
+                e, len(done_ids),
+            )
         log.info("Resuming: %d tasks already completed", len(done_ids))
 
     write_header = not summary_path.exists()
@@ -407,6 +424,18 @@ def main():
     if total:
         log.info("Overall pass rate: %.1f%%", total_passed / total * 100)
     log.info("Results: %s", summary_path)
+
+    sentinel_payload = json.dumps({
+        "total": total,
+        "passed": total_passed,
+        "failed": total_failed,
+        "errors": total_errors,
+        "summary_csv": str(summary_path),
+    }, indent=2)
+    sentinel_tmp = complete_path.with_suffix(complete_path.suffix + ".tmp")
+    sentinel_tmp.write_text(sentinel_payload)
+    os.replace(sentinel_tmp, complete_path)
+    log.info("Wrote completion sentinel: %s", complete_path)
 
 
 if __name__ == "__main__":
