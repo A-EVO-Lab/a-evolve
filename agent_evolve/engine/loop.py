@@ -14,7 +14,7 @@ import logging
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Callable, Optional
 
 from ..config import EvolveConfig
 from ..types import CycleRecord, EvolutionResult, Observation
@@ -27,6 +27,12 @@ if TYPE_CHECKING:
     from ..benchmarks.base import BenchmarkAdapter
     from ..protocol.base_agent import BaseAgent
     from .base import EvolutionEngine
+
+# Per-task observer callback: invoked once per (task, cycle) inside the
+# main solve loop. Callbacks are called from worker threads under the
+# ThreadPoolExecutor parallel backend, so the caller is responsible for
+# any cross-thread synchronization (e.g. a threading.Lock around CSV writes).
+TaskObserver = Callable[[Observation, int], None]
 
 logger = logging.getLogger(__name__)
 
@@ -51,11 +57,17 @@ class EvolutionLoop:
         benchmark: BenchmarkAdapter,
         engine: EvolutionEngine,
         config: EvolveConfig | None = None,
+        task_observer: Optional[TaskObserver] = None,
     ):
         self.agent = agent
         self.benchmark = benchmark
         self.engine = engine
         self.config = config or EvolveConfig()
+        # Optional per-task hook for runners that want streaming visibility
+        # (e.g. write summary.csv per task). Stays None by default so
+        # existing runners are bit-for-bit unchanged.
+        self.task_observer = task_observer
+        self._current_cycle = 0
 
         workspace_root = self.agent.workspace.root
         evolution_dir = workspace_root / "evolution"
@@ -77,6 +89,9 @@ class EvolutionLoop:
 
         for cycle in range(max_cycles):
             cycle_num = cycle + 1
+            # Visible to _solve_and_evaluate_one so the task_observer
+            # callback can record (obs, cycle_num) without an extra arg.
+            self._current_cycle = cycle_num
             logger.info("=== Evolution Cycle %d/%d ===", cycle_num, max_cycles)
 
             # 1. SOLVE + 2. OBSERVE
@@ -239,7 +254,17 @@ class EvolutionLoop:
         try:
             trajectory = self.agent.solve(task)
             feedback = self.benchmark.evaluate(task, trajectory)
-            return Observation(task=task, trajectory=trajectory, feedback=feedback)
+            obs = Observation(task=task, trajectory=trajectory, feedback=feedback)
+            if self.task_observer is not None:
+                try:
+                    self.task_observer(obs, self._current_cycle)
+                except Exception as cb_exc:  # noqa: BLE001
+                    logger.warning(
+                        "task_observer raised on task %s (cycle %d): %s; "
+                        "continuing loop.",
+                        getattr(task, "id", "?"), self._current_cycle, cb_exc,
+                    )
+            return obs
         except Exception as e:  # noqa: BLE001
             logger.error("Error solving task %s: %s", task.id, e)
             return None

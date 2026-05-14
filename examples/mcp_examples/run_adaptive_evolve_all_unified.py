@@ -26,12 +26,14 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import csv
 import json
 import logging
 import math
 import os
 import shutil
 import sys
+import threading
 from datetime import datetime
 from pathlib import Path
 
@@ -47,6 +49,7 @@ from agent_evolve.agents.mcp.docker_env import McpAtlasContainer, pull_image
 from agent_evolve.agents.mcp.key_registry import KeyRegistry
 from agent_evolve.agents.mcp.mcp_client import McpClientWrapper
 from agent_evolve.algorithms.unified import UnifiedEngine
+from agent_evolve.algorithms.unified.operators.llm_bash_evolve import _resolve_llm
 from agent_evolve.benchmarks.mcp_atlas import McpAtlasBenchmark
 from agent_evolve.config import EvolveConfig
 from agent_evolve.engine.loop import EvolutionLoop
@@ -166,9 +169,13 @@ def main() -> int:
     shutil.copytree(seed_dir, ws_dir)
     logger.info("Workspace: %s (from seed %s)", ws_dir, seed_dir)
 
-    # LLM provider for evolver operators.
+    # LLM provider for evolver operators. _resolve_llm understands local
+    # OpenAI-compatible paths (e.g. /fsx/models/Qwen3.5-9B → OpenAIProvider
+    # honouring EVOLVER_OPENAI_BASE_URL) in addition to the standard Bedrock
+    # model_id route. The unconditional BedrockProvider construction this
+    # replaces would have failed for local evolvers like qwen35_9b.
     evolver_model = args.evolver_model or args.solver_model
-    llm = BedrockProvider(model_id=evolver_model, region=args.region)
+    llm, _llm_kind = _resolve_llm(evolver_model, args.region)
 
     # Single env-var ablation switch. When MCP_BLANK_SKILL_ONLY_EVOLVE=1:
     #   - Only skills evolve (evolve_prompts=False, evolve_memory=False)
@@ -268,14 +275,68 @@ def main() -> int:
         # a new Bedrock client per step.
         engine._operator_state.setdefault("LLMBashEvolve", {})["llm_provider"] = llm
 
-        loop = EvolutionLoop(agent=agent, benchmark=bench, engine=engine, config=config)
+        # Per-task streaming → summary.csv so progress is visible long before
+        # the first results.jsonl entry (which only lands after every cycle's
+        # batch finishes; with default LIMIT=500/BATCH_SIZE=30 = 17 cycles ×
+        # ~2h each ≈ 34h before any output). Columns mirror the legacy
+        # adaptive_evolve_all.py + adaptive_evolve_baseline.py schema so the
+        # downstream readers (scripts/mcp_blank_progress_table.py) work
+        # unchanged. ThreadPoolExecutor parallel backend calls the observer
+        # from worker threads, so the lock + line-buffered open are required.
+        summary_path = out_dir / "summary.csv"
+        write_header = (not summary_path.exists()) or summary_path.stat().st_size == 0
+        summary_lock = threading.Lock()
+        summary_file = open(summary_path, "a", newline="", buffering=1)
+        summary_writer = csv.writer(summary_file)
+        if write_header:
+            summary_writer.writerow([
+                "task_id", "result", "score", "elapsed_s",
+                "output_len", "detail", "evo_cycle",
+            ])
+            summary_file.flush()
+
+        def _per_task_summary_writer(obs, cycle_idx):
+            with summary_lock:
+                try:
+                    success = bool(obs.feedback.success)
+                    result_str = "PASS" if success else "FAIL"
+                    score = float(obs.feedback.score)
+                    out_len = (
+                        len(obs.trajectory.output)
+                        if obs.trajectory is not None and obs.trajectory.output is not None
+                        else 0
+                    )
+                    detail = (obs.feedback.detail or "")[:300]
+                    summary_writer.writerow([
+                        obs.task.id, result_str, f"{score:.4f}", "",
+                        out_len, detail, cycle_idx,
+                    ])
+                    summary_file.flush()
+                except Exception as exc:  # noqa: BLE001
+                    logger.warning(
+                        "summary.csv write failed for %s (cycle %d): %s",
+                        getattr(getattr(obs, "task", None), "id", "?"),
+                        cycle_idx, exc,
+                    )
+
+        loop = EvolutionLoop(
+            agent=agent, benchmark=bench, engine=engine, config=config,
+            task_observer=_per_task_summary_writer,
+        )
 
         logger.info(
             "Running %d cycles (%s) × batch_size=%d (limit=%d, solver=%s, evolver=%s)",
             effective_cycles, cycle_source, args.batch_size, args.limit,
             args.solver_model, evolver_model,
         )
-        result = loop.run(cycles=effective_cycles)
+        try:
+            result = loop.run(cycles=effective_cycles)
+        finally:
+            try:
+                summary_file.flush()
+                summary_file.close()
+            except Exception:  # noqa: BLE001
+                pass
     finally:
         if shared_client:
             shared_client.close()
