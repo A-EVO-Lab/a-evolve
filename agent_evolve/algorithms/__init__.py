@@ -3,6 +3,7 @@
 from .skillforge import AEvolveEngine
 from .adaptive_skill import AdaptiveSkillEngine
 from .meta_harness import MetaHarnessEngine
+from .propose_curate import ProposeCurateEngine
 
 try:
     from .adaptive_evolve import AdaptiveEvolveEngine
@@ -20,4 +21,5 @@ __all__ = [
     "AdaptiveSkillEngine",
     "MasAdaptiveSkillEngine",
     "MetaHarnessEngine",
+    "ProposeCurateEngine",
 ]
