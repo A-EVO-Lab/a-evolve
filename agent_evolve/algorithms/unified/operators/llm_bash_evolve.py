@@ -127,7 +127,7 @@ def _resolve_llm(model: str, region: str):
         return OpenAIProvider(model=model), "openai"
     from ....llm.bedrock import BedrockProvider
 
-    return BedrockProvider(model_id=model), "bedrock"
+    return BedrockProvider(model_id=model, region=region), "bedrock"
 
 
 def _canonical_json(obj: Any) -> str:

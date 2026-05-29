@@ -29,6 +29,10 @@ WORKERS="${WORKERS:-20}"
 DATASET="${DATASET:-princeton-nlp/SWE-bench_Verified}"
 LIMIT="${LIMIT:-500}"
 RUN_EVAL="${RUN_EVAL:-true}"
+# Opt-in conversation-manager overrides. Defaults preserve the historical
+# baseline (Strands implicit SlidingWindowConversationManager(window_size=40)).
+PIN_FIRST_MESSAGE="${PIN_FIRST_MESSAGE:-false}"
+WINDOW_SIZE="${WINDOW_SIZE:-}"
 RUN_ID="${RUN_ID:-$(date -u +%Y%m%d_%H%M%S)_pid$$}"
 OUTPUT_DIR="${OUTPUT_DIR:-${REPO_ROOT}/logs/swe_solve_all_${RUN_ID}}"
 
@@ -46,6 +50,8 @@ echo "Max turns:  ${MAX_TURNS}"
 echo "Workers:    ${WORKERS}"
 echo "Limit:      ${LIMIT}"
 echo "Run eval:   ${RUN_EVAL}"
+echo "Pin first:  ${PIN_FIRST_MESSAGE}"
+echo "Window:     ${WINDOW_SIZE:-<strands default 40>}"
 echo ""
 
 cmd=(
@@ -61,6 +67,12 @@ cmd=(
 )
 if [[ "${RUN_EVAL}" == "false" ]]; then
   cmd+=(--no-eval)
+fi
+if [[ "${PIN_FIRST_MESSAGE}" == "true" ]]; then
+  cmd+=(--pin-first-message)
+fi
+if [[ -n "${WINDOW_SIZE}" ]]; then
+  cmd+=(--window-size "${WINDOW_SIZE}")
 fi
 
 LOG="${OUTPUT_DIR}/evolve.log"

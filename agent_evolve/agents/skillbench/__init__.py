@@ -6,8 +6,6 @@ from typing import Any
 
 __all__ = [
     "SkillBenchAgent",
-    "SkillBenchEvolver",
-    "SkillBenchEvolutionLoop",
     "NativeSkillBenchBackend",
     "HarborSkillBenchBackend",
 ]
@@ -18,14 +16,6 @@ def __getattr__(name: str) -> Any:
         from .agent import SkillBenchAgent
 
         return SkillBenchAgent
-    if name == "SkillBenchEvolver":
-        from .evolver import SkillBenchEvolver
-
-        return SkillBenchEvolver
-    if name == "SkillBenchEvolutionLoop":
-        from .loop import SkillBenchEvolutionLoop
-
-        return SkillBenchEvolutionLoop
     if name == "NativeSkillBenchBackend":
         from .backends import NativeSkillBenchBackend
 

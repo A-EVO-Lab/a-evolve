@@ -28,6 +28,15 @@ logger = logging.getLogger(__name__)
 os.environ.setdefault("BYPASS_TOOL_CONSENT", "true")
 
 
+def _lazy_skill_mode() -> bool:
+    """Lazy = list-all + read_skill tool (mirrors SweAgent).
+
+    Default ON. Set MCP_SKILL_LAZY=0 to fall back to the old keyword-overlap
+    top-3 inline behaviour.
+    """
+    return os.environ.get("MCP_SKILL_LAZY", "1") != "0"
+
+
 class McpAgent(BaseAgent):
     """Reference agent for MCP tool-calling tasks.
 
@@ -68,23 +77,37 @@ class McpAgent(BaseAgent):
         parts = [self.system_prompt]
 
         if self.skills:
-            # Select relevant skills based on task (if provided)
-            if task_prompt:
-                selected = self._select_relevant_skills(task_prompt, max_skills=3)
-            else:
-                selected = self.skills  # Fallback: inject all
-
-            if selected:  # Only add section if we have skills to inject
+            if _lazy_skill_mode():
+                # Lazy: list every skill as `- name: description`; the LLM
+                # pulls bodies on demand via the read_skill tool registered
+                # in _build_strands_agent. Mirrors SweAgent.
                 parts.append("\n\n## Available Skills\n")
                 parts.append(
-                    "You have specialized skills. Review them when facing relevant challenges.\n"
+                    "You have skills learned from previous tasks. Scan the list below "
+                    "before you start; call `read_skill(skill_name)` to load the full "
+                    "procedure of any that match your situation. The descriptions here "
+                    "are one-line hints — you must call read_skill before applying.\n"
                 )
-                for skill in selected:
+                for skill in self.skills:
                     parts.append(f"- **{skill.name}**: {skill.description}")
-                    content = self.get_skill_content(skill.name)
-                    if content:
-                        body = content.split("---", 2)[-1].strip() if "---" in content else content
-                        parts.append(f"\n{body}\n")
+            else:
+                # Eager (legacy): keyword-overlap top-3 inline.
+                if task_prompt:
+                    selected = self._select_relevant_skills(task_prompt, max_skills=3)
+                else:
+                    selected = self.skills  # Fallback: inject all
+
+                if selected:  # Only add section if we have skills to inject
+                    parts.append("\n\n## Available Skills\n")
+                    parts.append(
+                        "You have specialized skills. Review them when facing relevant challenges.\n"
+                    )
+                    for skill in selected:
+                        parts.append(f"- **{skill.name}**: {skill.description}")
+                        content = self.get_skill_content(skill.name)
+                        if content:
+                            body = content.split("---", 2)[-1].strip() if "---" in content else content
+                            parts.append(f"\n{body}\n")
 
         if self.memories:
             parts.append("\n\n## Relevant Memories\n")
@@ -160,6 +183,43 @@ class McpAgent(BaseAgent):
             boto_client_config=bedrock_boto_config(),
         )
         system_prompt = self._build_system_prompt(task_prompt=task_prompt)
+
+        # In lazy mode, register a read_skill tool so the LLM can pull bodies
+        # by name (system prompt only carries the - name: description list).
+        if _lazy_skill_mode() and self.skills:
+            from strands import tool
+
+            skill_data: dict[str, str] = {}
+            for skill in self.skills:
+                content = self.get_skill_content(skill.name)
+                if content:
+                    body = content.split("---", 2)[-1].strip() if "---" in content else content
+                    skill_data[skill.name] = body
+
+            # Tolerant lookup (case + whitespace).
+            norm_lookup = {n.strip().lower(): n for n in skill_data}
+
+            @tool
+            def read_skill(skill_name: str) -> str:
+                """Read the full procedure for a skill by name.
+
+                Call this BEFORE applying a skill — the system prompt only
+                lists short descriptions; you must call read_skill to see
+                the actual procedure body.
+
+                Args:
+                    skill_name: Name of the skill to read (case-insensitive,
+                        whitespace tolerant).
+                """
+                key = (skill_name or "").strip().lower()
+                actual = norm_lookup.get(key)
+                if actual and actual in skill_data:
+                    return skill_data[actual]
+                available = ", ".join(skill_data.keys())
+                return f"Skill '{skill_name}' not found. Available: {available}"
+
+            tools = list(tools) + [read_skill]
+
         return Agent(
             model=model,
             system_prompt=system_prompt,

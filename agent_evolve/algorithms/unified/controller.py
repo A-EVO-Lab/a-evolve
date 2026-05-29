@@ -131,6 +131,26 @@ class RuleBasedController:
             )
 
         if legacy_profile == "swe" and not regime.has_solver_proposal:
+            # Option A: evolver-driven SWE path. Uses the same Reader/Operator
+            # pattern as MCP/TB (PassFailReader + TrajectoryCompressor feed
+            # LLMBashEvolve, which gives the evolver a bash-tool sandbox over
+            # the workspace). Gated by extra["swe_evolver_driven"]=True so
+            # legacy SOLVER_PROPOSES=False callers preserve the old no-op
+            # behaviour.
+            if bool(extra.get("swe_evolver_driven", False)):
+                return _plan(
+                    readers=("PassFailReader", "TrajectoryCompressor"),
+                    operators=("LLMBashEvolve",),
+                    verifier="NoVerify",
+                    artifact_scope={
+                        "prompts": "rw",
+                        "skills": "rw",
+                        "memory": "append",
+                        "tools": "ro",
+                    },
+                    reason_trace=("matched: swe evolver_driven regime",),
+                    config=config,
+                )
             return _plan(
                 readers=("PassFailReader", "TrajectoryCompressor"),
                 operators=(),

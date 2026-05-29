@@ -30,16 +30,22 @@ REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 # ---------------------------------------------------------------------------
 LIMIT="${LIMIT:-500}"
 BATCH_SIZE="${BATCH_SIZE:-20}"
-PARALLEL="${PARALLEL:-20}"
+PARALLEL="${PARALLEL:-5}"
 
 # ---------------------------------------------------------------------------
 # Agent / evolver knobs (guided-synth recommended setting)
 # ---------------------------------------------------------------------------
 FEEDBACK="${FEEDBACK:-none}"
-SOLVER_PROPOSES="${SOLVER_PROPOSES:-false}"
-VERIFICATION_FOCUS="${VERIFICATION_FOCUS:-false}"
-EFFICIENCY_PROMPT="${EFFICIENCY_PROMPT:-false}"
-VERIFY_FIX_PROMPT="${VERIFY_FIX_PROMPT:-false}"
+SOLVER_PROPOSES="${SOLVER_PROPOSES:-true}"
+VERIFICATION_FOCUS="${VERIFICATION_FOCUS:-true}"
+EFFICIENCY_PROMPT="${EFFICIENCY_PROMPT:-true}"
+VERIFY_FIX_PROMPT="${VERIFY_FIX_PROMPT:-true}"
+PIN_FIRST_MESSAGE="${PIN_FIRST_MESSAGE:-true}"
+# Modified-D toggle: when "true", the per-task skill-proposal LLM call is
+# routed to the EVOLVER model (fed solver's full conversation), instead of
+# letting the solver agent make a second turn. Requires SOLVER_PROPOSES=true.
+EVOLVER_PROPOSES="${EVOLVER_PROPOSES:-true}"
+EVOLVER_REGION="${EVOLVER_REGION:-${REGION:-us-west-2}}"
 MAX_STEPS="${MAX_STEPS:-140}"
 WINDOW_SIZE="${WINDOW_SIZE:-70}"
 NO_EVOLVE="${NO_EVOLVE:-false}"
@@ -82,6 +88,9 @@ echo "  Solver-proposes:    ${SOLVER_PROPOSES}"
 echo "  Verification-focus: ${VERIFICATION_FOCUS}"
 echo "  Efficiency-prompt:  ${EFFICIENCY_PROMPT}"
 echo "  Verify-fix prompt:  ${VERIFY_FIX_PROMPT}"
+echo "  Pin first msg:      ${PIN_FIRST_MESSAGE}"
+echo "  Evolver-proposes:   ${EVOLVER_PROPOSES}  (Modified-D: evolver writes proposal)"
+echo "  Evolver region:     ${EVOLVER_REGION}"
 echo "  No evolve:          ${NO_EVOLVE}"
 echo "  Max steps / window: ${MAX_STEPS} / ${WINDOW_SIZE}"
 echo "  Model:         ${MODEL_ID}"
@@ -122,6 +131,9 @@ cmd=(
 [[ "${VERIFICATION_FOCUS}" == "true" ]] && cmd+=(--verification-focus)
 [[ "${EFFICIENCY_PROMPT}" == "true" ]]  && cmd+=(--efficiency-prompt)
 [[ "${VERIFY_FIX_PROMPT}" == "false" ]] && cmd+=(--no-verify-fix-prompt)
+[[ "${PIN_FIRST_MESSAGE}" == "false" ]] && cmd+=(--no-pin-first-message)
+[[ "${EVOLVER_PROPOSES}" == "true" ]]   && cmd+=(--evolver-proposes)
+[[ -n "${EVOLVER_REGION}" ]]            && cmd+=(--evolver-region "${EVOLVER_REGION}")
 [[ "${NO_EVOLVE}" == "true" ]]          && cmd+=(--no-evolve)
 
 LOG="${OUTPUT_DIR}/evolve.log"

@@ -199,9 +199,27 @@ class BedrockProvider(LLMProvider):
             if m.role == "system":
                 system_blocks.append({"text": m.content})
             else:
+                # Bedrock Converse rejects ContentBlock.text=="" with
+                # ValidationException. gpt-oss-120b sometimes returns
+                # only tool-use/reasoning blocks → empty assistant content.
+                # Also handle non-string content (list/etc) by coercing
+                # to str to avoid "can only concatenate list to list"
+                # crashes in downstream string-join paths.
+                raw = m.content
+                if isinstance(raw, str):
+                    text = raw if raw else "[no response]"
+                elif raw is None:
+                    text = "[no response]"
+                else:
+                    try:
+                        text = str(raw)
+                    except Exception:
+                        text = "[no response]"
+                    if not text:
+                        text = "[no response]"
                 converse_messages.append({
                     "role": m.role,
-                    "content": [{"text": m.content}],
+                    "content": [{"text": text}],
                 })
         return system_blocks, converse_messages
 

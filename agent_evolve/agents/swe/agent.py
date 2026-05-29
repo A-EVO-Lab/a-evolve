@@ -47,6 +47,10 @@ class SweAgent(BaseAgent):
         efficiency_prompt: bool = False,
         verify_fix_prompt: bool = True,
         solver_proposes: bool = True,
+        pin_first_message: bool = True,
+        evolver_proposes: bool = False,
+        evolver_model_id: str | None = None,
+        evolver_region: str | None = None,
     ):
         super().__init__(workspace_dir)
         self.model_id = model_id
@@ -58,6 +62,13 @@ class SweAgent(BaseAgent):
         self.verification_focus = verification_focus
         self.verify_fix_prompt = verify_fix_prompt
         self.solver_proposes = solver_proposes
+        self.pin_first_message = pin_first_message
+        # Modified-D: when evolver_proposes=True the proposal step uses the
+        # evolver model fed with the solver's full conversation transcript,
+        # instead of a second turn on the solver agent.
+        self.evolver_proposes = evolver_proposes
+        self.evolver_model_id = evolver_model_id
+        self.evolver_region = evolver_region or region
 
     def _load_tools_from_workspace(self) -> tuple[list, list]:
         """Load tool functions from the workspace tools/registry.yaml.
@@ -175,17 +186,28 @@ class SweAgent(BaseAgent):
 
             tools.append(read_skill)
 
-        from .conversation_manager import PinnedFirstMessageManager
+        if self.pin_first_message:
+            from .conversation_manager import PinnedFirstMessageManager
+            conv_mgr = PinnedFirstMessageManager(
+                window_size=self.window_size,
+                should_truncate_results=True,
+                per_turn=True,
+            )
+        else:
+            from strands.agent.conversation_manager.sliding_window_conversation_manager import (
+                SlidingWindowConversationManager,
+            )
+            conv_mgr = SlidingWindowConversationManager(
+                window_size=self.window_size,
+                should_truncate_results=True,
+                per_turn=True,
+            )
 
         agent = Agent(
             model=model,
             system_prompt=system_prompt,
             tools=tools,
-            conversation_manager=PinnedFirstMessageManager(
-                window_size=self.window_size,
-                should_truncate_results=True,
-                per_turn=True,
-            ),
+            conversation_manager=conv_mgr,
         )
         return agent, modules
 
@@ -298,7 +320,7 @@ class SweAgent(BaseAgent):
                         )
 
                     if self.verification_focus:
-                        proposal_response = agent(
+                        proposal_prompt = (
                             f"{skill_context}"
                             "Reflect on your VERIFICATION process — how you tested and validated your fix.\n\n"
                             "Think about:\n"
@@ -339,7 +361,7 @@ class SweAgent(BaseAgent):
                             "ACTION: NONE"
                         )
                     else:
-                        proposal_response = agent(
+                        proposal_prompt = (
                             f"{skill_context}"
                             "Help FUTURE solvers by proposing or enhancing a skill.\n\n"
                         "IMPORTANT RULES:\n"
@@ -373,6 +395,12 @@ class SweAgent(BaseAgent):
                         "CONFIDENCE: HIGH/MEDIUM/LOW\n"
                         "ACTION: NONE"
                     )
+                    if self.evolver_proposes and self.evolver_model_id:
+                        proposal_response = self._evolver_propose(
+                            conversation, proposal_prompt, instance_id
+                        )
+                    else:
+                        proposal_response = agent(proposal_prompt)
                     skill_proposal = str(proposal_response).strip()[:2500]
                     if "ACTION: NONE" not in skill_proposal.upper():
                         action = "ENHANCE" if "ACTION: ENHANCE" in skill_proposal.upper() else "NEW"
@@ -386,6 +414,139 @@ class SweAgent(BaseAgent):
         traj._conversation = conversation
         traj._skill_proposal = skill_proposal
         return traj
+
+    def _evolver_propose(
+        self,
+        conversation: list,
+        proposal_prompt: str,
+        instance_id: str,
+    ) -> str:
+        """Modified-D proposal call: evolver model writes the skill proposal,
+        fed the solver's full conversation transcript as context.
+
+        Returns proposal text (empty string on failure).
+        """
+        from agent_evolve.llm.base import LLMMessage
+
+        # Route local / OpenAI-compatible evolver models (e.g., qwen35_9b at
+        # /fsx/models/Qwen3.5-9B) to OpenAIProvider; everything else stays on
+        # Bedrock. Mirrors the routing pattern used in
+        # agent_evolve.algorithms.adaptive_skill.tools._is_openai_compatible_model.
+        model = self.evolver_model_id
+        if model.startswith("openai:") or model.startswith("/") or model.startswith("file:"):
+            import os
+            from agent_evolve.llm.openai import OpenAIProvider
+            base_url = (
+                os.environ.get("EVOLVER_OPENAI_BASE_URL")
+                or os.environ.get("OPENAI_BASE_URL")
+            )
+            if (model.startswith("/") or model.startswith("file:")) and not base_url:
+                raise ValueError(
+                    "Local/path evolver models require EVOLVER_OPENAI_BASE_URL "
+                    "or OPENAI_BASE_URL pointing at an OpenAI-compatible server."
+                )
+            provider = OpenAIProvider(
+                model=model.removeprefix("openai:").removeprefix("file:"),
+                base_url=base_url,
+            )
+        else:
+            from agent_evolve.llm.bedrock import BedrockProvider
+            provider = BedrockProvider(
+                model_id=model,
+                region=self.evolver_region,
+            )
+
+        conv_text = self._serialize_conversation_for_evolver(conversation)
+        system_prompt = (
+            "You are a SKILL AUTHOR observing a SWE-bench solving session. "
+            "Read the solver's full conversation transcript and propose a "
+            "generalizable, reusable skill that would help future solvers on "
+            "similar tasks. You did not solve the task yourself; you are the "
+            "evolver-side curator."
+        )
+        user_prompt = (
+            f"## Solver Conversation Transcript ({len(conversation)} messages, task={instance_id})\n\n"
+            f"{conv_text}\n\n"
+            f"## Proposal Task\n\n"
+            f"{proposal_prompt}"
+        )
+
+        try:
+            response = provider.complete(
+                [
+                    LLMMessage(role="system", content=system_prompt),
+                    LLMMessage(role="user", content=user_prompt),
+                ],
+                max_tokens=2048,
+            )
+            return response.content
+        except Exception as e:
+            logger.warning("Evolver-proposes call failed for %s: %s", instance_id, e)
+            return ""
+
+    @staticmethod
+    def _serialize_conversation_for_evolver(conversation: list) -> str:
+        """Serialize Strands conversation history to readable text for evolver
+        replay. Caps at 200K chars (keeps first 50K + last 150K when over)."""
+        import json as _json
+
+        parts = []
+        for i, msg in enumerate(conversation):
+            try:
+                if isinstance(msg, dict):
+                    role = msg.get("role", "?")
+                    content = msg.get("content", [])
+                else:
+                    role = getattr(msg, "role", "?")
+                    content = getattr(msg, "content", [])
+
+                if isinstance(content, str):
+                    text = content
+                elif isinstance(content, list):
+                    blocks = []
+                    for block in content:
+                        if isinstance(block, dict):
+                            if "text" in block:
+                                blocks.append(block["text"])
+                            elif "tool_use" in block or "toolUse" in block:
+                                tu = block.get("tool_use") or block.get("toolUse", {})
+                                name = tu.get("name", "?")
+                                inp = tu.get("input", {})
+                                inp_str = _json.dumps(inp, default=str)[:500]
+                                blocks.append(f"[TOOL_USE name={name} input={inp_str}]")
+                            elif "tool_result" in block or "toolResult" in block:
+                                tr = block.get("tool_result") or block.get("toolResult", {})
+                                tr_content = tr.get("content", [])
+                                if isinstance(tr_content, list):
+                                    inner = "".join(
+                                        b.get("text", "") for b in tr_content if isinstance(b, dict)
+                                    )
+                                else:
+                                    inner = str(tr_content)
+                                blocks.append(f"[TOOL_RESULT {inner[:1500]}]")
+                            else:
+                                blocks.append(_json.dumps(block, default=str)[:500])
+                        else:
+                            blocks.append(str(block))
+                    text = "\n".join(blocks)
+                else:
+                    text = str(content)
+
+                parts.append(f"=== [{i}] {role} ===\n{text}\n")
+            except Exception as e:
+                parts.append(f"=== [{i}] (parse error: {e}) ===\n{str(msg)[:500]}\n")
+
+        full = "\n".join(parts)
+        if len(full) > 200_000:
+            head = full[:50_000]
+            tail = full[-150_000:]
+            full = (
+                head
+                + "\n\n... [TRUNCATED MIDDLE — first 50K chars + last 150K chars] ...\n\n"
+                + tail
+            )
+        return full
+
     @staticmethod
     def _register_trace_hook(agent: Agent, trace: list[dict]) -> None:
         """Register a strands hook that captures every tool call into trace.

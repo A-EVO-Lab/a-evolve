@@ -89,10 +89,25 @@ def main() -> int:
                    help="Feedback to evolver: none masks scores; minimal includes scores.")
     p.add_argument("--solver-proposes", action="store_true",
                    help="Enable legacy V11 solver-proposed skill curation.")
+    p.add_argument("--evolver-driven", action="store_true",
+                   help="Option A: route SWE recipe through LLMBashEvolve "
+                        "(evolver reads PassFail + compressed trajectories and "
+                        "mutates workspace via bash tool). Mutually exclusive "
+                        "with --solver-proposes; sets controller "
+                        "extra['swe_evolver_driven']=True.")
     p.add_argument("--verification-focus", action="store_true",
                    help="Solver/curator focus on verification skills.")
     p.add_argument("--efficiency-prompt", action="store_true",
                    help="Add hypothesis-first efficiency constraints to solver prompt.")
+    p.add_argument("--verify-fix-prompt",
+                   action=argparse.BooleanOptionalAction, default=True,
+                   help="Append the '## Verify Your Fix' block to the system prompt. "
+                        "Use --no-verify-fix-prompt to drop it.")
+    p.add_argument("--pin-first-message",
+                   action=argparse.BooleanOptionalAction, default=True,
+                   help="Pin the first user (problem-statement) message via "
+                        "PinnedFirstMessageManager. Use --no-pin-first-message to "
+                        "fall back to plain SlidingWindowConversationManager.")
     p.add_argument("--model-id", default="us.anthropic.claude-opus-4-6-v1",
                    help="Solver model id")
     p.add_argument("--evolver-model-id", default=None,
@@ -149,6 +164,16 @@ def main() -> int:
     shutil.copytree(seed_dir, ws_dir)
     logger.info("Workspace: %s (from seed %s)", ws_dir, seed_dir)
 
+    # Resolve effective_solver_proposes early — when --evolver-driven is set
+    # we suppress solver proposals so the agent does not spend an extra LLM
+    # turn whose result the controller would ignore.
+    if args.evolver_driven and args.solver_proposes:
+        logger.warning(
+            "--evolver-driven overrides --solver-proposes (mutually exclusive); "
+            "controller will route to LLMBashEvolve."
+        )
+    effective_solver_proposes = bool(args.solver_proposes) and not args.evolver_driven
+
     agent = SweAgent(
         workspace_dir=ws_dir,
         model_id=args.model_id,
@@ -158,10 +183,17 @@ def main() -> int:
         window_size=args.window_size,
         verification_focus=args.verification_focus,
         efficiency_prompt=args.efficiency_prompt,
+        verify_fix_prompt=args.verify_fix_prompt,
+        solver_proposes=effective_solver_proposes,
+        pin_first_message=args.pin_first_message,
     )
 
+    # _resolve_llm understands local OpenAI-compatible paths (e.g.
+    # /fsx/models/Qwen3.5-9B → OpenAIProvider via EVOLVER_OPENAI_BASE_URL)
+    # in addition to Bedrock model_ids, so qwen35_9b-as-evolver works.
+    from agent_evolve.algorithms.unified.operators.llm_bash_evolve import _resolve_llm
     evolver_model_id = args.evolver_model_id or args.model_id
-    llm = BedrockProvider(model_id=evolver_model_id, region=args.region)
+    llm, _llm_kind = _resolve_llm(evolver_model_id, args.region)
 
     # Resolve effective max_cycles. If --passes or --cycle-per-batch is
     # set explicitly, the unified formula wins; otherwise honour --cycles.
@@ -188,18 +220,19 @@ def main() -> int:
         parallel_backend=args.parallel_backend,
         evolver_model=evolver_model_id,
         trajectory_only=args.feedback == "none",
-        evolve_prompts=False,
-        evolve_skills=bool(args.solver_proposes),
-        evolve_memory=False,
+        evolve_prompts=bool(args.evolver_driven),
+        evolve_skills=effective_solver_proposes or bool(args.evolver_driven),
+        evolve_memory=bool(args.evolver_driven),
         evolve_tools=False,
         extra={
             "region": args.region,
             "max_tokens": args.max_tokens,
             "legacy_profile": "swe",
-            "solver_proposes": bool(args.solver_proposes),
-            "solver_proposals_visible_when_feedback_masked": bool(args.solver_proposes),
+            "solver_proposes": effective_solver_proposes,
+            "solver_proposals_visible_when_feedback_masked": effective_solver_proposes,
             "write_memory": False,
             "verification_focus": bool(args.verification_focus),
+            "swe_evolver_driven": bool(args.evolver_driven),
         },
     )
     engine = UnifiedEngine(config, bench)
@@ -233,13 +266,18 @@ def main() -> int:
         "converged": result.converged,
         "engine": "UnifiedEngine",
         "recipe": (
-            "solver_proposal (SkillCurator only; write_memory=False)"
-            if args.solver_proposes
-            else "swe legacy no-op (solver_proposes=False)"
+            "swe evolver_driven (LLMBashEvolve over PassFail + TrajectoryCompressor)"
+            if args.evolver_driven
+            else (
+                "solver_proposal (SkillCurator only; write_memory=False)"
+                if effective_solver_proposes
+                else "swe legacy no-op (solver_proposes=False)"
+            )
         ),
         "legacy_settings": {
             "feedback": args.feedback,
-            "solver_proposes": args.solver_proposes,
+            "solver_proposes": effective_solver_proposes,
+            "evolver_driven": bool(args.evolver_driven),
             "write_memory": False,
             "parallel": args.parallel,
             "parallel_backend": args.parallel_backend,

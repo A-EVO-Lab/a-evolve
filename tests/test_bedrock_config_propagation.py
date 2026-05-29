@@ -77,27 +77,6 @@ def _clear_env() -> None:
         os.environ.pop(k, None)
 
 
-def test_terminal_agent():
-    """TerminalAgent → strands BedrockModel → boto3 client (site #6)."""
-    from agent_evolve.agents.terminal.agent import TerminalAgent
-
-    ws = _make_workspace()
-    try:
-        _clear_env()
-        agent = TerminalAgent(workspace_dir=str(ws), model_id="test-model")
-        _assert_default(_get_boto_cfg(agent._build_strands_agent()))
-
-        os.environ["BEDROCK_RETRY_MAX_ATTEMPTS"] = "20"
-        os.environ["BEDROCK_READ_TIMEOUT_SEC"] = "900"
-        agent2 = TerminalAgent(workspace_dir=str(ws), model_id="test-model")
-        _assert_override(_get_boto_cfg(agent2._build_strands_agent()))
-    finally:
-        import shutil
-        shutil.rmtree(ws, ignore_errors=True)
-        _clear_env()
-    print("[OK] TerminalAgent (site #6, tb evolve solver)")
-
-
 def test_swe_agent():
     """SweAgent → strands BedrockModel → boto3 client (site #2)."""
     from agent_evolve.agents.swe.agent import SweAgent
@@ -178,32 +157,6 @@ def test_mcp_agent():
         shutil.rmtree(ws, ignore_errors=True)
         _clear_env()
     print("[OK] McpAgent (site #5, mcp evolve solver — full agent instantiation, default + env override)")
-
-
-def test_mcp_mh_agent():
-    """McpMHAgent → strands BedrockModel → boto3 client (site #3, mcp
-    baseline solver). Constructs the agent directly and asserts both
-    default and env-overridden propagation, same shape as McpAgent.
-    """
-    from agent_evolve.agents.mcp_mh.agent import McpMHAgent
-
-    ws = _make_workspace()
-    try:
-        _clear_env()
-        agent = McpMHAgent(workspace_dir=str(ws), model_id="test-model")
-        strands_agent = agent._build_strands_agent(tools=[])
-        _assert_default(_get_boto_cfg(strands_agent))
-
-        os.environ["BEDROCK_RETRY_MAX_ATTEMPTS"] = "20"
-        os.environ["BEDROCK_READ_TIMEOUT_SEC"] = "900"
-        agent2 = McpMHAgent(workspace_dir=str(ws), model_id="test-model")
-        strands_agent2 = agent2._build_strands_agent(tools=[])
-        _assert_override(_get_boto_cfg(strands_agent2))
-    finally:
-        import shutil
-        shutil.rmtree(ws, ignore_errors=True)
-        _clear_env()
-    print("[OK] McpMHAgent (site #3, mcp baseline solver — full agent instantiation, default + env override)")
 
 
 def test_out_of_scope_sites_unmodified():

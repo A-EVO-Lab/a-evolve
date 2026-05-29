@@ -1,23 +1,9 @@
-"""Built-in evolution algorithm implementations."""
+"""Built-in evolution algorithm implementations.
 
-from .skillforge import AEvolveEngine
-from .adaptive_skill import AdaptiveSkillEngine
-from .meta_harness import MetaHarnessEngine
+The unified evolution engine lives in :mod:`agent_evolve.algorithms.unified`
+and is imported directly by callers (e.g. ``from agent_evolve.algorithms.unified
+import UnifiedEngine``); it is intentionally not re-exported here to keep
+``import agent_evolve`` lightweight.
+"""
 
-try:
-    from .adaptive_evolve import AdaptiveEvolveEngine
-except ImportError:
-    AdaptiveEvolveEngine = None
-
-try:
-    from .mas_adaptive_skill import MasAdaptiveSkillEngine
-except ImportError:
-    MasAdaptiveSkillEngine = None
-
-__all__ = [
-    "AEvolveEngine",
-    "AdaptiveEvolveEngine",
-    "AdaptiveSkillEngine",
-    "MasAdaptiveSkillEngine",
-    "MetaHarnessEngine",
-]
+__all__: list[str] = []

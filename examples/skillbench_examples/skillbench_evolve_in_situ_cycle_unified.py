@@ -1334,17 +1334,22 @@ def main() -> int:
     # Unified engine + Bedrock provider injected into the LLMBashEvolve
     # operator's per-atom state slot. This is the single-line swap vs
     # the legacy script (which constructed AEvolveEngine(config) here).
+    # _resolve_llm understands local OpenAI-compatible paths (e.g.
+    # /fsx/models/Qwen3.5-9B → OpenAIProvider honouring
+    # EVOLVER_OPENAI_BASE_URL) in addition to the standard Bedrock route,
+    # so qwen35_9b-as-evolver works the same way MCP/TB do.
+    from agent_evolve.algorithms.unified.operators.llm_bash_evolve import _resolve_llm
     _unified_engine = UnifiedEngine(config, bm)
-    _bedrock = BedrockProvider(
-        model_id=args.evolver_model_id or args.model_id,
-        region=args.region,
+    _evolver_llm, _llm_kind = _resolve_llm(
+        args.evolver_model_id or args.model_id,
+        args.region,
     )
-    _unified_engine._operator_state.setdefault("LLMBashEvolve", {})["llm_provider"] = _bedrock
-    _unified_engine._operator_state.setdefault("SkillCurator", {})["llm_provider"] = _bedrock
+    _unified_engine._operator_state.setdefault("LLMBashEvolve", {})["llm_provider"] = _evolver_llm
+    _unified_engine._operator_state.setdefault("SkillCurator", {})["llm_provider"] = _evolver_llm
     evolver = _LegacyEvolveShim(_unified_engine)
     log.info(
-        "  Engine: UnifiedEngine via %s (routed by RuleBasedController, capability=%s)",
-        type(_bedrock).__name__, bm.feedback_capability,
+        "  Engine: UnifiedEngine via %s [%s] (routed by RuleBasedController, capability=%s)",
+        type(_evolver_llm).__name__, _llm_kind, bm.feedback_capability,
     )
 
     log.info("  Evolve scope: skills=%s memory=%s prompts=%s tools=%s",

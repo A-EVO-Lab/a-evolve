@@ -78,16 +78,63 @@ class EvolutionLoop:
         self.history = EvolutionHistory(self.observer, self.versioning)
         self.trial = TrialRunner(self.agent, self.benchmark)
 
-    def run(self, cycles: int | None = None) -> EvolutionResult:
-        """Run the evolution loop for the specified number of cycles."""
+    def run(
+        self,
+        cycles: int | None = None,
+        start_cycle: int = 1,
+        existing_score_history: list[float] | None = None,
+    ) -> EvolutionResult:
+        """Run the evolution loop for the specified number of cycles.
+
+        When ``start_cycle > 1``, the loop resumes from cycle ``start_cycle``:
+          - ``existing_score_history`` (length ``start_cycle - 1``) is treated
+            as the score curve for cycles 1..start_cycle-1.
+          - Stub ``CycleRecord`` entries with just the score field are injected
+            into ``self.history`` so ``engine.step()`` can read prior scores
+            via ``history.get_score_curve()``. Other CycleRecord fields are
+            empty — accepted parity gap for resume (engine operator state from
+            prior cycles is NOT restored).
+          - ``self.versioning.init()`` is skipped — the caller must ensure the
+            workspace is already a git repo at the ``evo-{start_cycle-1}`` tag.
+          - The ``for`` loop starts at index ``start_cycle - 1``.
+        ``start_cycle=1`` (default) preserves the original behaviour exactly.
+        """
         max_cycles = cycles or self.config.max_cycles
         evolution_dir = self.agent.workspace.root / "evolution"
 
-        self.versioning.init()
+        if start_cycle == 1:
+            self.versioning.init()
+            score_history: list[float] = []
+        else:
+            if start_cycle < 1 or start_cycle > max_cycles:
+                raise ValueError(
+                    f"start_cycle={start_cycle} must be in [1, max_cycles={max_cycles}]"
+                )
+            if existing_score_history is None or len(existing_score_history) != start_cycle - 1:
+                got = 0 if existing_score_history is None else len(existing_score_history)
+                raise ValueError(
+                    f"start_cycle={start_cycle} requires existing_score_history "
+                    f"of length {start_cycle - 1}, got {got}"
+                )
+            score_history = list(existing_score_history)
+            # Inject stub CycleRecords so engine.step() sees prior scores via
+            # history.get_score_curve(). Only the `score` field is read by the
+            # unified engine (verified via codex review); other fields are
+            # filled with safe defaults.
+            for i, s in enumerate(score_history, 1):
+                self.history.record_cycle(
+                    CycleRecord(
+                        cycle=i, score=s, mutated=False,
+                        engine_name="", summary="(resumed)",
+                        observation_batch="", metadata={},
+                    )
+                )
+            logger.info(
+                "Resuming from cycle %d (loaded %d prior score history entries)",
+                start_cycle, len(score_history),
+            )
 
-        score_history: list[float] = []
-
-        for cycle in range(max_cycles):
+        for cycle in range(start_cycle - 1, max_cycles):
             cycle_num = cycle + 1
             # Visible to _solve_and_evaluate_one so the task_observer
             # callback can record (obs, cycle_num) without an extra arg.

@@ -47,6 +47,7 @@ echo "Evolver model: ${EVOLVER_MODEL:-<same as solver>}"
 echo "Judge model:   ${JUDGE_MODEL}"
 echo "Docker image:  ${DOCKER_IMAGE:-<none>}"
 echo "Region:        ${REGION}"
+echo "Skill mode:    $([ "${MCP_SKILL_LAZY:-1}" = "0" ] && echo "eager (keyword top-3 inline)" || echo "lazy (read_skill tool, all listed)")"
 echo ""
 
 # Choose python runner: respect an already-active venv; otherwise fall
@@ -80,6 +81,11 @@ cmd=(
 # Unified pass / cycle knobs (when set, overrides --cycles via formula).
 [[ -n "${PASSES}" ]]          && cmd+=(--passes "${PASSES}")
 [[ -n "${CYCLE_PER_BATCH}" ]] && cmd+=(--cycle-per-batch "${CYCLE_PER_BATCH}")
+# Resume: when START_CYCLE > 1, runner skips workspace seeding, validates
+# HEAD is at evo-{N-1}, loads score_history from existing results.metrics.json,
+# advances bench cursor by (N-1)*batch_size, and runs cycles N..max.
+# `:-` default keeps `set -u` happy when START_CYCLE is not exported.
+[[ -n "${START_CYCLE:-}" ]]   && cmd+=(--start-cycle "${START_CYCLE}")
 
 LOG="${OUTPUT_DIR}/evolve.log"
 mkdir -p "${OUTPUT_DIR}"

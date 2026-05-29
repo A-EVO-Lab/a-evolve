@@ -21,12 +21,18 @@ PASSES="${PASSES:-}"
 CYCLE_PER_BATCH="${CYCLE_PER_BATCH:-}"
 LIMIT="${LIMIT:-500}"
 BATCH_SIZE="${BATCH_SIZE:-20}"
-PARALLEL="${PARALLEL:-20}"
+PARALLEL="${PARALLEL:-5}"
 PARALLEL_BACKEND="${PARALLEL_BACKEND:-process}"
 FEEDBACK="${FEEDBACK:-none}"
-SOLVER_PROPOSES="${SOLVER_PROPOSES:-true}"
-VERIFICATION_FOCUS="${VERIFICATION_FOCUS:-true}"
-EFFICIENCY_PROMPT="${EFFICIENCY_PROMPT:-true}"
+SOLVER_PROPOSES="${SOLVER_PROPOSES:-false}"
+# Option A: route SWE recipe through LLMBashEvolve (controller picks the
+# evolver_driven regime). Mutually exclusive with SOLVER_PROPOSES — runner
+# will warn and ignore SOLVER_PROPOSES if both are set.
+EVOLVER_DRIVEN="${EVOLVER_DRIVEN:-false}"
+VERIFICATION_FOCUS="${VERIFICATION_FOCUS:-false}"
+EFFICIENCY_PROMPT="${EFFICIENCY_PROMPT:-false}"
+VERIFY_FIX_PROMPT="${VERIFY_FIX_PROMPT:-false}"
+PIN_FIRST_MESSAGE="${PIN_FIRST_MESSAGE:-false}"
 MODEL_ID="${MODEL_ID:-us.anthropic.claude-opus-4-6-v1}"
 EVOLVER_MODEL_ID="${EVOLVER_MODEL_ID:-}"
 export BEDROCK_RETRY_MAX_ATTEMPTS="${BEDROCK_RETRY_MAX_ATTEMPTS:-15}"
@@ -53,6 +59,12 @@ echo "Parallel:      ${PARALLEL}"
 echo "Parallel backend: ${PARALLEL_BACKEND}"
 echo "Feedback:      ${FEEDBACK}"
 echo "Solver proposes: ${SOLVER_PROPOSES}"
+echo "Evolver driven:  ${EVOLVER_DRIVEN}  (Option A: LLMBashEvolve operator)"
+echo "Verification focus: ${VERIFICATION_FOCUS}"
+echo "Efficiency prompt:  ${EFFICIENCY_PROMPT}"
+echo "Verify-fix prompt:  ${VERIFY_FIX_PROMPT}"
+echo "Pin first msg:      ${PIN_FIRST_MESSAGE}"
+echo "Window size:        ${WINDOW_SIZE}"
 echo "Dataset:       ${DATASET}"
 echo "Model:         ${MODEL_ID}"
 echo "Evolver model: ${EVOLVER_MODEL_ID:-<same as solver>}"
@@ -90,8 +102,11 @@ cmd=(
 [[ -n "${CYCLE_PER_BATCH}" ]]  && cmd+=(--cycle-per-batch "${CYCLE_PER_BATCH}")
 [[ -n "${EVOLVER_MODEL_ID}" ]] && cmd+=(--evolver-model-id "${EVOLVER_MODEL_ID}")
 [[ "${SOLVER_PROPOSES}" == "true" ]] && cmd+=(--solver-proposes)
+[[ "${EVOLVER_DRIVEN}" == "true" ]]  && cmd+=(--evolver-driven)
 [[ "${VERIFICATION_FOCUS}" == "true" ]] && cmd+=(--verification-focus)
 [[ "${EFFICIENCY_PROMPT}" == "true" ]] && cmd+=(--efficiency-prompt)
+[[ "${VERIFY_FIX_PROMPT}" == "false" ]] && cmd+=(--no-verify-fix-prompt)
+[[ "${PIN_FIRST_MESSAGE}" == "false" ]] && cmd+=(--no-pin-first-message)
 
 LOG="${OUTPUT_DIR}/evolve.log"
 mkdir -p "${OUTPUT_DIR}"

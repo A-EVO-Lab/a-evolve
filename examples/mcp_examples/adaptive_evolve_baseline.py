@@ -17,6 +17,7 @@ import threading
 import time
 import traceback
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from datetime import datetime
 from pathlib import Path
 
 # Strands SDK uses recursive event_loop dispatch + recursive JSON telemetry
@@ -33,6 +34,206 @@ from agent_evolve.agents.mcp.key_registry import KeyRegistry
 from agent_evolve.agents.mcp.docker_env import McpAtlasContainer, pull_image
 from agent_evolve.agents.mcp.mcp_client import McpClientWrapper
 from agent_evolve.agents.mcp.code_executor import create_code_executor_tool
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# MCP workspace preparation (self-contained).
+#
+# Patches the MCP seed workspace with code-execution guidance before the first
+# solve. Idempotent. Inlined here so the baseline does not depend on the legacy
+# adaptive_evolve engine (which is not part of this release).
+# ─────────────────────────────────────────────────────────────────────────────
+_SYSTEM_PROMPT_PATCH = """
+## Code Execution
+
+You have an `execute_code` tool that runs Python code with access to all MCP tools via `call_tool(name, args)`.
+
+**Use `execute_code` when:**
+- A task requires searching, iterating, or trying multiple values
+- You need to chain 3+ tool calls where output feeds into the next
+- You need to filter or aggregate large result sets
+- A tool call fails and you want to retry with variations
+
+**Use direct tool calls when:**
+- The task needs only 1-2 simple tool calls with known parameters
+- You need to reason carefully about each intermediate result
+
+Inside `execute_code`, use `print()` to return results. Available: `json`, `re`, `math`, `datetime`.
+"""
+
+_CODE_EXEC_SEED_SKILL = """\
+---
+name: code-execution-patterns
+description: When and how to use execute_code for efficient MCP tool orchestration
+---
+
+# Code Execution Patterns
+
+Use `execute_code` to write Python when a task involves:
+
+## When to use code execution
+- **Search/iteration**: Trying multiple IDs, queries, or parameter values
+- **Chaining 3+ tools**: Output of one feeds into the next
+- **Filtering large results**: Process data before returning to context
+- **Retries with variations**: Same tool with different parameters
+- **Aggregation**: Combining results from multiple tool calls
+
+## When to use direct tool calls
+- Simple 1-2 tool tasks with known parameters
+- Tasks where you need to reason about each result before the next call
+
+## Pattern: Search loop
+```python
+for candidate in candidates:
+    result = call_tool("search_tool", {"query": candidate})
+    data = json.loads(result)
+    if data.get("found"):
+        print(json.dumps(data))
+        break
+```
+
+## Pattern: Tool chaining
+```python
+# Get data -> transform -> store result
+result1 = call_tool("get_data", {"id": "123"})
+data = json.loads(result1)
+processed = [x["name"] for x in data if x["active"]]
+print(json.dumps(processed))
+```
+
+## Pattern: Retry with fallbacks
+```python
+queries = ["exact match", "fuzzy match", "broad match"]
+for q in queries:
+    result = call_tool("search", {"query": q})
+    if "found" in result:
+        print(result)
+        break
+```
+"""
+
+
+def _prepare_mcp_workspace(workspace_root: Path) -> None:
+    """Patch an MCP seed workspace before first solve. Idempotent."""
+    prompt_path = workspace_root / "prompts" / "system.md"
+    if prompt_path.exists():
+        current = prompt_path.read_text()
+        if "execute_code" not in current:
+            prompt_path.write_text(current.rstrip() + "\n" + _SYSTEM_PROMPT_PATCH)
+            log.info("Patched system prompt with code execution guidance")
+
+    skill_dir = workspace_root / "skills" / "code-execution-patterns"
+    skill_file = skill_dir / "SKILL.md"
+    if not skill_file.exists():
+        skill_dir.mkdir(parents=True, exist_ok=True)
+        skill_file.write_text(_CODE_EXEC_SEED_SKILL)
+        log.info("Seeded code-execution-patterns skill")
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Per-task max-tool-use interrupt
+#
+# The baseline runs ThreadPoolExecutor(max_workers=5) so MULTIPLE solves run
+# concurrently in one process. The unified runner's module-level dict design
+# WOULD RACE here. Per-Agent-instance state is used instead via
+# event.agent._evolverbench_state. threading.local() carries (limit, task_id)
+# from the worker thread into strands.Agent.__init__ (same thread), which
+# copies it onto the instance. AfterToolCallEvent callbacks may fire on a
+# different Strands-managed thread but only read/write event.agent's own dict.
+# ─────────────────────────────────────────────────────────────────────────────
+
+class TaskInterruptedException(Exception):
+    """Raised from an AfterToolCallEvent hook when a single solve() call
+    exceeds --max-tool-uses-per-task. Carries (task_id, count, limit) for
+    downstream reporting."""
+
+    def __init__(self, task_id: str, count: int, limit: int):
+        super().__init__(
+            f"Task {task_id} hit max_tool_uses={limit} (count={count})"
+        )
+        self.task_id = task_id
+        self.count = count
+        self.limit = limit
+
+
+# Shared collector for interrupted tasks. List.append is atomic in CPython;
+# concurrent workers can safely append without a lock.
+_interrupted_records: list[dict] = []
+
+# Per-thread carrier: set by solve_and_evaluate on the worker thread before
+# BaselineCodeExecAgent.solve() is called, read by patched __init__ on the
+# SAME thread, then copied onto the Agent instance. Cleared in finally.
+_pending_state = threading.local()
+
+
+def _install_strands_interrupt_hook() -> None:
+    """Monkey-patch strands.Agent.__init__ to register an AfterToolCallEvent
+    hook on every Agent built in this process. Idempotent — guarded by
+    _evolverbench_patched flag so double-import / test re-use is safe.
+
+    Design for concurrent baseline solves (ThreadPoolExecutor max_workers=5):
+    - _pending_state (threading.local) is set on the executor worker thread.
+    - strands.Agent.__init__ is called on that SAME thread → reads
+      _pending_state.next_solve and copies it onto self._evolverbench_state.
+    - AfterToolCallEvent callbacks may fire on a Strands-managed thread but
+      only read/write event.agent._evolverbench_state (per-instance → no
+      cross-solve races, no shared mutable counters across concurrent workers).
+    """
+    from strands import Agent as _StrandsAgent
+    from strands.hooks import AfterToolCallEvent
+
+    if getattr(_StrandsAgent.__init__, "_evolverbench_patched", False):
+        return
+
+    _orig_init = _StrandsAgent.__init__
+
+    def _after_tool_callback(event: AfterToolCallEvent) -> None:
+        # Per-agent-instance state — safe for concurrent solves.
+        state = getattr(event.agent, "_evolverbench_state", None)
+        if state is None:
+            return
+        limit = state.get("limit", 0)
+        if limit <= 0 or state.get("interrupted", False):
+            return
+        state["count"] += 1
+        if state["count"] >= limit:
+            state["interrupted"] = True
+            # Dual-mechanism stop (mirrors unified runner):
+            # (1) stop_event_loop — strands event_loop checks this flag after
+            #     each cycle; prevents further model calls even if the
+            #     TaskInterruptedException is swallowed by the executor.
+            # (2) raise — propagates out of the hook for the common case.
+            try:
+                request_state = event.invocation_state.setdefault("request_state", {})
+                request_state["stop_event_loop"] = True
+            except Exception:  # noqa: BLE001
+                pass
+            raise TaskInterruptedException(
+                state["task_id"],
+                state["count"],
+                limit,
+            )
+
+    def _patched_init(self, *args, **kwargs):
+        _orig_init(self, *args, **kwargs)
+        # Read the per-thread carrier set by solve_and_evaluate on this thread.
+        next_solve = getattr(_pending_state, "next_solve", None)
+        if next_solve is not None:
+            limit, task_id = next_solve
+            self._evolverbench_state = {
+                "count": 0,
+                "limit": limit,
+                "task_id": task_id,
+                "interrupted": False,
+            }
+        else:
+            # Agent built outside solve_and_evaluate (e.g., judge model).
+            self._evolverbench_state = {"limit": 0}
+        # Register after Agent's own hook setup so our callback fires last.
+        self.hooks.add_callback(AfterToolCallEvent, _after_tool_callback)
+
+    _patched_init._evolverbench_patched = True  # type: ignore[attr-defined]
+    _StrandsAgent.__init__ = _patched_init
 
 
 class BaselineCodeExecAgent(McpAgent):
@@ -88,6 +289,9 @@ class BaselineCodeExecAgent(McpAgent):
         )
 
         system_prompt = self._build_system_prompt(task_prompt=task.input)
+        # NOTE: if _install_strands_interrupt_hook() is active, the patched
+        # __init__ reads _pending_state.next_solve (set by solve_and_evaluate
+        # on this same thread) and copies it to self._evolverbench_state.
         agent = Agent(model=model, system_prompt=system_prompt, tools=tools)
 
         response = agent(task.input)
@@ -183,11 +387,25 @@ def main():
     p.add_argument("--seed-workspace", type=str, default="seed_workspaces/mcp")
     p.add_argument("--work-dir", type=str, default="./evolution_workdir/adaptive_baseline")
     p.add_argument("--output-dir", type=str, default="results_adaptive_evolve_baseline")
+    p.add_argument(
+        "--max-tool-uses-per-task",
+        type=int,
+        default=int(os.environ.get("MAX_TOOL_USES_PER_TASK", "0")),
+        help=(
+            "Maximum AfterToolCallEvent firings allowed in a single solve() call. "
+            "0 = disabled (default). When a task hits the limit it is recorded as "
+            "INTERRUPTED in summary.csv and interrupted_tasks.jsonl."
+        ),
+    )
     args = p.parse_args()
     if args.batch_size <= 0:
         p.error("--batch-size must be positive")
     if args.workers <= 0:
         p.error("--workers must be positive")
+
+    # Install the interrupt hook if the cap is enabled. Idempotent.
+    if args.max_tool_uses_per_task > 0:
+        _install_strands_interrupt_hook()
 
     logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
     for n in ("botocore", "urllib3", "httpcore", "httpx",
@@ -215,8 +433,7 @@ def main():
         log.info("MCP_SKIP_PREPARE_WORKSPACE=1 — skipping prepare_workspace "
                  "(blank-slate baseline: raw seed prompt + empty skills)")
     else:
-        from agent_evolve.algorithms.adaptive_evolve import AdaptiveEvolveEngine
-        AdaptiveEvolveEngine.prepare_workspace(work_dir)
+        _prepare_mcp_workspace(Path(work_dir))
 
     bm = McpAtlasBenchmark(
         shuffle=False,
@@ -292,7 +509,12 @@ def main():
     total_passed = 0
     total_failed = 0
     total_errors = 0
+    total_interrupted = 0
     thread_local = threading.local()
+
+    # Capture max_tool_uses_per_task as a local so each thread closure
+    # gets its own reference (not a live read of args).
+    max_tool_uses = args.max_tool_uses_per_task
 
     def worker_benchmark() -> McpAtlasBenchmark:
         benchmark = getattr(thread_local, "benchmark", None)
@@ -315,6 +537,11 @@ def main():
         )
         try:
             log.info("[%d/%d] Solving task %s ...", task_index, batch_len, task.id)
+            # Set the per-thread carrier so that strands.Agent.__init__
+            # (called inside agent.solve()) can copy (limit, task_id) onto
+            # the new Agent instance. Cleared in finally on this same thread.
+            if max_tool_uses > 0:
+                _pending_state.next_solve = (max_tool_uses, task.id)
             agent = BaselineCodeExecAgent(
                 workspace_dir=work_dir,
                 model_id=args.solver_model,
@@ -324,7 +551,31 @@ def main():
                 key_registry=key_registry,
             )
             t0 = time.time()
-            trajectory = agent.solve(task, shared_client=client)
+            try:
+                trajectory = agent.solve(task, shared_client=client)
+            except TaskInterruptedException as exc:
+                # Record and return an interrupted sentinel — write_result
+                # will emit an INTERRUPTED CSV row so done_ids includes this
+                # task on resume and it won't be retried.
+                _interrupted_records.append({
+                    "task_id": exc.task_id,
+                    "tool_use_count": exc.count,
+                    "limit": exc.limit,
+                    "reason": "max_tool_uses",
+                    "timestamp": datetime.utcnow().isoformat() + "Z",
+                })
+                log.warning(
+                    "[%d] Task %s INTERRUPTED: tool_use count %d reached limit %d",
+                    task_index, exc.task_id, exc.count, exc.limit,
+                )
+                return {
+                    "task_id": task.id,
+                    "sid": sid,
+                    "task_index": task_index,
+                    "interrupted": True,
+                    "tool_use_count": exc.count,
+                    "limit": exc.limit,
+                }
             elapsed = time.time() - t0
             feedback = worker_benchmark().evaluate(task, trajectory)
             result = "PASS" if feedback.success else "FAIL"
@@ -346,18 +597,31 @@ def main():
                 "traceback": traceback.format_exc(),
             }
         finally:
+            if max_tool_uses > 0:
+                _pending_state.next_solve = None
             client.close()
 
-    def write_result(record: dict) -> tuple[int, int, int]:
+    def write_result(record: dict) -> tuple[int, int, int, int]:
+        """Returns (passed, failed, errors, interrupted) increment tuple."""
         task_id = record["task_id"]
         task_index = record["task_index"]
+
+        if record.get("interrupted"):
+            count = record["tool_use_count"]
+            limit = record["limit"]
+            detail = f"MAX_TOOL_USES_PER_TASK limit hit at count={count}/{limit}"
+            log.warning("[%d] INTERRUPTED task %s: %s", task_index, task_id, detail)
+            writer.writerow([task_id, "INTERRUPTED", 0, "0", 0, detail[:300]])
+            csvfile.flush()
+            return 0, 0, 0, 1
+
         if "error" in record:
             log.error("[%d] ERROR on task %s: %s",
                       task_index, task_id, record["error"])
             log.error(record["traceback"])
             writer.writerow([task_id, "ERROR", 0, "0", 0, record["error"][:300]])
             csvfile.flush()
-            return 0, 0, 1
+            return 0, 0, 1, 0
 
         trajectory = record["trajectory"]
         feedback = record["feedback"]
@@ -377,8 +641,8 @@ def main():
         log.info("[%d] %s | %s | Score: %.2f | Time: %.1fs",
                  task_index, task_id, result, feedback.score, elapsed)
         if feedback.success:
-            return 1, 0, 0
-        return 0, 1, 0
+            return 1, 0, 0, 0
+        return 0, 1, 0, 0
 
     try:
         with open(summary_path, "a", newline="") as csvfile:
@@ -397,12 +661,13 @@ def main():
 
                 if batch_workers == 1:
                     for i, task in enumerate(batch, 1):
-                        passed, failed, errors = write_result(
+                        passed, failed, errors, interrupted = write_result(
                             solve_and_evaluate(task, i, len(batch))
                         )
                         total_passed += passed
                         total_failed += failed
                         total_errors += errors
+                        total_interrupted += interrupted
                 else:
                     with ThreadPoolExecutor(max_workers=batch_workers) as executor:
                         futures = [
@@ -410,10 +675,11 @@ def main():
                             for i, task in enumerate(batch, 1)
                         ]
                         for future in as_completed(futures):
-                            passed, failed, errors = write_result(future.result())
+                            passed, failed, errors, interrupted = write_result(future.result())
                             total_passed += passed
                             total_failed += failed
                             total_errors += errors
+                            total_interrupted += interrupted
 
                 batch_passed = total_passed
                 log.info("Batch %d completed: %d passed so far",
@@ -423,10 +689,19 @@ def main():
         if container:
             container.stop()
 
-    total = total_passed + total_failed + total_errors
+    # Write interrupted-task ledger (before Results log, after batch loop).
+    if _interrupted_records:
+        interrupted_path = out_dir / "interrupted_tasks.jsonl"
+        with open(interrupted_path, "w") as f:
+            for rec in _interrupted_records:
+                f.write(json.dumps(rec) + "\n")
+        log.info("Wrote interrupted task ledger (%d entries): %s",
+                 len(_interrupted_records), interrupted_path)
+
+    total = total_passed + total_failed + total_errors + total_interrupted
     log.info("=" * 70)
-    log.info("DONE: %d tasks | %d passed | %d failed | %d errors",
-             total, total_passed, total_failed, total_errors)
+    log.info("DONE: %d tasks | %d passed | %d failed | %d errors | %d interrupted",
+             total, total_passed, total_failed, total_errors, total_interrupted)
     if total:
         log.info("Overall pass rate: %.1f%%", total_passed / total * 100)
     log.info("Results: %s", summary_path)
@@ -436,6 +711,7 @@ def main():
         "passed": total_passed,
         "failed": total_failed,
         "errors": total_errors,
+        "interrupted_count": len(_interrupted_records),
         "summary_csv": str(summary_path),
     }, indent=2)
     sentinel_tmp = complete_path.with_suffix(complete_path.suffix + ".tmp")

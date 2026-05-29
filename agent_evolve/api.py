@@ -10,13 +10,13 @@ Usage::
     )
     results = evolver.run(cycles=10)
 
-    # Custom engine:
-    from agent_evolve.algorithms.skillforge import AEvolveEngine
+    # Custom engine (required in this release):
+    from agent_evolve.algorithms.unified import UnifiedEngine
 
     evolver = ae.Evolver(
         agent="swe",
         benchmark="swe-verified",
-        engine=AEvolveEngine(config),
+        engine=UnifiedEngine(config, benchmark),
     )
 """
 
@@ -40,15 +40,9 @@ logger = logging.getLogger(__name__)
 
 # Registry of built-in benchmark names -> classes
 _BENCHMARK_REGISTRY: dict[str, str] = {
-    "swe-verified": "agent_evolve.benchmarks.swe_verified.SweVerifiedBenchmark",
+    "swe-verified": "agent_evolve.benchmarks.swe_verified_mini.SweVerifiedMiniBenchmark",
     "mcp-atlas": "agent_evolve.benchmarks.mcp_atlas.McpAtlasBenchmark",
-    "hle": "agent_evolve.benchmarks.hle.HleBenchmark",
-    "terminal2": "agent_evolve.benchmarks.tb2.terminal2.Terminal2Benchmark",
-    "terminal-bench": "agent_evolve.benchmarks.tb2.terminal2.Terminal2Benchmark",
     "skill-bench": "agent_evolve.benchmarks.skill_bench.SkillBenchBenchmark",
-    "arc-agi-3": "agent_evolve.benchmarks.arc_agi3.ArcAgi3Benchmark",
-    "arc-agi3": "agent_evolve.benchmarks.arc_agi3.ArcAgi3Benchmark",
-    "arc": "agent_evolve.benchmarks.arc_agi3.ArcAgi3Benchmark",
 }
 
 # Registry of seed workspace names -> paths (relative to package root)
@@ -57,19 +51,6 @@ _SEED_REGISTRY: dict[str, str] = {
     "swe-verified": "swe",
     "mcp": "mcp",
     "mcp-atlas": "mcp",
-    "reasoning": "reasoning",
-    "hle": "reasoning",
-    "terminal": "terminal",
-    "terminal2": "terminal",
-    "terminal-bench": "terminal",
-    "clawcode": "clawcode",
-    "claw-code": "clawcode",
-    "arc": "arc",
-    "arc-agi-3": "arc",
-    "arc-mas": "arc-mas",
-    "arc-agi-3-mas": "arc-mas",
-    "arc-agi3": "arc",
-    "mcp-mh": "mcp_mh",
 }
 
 
@@ -85,7 +66,7 @@ class Evolver:
             - str benchmark name ("swe-verified", "mcp-atlas", etc.)
             - BenchmarkAdapter instance
         config: EvolveConfig or path to YAML config file.
-        engine: An EvolutionEngine instance.  Defaults to AEvolveEngine.
+        engine: An EvolutionEngine instance (required; e.g. UnifiedEngine).
         work_dir: Directory for the working copy of the workspace.
             Defaults to "./evolution_workdir".
     """
@@ -106,9 +87,11 @@ class Evolver:
         self._loop = EvolutionLoop(self.agent, self.benchmark, resolved_engine, self.config)
 
     def _default_engine(self) -> EvolutionEngine:
-        from .algorithms.skillforge import AEvolveEngine
-
-        return AEvolveEngine(self.config)
+        raise NotImplementedError(
+            "No default evolution engine is bundled in this release. Pass an "
+            "explicit engine, e.g. UnifiedEngine(config, benchmark); see the "
+            "examples/ directory for the harness-evolution runners."
+        )
 
     def run(self, cycles: int | None = None) -> EvolutionResult:
         """Run the evolution loop."""
