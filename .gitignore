@@ -6,6 +6,9 @@ dist/
 build/
 *.egg
 
+# Regenerable HFR analysis cache (rubrics, judge verdicts, aggregates)
+examples/harness-evolution/hfr_analysis/_artefacts/
+
 # Virtual environments
 .venv/
 venv/
