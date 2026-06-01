@@ -4,6 +4,17 @@
 
 Official implementation for **"Harness Updating Is Not Harness Benefit: Disentangling Evolution Capabilities in Self-Evolving LLM Agents."**
 
+If you find this work helpful, please consider to cite our paper:
+
+```bibtex
+@article{lin2026harness,
+  title={Harness Updating Is Not Harness Benefit: Disentangling Evolution Capabilities in Self-Evolving LLM Agents},
+  author={Lin, Minhua and Wu, Juncheng and Wang, Zijun and Shi, Zhan and Sang, Yisi and He, Bing and Liu, Zewen and Wei, Tianxin and Wu, Zongyu and Zhang, Zhiwei and Wang, Dakuo and Zhang, Xiang and Dumoulin, Benoit and Xie, Cihang and Zhou, Yuyin and Wang, Suhang and Lu, Hanqing},
+  journal={arXiv preprint arXiv:2605.30621},
+  year={2026}
+}
+```
+
 ## Table of Contents
 
 - [Abstract](#abstract)
@@ -212,16 +223,3 @@ The study pairs seven LLMs as agents and evolvers. The anchor agent set and anch
 | `qwen32b` | Qwen3-32B | see `model_region_availability.json` |
 | `qwen35_9b` | Qwen3.5-9B | see `model_region_availability.json` |
 | `gptoss120b` | GPT-OSS-120B | see `model_region_availability.json` |
-
-## Citation
-
-If you find this work helpful, please cite:
-
-```bibtex
-@article{lin2026harness,
-  title={Harness Updating Is Not Harness Benefit: Disentangling Evolution Capabilities in Self-Evolving LLM Agents},
-  author={Lin, Minhua and Wu, Juncheng and Wang, Zijun and Shi, Zhan and Sang, Yisi and He, Bing and Liu, Zewen and Wei, Tianxin and Wu, Zongyu and Zhang, Zhiwei and Wang, Dakuo and Zhang, Xiang and Dumoulin, Benoit and Xie, Cihang and Zhou, Yuyin and Wang, Suhang and Lu, Hanqing},
-  journal={arXiv preprint arXiv:2605.30621},
-  year={2026}
-}
-```
