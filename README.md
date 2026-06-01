@@ -3,9 +3,7 @@
 [![arXiv](https://img.shields.io/badge/arXiv-2605.30621-b31b1b.svg)](https://arxiv.org/abs/2605.30621)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 
-Official artifact repository for **"Harness Updating Is Not Harness Benefit: Disentangling Evolution Capabilities in Self-Evolving LLM Agents."**
-
-This release contains the unified harness self-evolution engine, benchmark adapters, seed harnesses, and scripts needed to reproduce the paper's main experimental cells.
+Official implementation for **"Harness Updating Is Not Harness Benefit: Disentangling Evolution Capabilities in Self-Evolving LLM Agents."**
 
 ## Table of Contents
 
@@ -21,14 +19,14 @@ This release contains the unified harness self-evolution engine, benchmark adapt
 - [Models](#models)
 - [Citation](#citation)
 
-## Abstract
+## Overview
 
 LLM agents are increasingly deployed as systems built around an editable external **harness**: prompts, skills, memories, and tools that shape task execution without changing model parameters. *Harness self-evolution* adapts such an agent by updating this harness from execution evidence. We separate two capabilities in this loop:
 
 1. **Harness-updating**, exercised by the evolver, is the capability to produce useful persistent harness updates from evidence.
 2. **Harness-benefit**, exercised by the agent, is the capability to use updated harnesses during task solving.
 
-Pairing seven LLMs as agents and evolvers across three agentic benchmarks (SWE-bench Verified, MCP-Atlas, SkillsBench), all driven by a single evolution engine (`agent_evolve/algorithms/unified`, `UnifiedEngine`), the analysis reveals two findings:
+Pairing seven LLMs as agents and evolvers across three agentic benchmarks (SWE-bench Verified, MCP-Atlas, SkillsBench), the analysis reveals two findings:
 
 - **Harness-updating is flat in base capability.** Models from different capability tiers produce harness updates that lead to surprisingly similar gains; even Qwen3.5-9B's updates yield gains comparable to those of Claude Opus 4.6.
 - **Harness-benefit is non-monotonic in base capability.** Weak-tier models benefit little from updated harnesses, mid-tier models benefit most, and strong-tier models benefit less than mid-tier. We trace the low gains at the weak tier to two failure modes: weak-tier models may fail to activate relevant harness artifacts, or activate them but fail to follow them faithfully (measured by the Harness-Following Rate).
