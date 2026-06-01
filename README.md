@@ -100,6 +100,7 @@ By applying our open-source **reference evolution algorithms** to a base Claude 
 > *All results achieved with a single Claude Opus-4.6 base model, evolved using A-Evolve's sample algorithms. 0 hours of human harness engineering. Data checked March 2026.*
 
 ### News
+- **5/30** **New Research Paper**, [*Harness Updating Is Not Harness Benefit: Disentangling Evolution Capabilities in Self-Evolving LLM Agents*](https://arxiv.org/abs/2605.30621) (arXiv 2605.30621).Tested across 7 evolver models (Opus-4.6, Sonnet-4.6, Kimi, QWen, GPT-OSS, et.c) × 6 solver agents × 3 agentic benchmarks (SWE-bench Verified, MCP-Atlas, SkillsBench), we answered **which model produced the best harness update and which models benefits the most from harness update**.  
 - **05/04** **New Benchmark Results**, A-Evolve added [results](https://x.com/HenryL_AI/status/2051711038618480816?s=20) on ARC-AGI-3, evolving a multi-agent system to be more powerful on solving difficult tasks like [ARC-AGI-3](https://arcprize.org/arc-agi/3). Improving performance from 10% to 12%.
 - **04/20** **New Algorithm Drop**, A-Evolve added new evolutionary algorithm [GEPA](https://x.com/HenryL_AI/status/2046326722912739713?s=20), submitted by the [GEPA](https://gepa-ai.github.io/gepa/blog/) team.
 - **04/10** **Integration**, A-Evolve is officially integrated into [Orch-Research Skills Library](https://x.com/HenryL_AI/status/2042688465855488476), along with others including AutoResearch, OpenRLHF, DeepSpeed, SGLang
