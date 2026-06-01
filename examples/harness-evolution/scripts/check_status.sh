@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ─────────────────────────────────────────────────────────────────────────────
-# Exp1 v3 progress dashboard — solver × evolver matrix per benchmark at seed=42.
+# Exp1 progress dashboard — solver × evolver matrix per benchmark at seed=42.
 #
 # Route-aware score reading is driven BY THE SIDECAR (AC-4). Each cell's
 # `BENCHMARK_REPORT.md` (authored by run_exp1.py) names the done-marker and

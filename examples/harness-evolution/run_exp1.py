@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""EvolverBench Exp1 v3 launcher — dispatches to A-EVOLVE-V3 shell wrappers.
+"""EvolverBench Exp1 launcher for the harness-evolution artifact.
 
 Pivot (2026-04-21): the axis under study is the **solver**, with a fixed
 evolver pool of 3 models known to produce useful mutations. Routing:
@@ -32,7 +32,7 @@ User-facing knobs:
 Environment:
   BEDROCK_API_KEY            ABSK key for Bedrock auth (or IAM creds)
   BYPASS_TOOL_CONSENT=true   required for Terminal-Bench (auto-set for tb)
-  AEVOLVE_V3_DIR             override A-EVOLVE-V3 path (default: ../A-EVOLVE-V3)
+  AEVOLVE_REPO_DIR           override repository path (default: current checkout)
 """
 from __future__ import annotations
 
@@ -51,13 +51,13 @@ logger = logging.getLogger("exp1")
 
 # ── Paths ───────────────────────────────────────────────────────────────────
 
-REPO_ROOT = Path(__file__).resolve().parent
-AEVOLVE_V3_DIR = Path(
-    os.environ.get("AEVOLVE_V3_DIR")
-    or REPO_ROOT.parent / "A-EVOLVE-V3"
+EXPERIMENT_ROOT = Path(__file__).resolve().parent
+PROJECT_ROOT = Path(
+    os.environ.get("AEVOLVE_REPO_DIR")
+    or EXPERIMENT_ROOT.parents[1]
 ).resolve()
 
-# ── Solver pool (8 models, Exp1 v3) ─────────────────────────────────────────
+# ── Solver pool (8 models, Exp1) ────────────────────────────────────────────
 
 SOLVER_MODELS: dict[str, str] = {
     "sonnet46":   "us.anthropic.claude-sonnet-4-6",
@@ -81,13 +81,13 @@ EVOLVER_MODELS: dict[str, str] = {
 # ── Per-benchmark wrapper registry ──────────────────────────────────────────
 # solver_env / evolver_env = env-var names consumed by the evolve wrapper
 # output_env = env-var the evolve wrapper reads for its run-dir
-# seed_dir = seed workspace (under AEVOLVE_V3_DIR/seed_workspaces)
+# seed_dir = seed workspace (under PROJECT_ROOT/seed_workspaces)
 # positional_run_name = True for wrappers whose first positional arg is RUN_NAME
 
 WRAPPERS: dict[str, dict] = {
     "swe": {
-        "evolve_wrapper":   AEVOLVE_V3_DIR / "examples/swe_examples/run_swe_evolve_split_unified.sh",
-        "baseline_wrapper": AEVOLVE_V3_DIR / "examples/swe_examples/run_solve_all.sh",
+        "evolve_wrapper":   PROJECT_ROOT / "examples/swe_examples/run_swe_evolve_split_unified.sh",
+        "baseline_wrapper": PROJECT_ROOT / "examples/swe_examples/run_solve_all.sh",
         "solver_env":   "MODEL_ID",
         "evolver_env":  "EVOLVER_MODEL_ID",
         "output_env":   "OUTPUT_DIR",
@@ -95,8 +95,8 @@ WRAPPERS: dict[str, dict] = {
         "positional_run_name": False,
     },
     "mcp": {
-        "evolve_wrapper":   AEVOLVE_V3_DIR / "examples/mcp_examples/run_adaptive_evolve_split_unified.sh",
-        "baseline_wrapper": AEVOLVE_V3_DIR / "examples/mcp_examples/run_adaptive_evolve_baseline.sh",
+        "evolve_wrapper":   PROJECT_ROOT / "examples/mcp_examples/run_adaptive_evolve_split_unified.sh",
+        "baseline_wrapper": PROJECT_ROOT / "examples/mcp_examples/run_adaptive_evolve_baseline.sh",
         "solver_env":   "SOLVER_MODEL",
         "evolver_env":  "EVOLVER_MODEL",
         "output_env":   "OUTPUT_DIR",
@@ -104,8 +104,8 @@ WRAPPERS: dict[str, dict] = {
         "positional_run_name": False,
     },
     "tb": {
-        "evolve_wrapper":   AEVOLVE_V3_DIR / "examples/tb_examples/run_evolve_split_unified.sh",
-        "baseline_wrapper": AEVOLVE_V3_DIR / "examples/tb_examples/run_baseline.sh",
+        "evolve_wrapper":   PROJECT_ROOT / "examples/tb_examples/run_evolve_split_unified.sh",
+        "baseline_wrapper": PROJECT_ROOT / "examples/tb_examples/run_baseline.sh",
         "solver_env":   "MODEL_ID",
         "evolver_env":  "EVOLVER_MODEL_ID",
         "output_env":   "LOG_DIR",
@@ -113,8 +113,8 @@ WRAPPERS: dict[str, dict] = {
         "positional_run_name": True,
     },
     "sb": {
-        "evolve_wrapper":   AEVOLVE_V3_DIR / "examples/skillbench_examples/run_skillbench_evolve_split_unified.sh",
-        "baseline_wrapper": AEVOLVE_V3_DIR / "examples/skillbench_examples/run_skillbench_solve_all.sh",
+        "evolve_wrapper":   PROJECT_ROOT / "examples/skillbench_examples/run_skillbench_evolve_split_unified.sh",
+        "baseline_wrapper": PROJECT_ROOT / "examples/skillbench_examples/run_skillbench_solve_all.sh",
         "solver_env":   "MODEL_ID",
         "evolver_env":  "EVOLVER_MODEL_ID",
         "output_env":   "RUN_DIR",
@@ -199,7 +199,7 @@ EVOLVE_REPORT = {
 
 def _load_env_file() -> None:
     """Mirror scripts/*.sh: auto-source .env if present."""
-    env_file = REPO_ROOT / ".env"
+    env_file = PROJECT_ROOT / ".env"
     if not env_file.exists():
         return
     for line in env_file.read_text().splitlines():
@@ -257,15 +257,15 @@ def _write_benchmark_report(
 
 
 def _seed_workspace(bm: str) -> str:
-    """Absolute path to V3's seed workspace for a benchmark. Used by evolve/baseline env builders."""
-    return str(AEVOLVE_V3_DIR / "seed_workspaces" / WRAPPERS[bm]["seed_dir"])
+    """Absolute path to the seed workspace for a benchmark."""
+    return str(PROJECT_ROOT / "seed_workspaces" / WRAPPERS[bm]["seed_dir"])
 
 
 def _mcp_env_file() -> str:
     mcp_env_file = os.environ.get("MCP_ENV_FILE")
     if mcp_env_file:
         return mcp_env_file
-    default_env_file = REPO_ROOT / ".env"
+    default_env_file = PROJECT_ROOT / ".env"
     return str(default_env_file) if default_env_file.exists() else ".env"
 
 
@@ -369,7 +369,7 @@ def _build_env_baseline(bm: str, solver_id: str, region: str, max_tokens: int,
                         limit: int | None, cell_dir: Path) -> dict[str, str]:
     """Build the env-var dict for the baseline wrapper. Per-benchmark surface.
 
-    `limit=None` means "no limit" — emit `LIMIT=""` so the V3 wrapper
+    `limit=None` means "no limit" - emit `LIMIT=""` so the wrapper
     skips the `--limit` flag and the runner loads the entire dataset.
     """
     if bm == "mcp":
@@ -452,8 +452,8 @@ def main() -> int:
     )
 
     p = argparse.ArgumentParser(
-        description="EvolverBench Exp1 v3 — one (solver, evolver, benchmark, seed) run "
-                    "against A-EVOLVE-V3 shell wrappers.",
+        description="EvolverBench Exp1 - one (solver, evolver, benchmark, seed) run "
+                    "against the harness-evolution shell wrappers.",
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     # --solver/--evolver: NO argparse `choices=` — short-name validation is
@@ -472,7 +472,7 @@ def main() -> int:
     p.add_argument("--benchmark", required=True, choices=sorted(WRAPPERS.keys()),
                    help="Benchmark: swe / mcp / tb / sb.")
     p.add_argument("--seed", type=int, default=42,
-                   help="Single-seed default (42). V3 adapters do not honour --seed "
+                   help="Single-seed default (42). These adapters do not honour --seed "
                         "for task-order reshuffle; seed drives run-namespace + sb "
                         "split-seed only.")
 
@@ -507,7 +507,7 @@ def main() -> int:
                         "hash = deterministic per-cell pick from the verified "
                         "solver/evolver intersection (or solver-only for --evolver none). "
                         "Default: single. Reads REGION_STRATEGY env var if set.")
-    p.add_argument("--output-root", default=str(REPO_ROOT / "results" / "exp1_v3"),
+    p.add_argument("--output-root", default=str(EXPERIMENT_ROOT / "results" / "exp1_v3"),
                    help="Root directory for cell outputs.")
     p.add_argument("--dry-run", action="store_true",
                    help="1 task, 1 cycle — smoke-test the wrapper + env plumbing.")
@@ -567,9 +567,9 @@ def main() -> int:
         return 0
 
     if not wrapper_path.exists():
-        logger.error("V3 wrapper missing: %s", wrapper_path)
-        logger.error("Set AEVOLVE_V3_DIR if A-EVOLVE-V3 lives elsewhere (current: %s)",
-                     AEVOLVE_V3_DIR)
+        logger.error("Wrapper missing: %s", wrapper_path)
+        logger.error("Set AEVOLVE_REPO_DIR if the repository lives elsewhere (current: %s)",
+                     PROJECT_ROOT)
         return 2
 
     # Resolve knobs, applying dry-run overrides last.
@@ -660,7 +660,7 @@ def main() -> int:
         evolver_model_id=evolver_id,
     )
 
-    logger.info("=== EvolverBench Exp1 v3 ===")
+    logger.info("=== EvolverBench Exp1 ===")
     logger.info("  solver:     %s (%s)", args.solver, solver_id)
     logger.info("  evolver:    %s (%s)",
                 args.evolver,
@@ -695,7 +695,7 @@ def main() -> int:
                                       if k not in os.environ})
 
     started = time.time()
-    rc = subprocess.call(cmd, env=merged_env, cwd=str(AEVOLVE_V3_DIR))
+    rc = subprocess.call(cmd, env=merged_env, cwd=str(PROJECT_ROOT))
     elapsed = time.time() - started
 
     logger.info("=== Done (rc=%d, %.1fs) — %s", rc, elapsed, cell_dir)

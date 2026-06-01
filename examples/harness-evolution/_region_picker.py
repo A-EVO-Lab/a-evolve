@@ -56,7 +56,7 @@ EVOLVER_LONG: dict[str, str] = {
 
 # Regionless/local evolver ids. These are not Bedrock model ids and should
 # not be looked up in model_region_availability.json; the solver still picks
-# a Bedrock region as usual, while the evolver is routed by the V3 provider.
+# a Bedrock region as usual, while the evolver is routed by the OpenAI-compatible provider.
 LOCAL_EVOLVER_IDS: dict[str, str] = {
     "qwen35_9b": "/fsx/models/Qwen3.5-9B",
 }

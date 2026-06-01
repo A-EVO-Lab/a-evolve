@@ -28,8 +28,9 @@ def _find_evolverbench_root(start: str) -> str:
 
 
 EVOLVERBENCH_ROOT = _find_evolverbench_root(SCRIPT_DIR)
+PROJECT_ROOT = os.path.abspath(os.path.join(EVOLVERBENCH_ROOT, "..", ".."))
 sys.path.insert(0, EVOLVERBENCH_ROOT)
-sys.path.insert(0, os.path.abspath(os.path.join(EVOLVERBENCH_ROOT, '..', 'A-EVOLVE-V3')))
+sys.path.insert(0, PROJECT_ROOT)
 
 from agent_evolve.llm._bedrock_config import bedrock_boto_config  # type: ignore
 from _region_picker import resolve  # type: ignore

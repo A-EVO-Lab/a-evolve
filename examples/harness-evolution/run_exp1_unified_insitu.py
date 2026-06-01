@@ -52,10 +52,10 @@ def _resolve_judge_id(region: str) -> str:
 
 logger = logging.getLogger("exp1_unified_insitu")
 
-REPO_ROOT = Path(__file__).resolve().parent
-AEVOLVE_V3_DIR = Path(
-    os.environ.get("AEVOLVE_V3_DIR")
-    or REPO_ROOT.parent / "A-EVOLVE-V3"
+EXPERIMENT_ROOT = Path(__file__).resolve().parent
+PROJECT_ROOT = Path(
+    os.environ.get("AEVOLVE_REPO_DIR")
+    or EXPERIMENT_ROOT.parents[1]
 ).resolve()
 
 SOLVER_MODELS: dict[str, str] = {
@@ -77,32 +77,32 @@ EVOLVER_MODELS: dict[str, str] = {
 
 UNIFIED: dict[str, dict] = {
     "swe": {
-        "evolve_path": AEVOLVE_V3_DIR / "examples/swe_examples/run_swe_evolve_in-situ_unified.sh",
-        "baseline_path": AEVOLVE_V3_DIR / "examples/swe_examples/run_solve_all.sh",
+        "evolve_path": PROJECT_ROOT / "examples/swe_examples/run_swe_evolve_in-situ_unified.sh",
+        "baseline_path": PROJECT_ROOT / "examples/swe_examples/run_solve_all.sh",
         "seed_dir": "swe",
         "evolver_model_supported": True,
     },
     "swe-mini": {
-        "evolve_path": AEVOLVE_V3_DIR / "examples/swe_examples/run_swe_evolve_unified_mini.sh",
-        "baseline_path": AEVOLVE_V3_DIR / "examples/swe_examples/run_solve_all_mini.sh",
+        "evolve_path": PROJECT_ROOT / "examples/swe_examples/run_swe_evolve_unified_mini.sh",
+        "baseline_path": PROJECT_ROOT / "examples/swe_examples/run_solve_all_mini.sh",
         "seed_dir": "swe",
         "evolver_model_supported": True,
     },
     "mcp": {
-        "evolve_path": AEVOLVE_V3_DIR / "examples/mcp_examples/run_adaptive_evolve_in-situ_unified.sh",
-        "baseline_path": AEVOLVE_V3_DIR / "examples/mcp_examples/run_adaptive_evolve_baseline.sh",
+        "evolve_path": PROJECT_ROOT / "examples/mcp_examples/run_adaptive_evolve_in-situ_unified.sh",
+        "baseline_path": PROJECT_ROOT / "examples/mcp_examples/run_adaptive_evolve_baseline.sh",
         "seed_dir": "mcp",
         "evolver_model_supported": True,
     },
     "tb": {
-        "evolve_path": AEVOLVE_V3_DIR / "examples/tb_examples/run_evolve_unified.sh",
-        "baseline_path": AEVOLVE_V3_DIR / "examples/tb_examples/run_baseline.sh",
+        "evolve_path": PROJECT_ROOT / "examples/tb_examples/run_evolve_unified.sh",
+        "baseline_path": PROJECT_ROOT / "examples/tb_examples/run_baseline.sh",
         "seed_dir": "terminal",
         "evolver_model_supported": True,
     },
     "sb": {
-        "evolve_path": AEVOLVE_V3_DIR / "examples/skillbench_examples/run_skillbench_evolve_in-situ_unified.sh",
-        "baseline_path": AEVOLVE_V3_DIR / "examples/skillbench_examples/run_skillbench_solve_all.sh",
+        "evolve_path": PROJECT_ROOT / "examples/skillbench_examples/run_skillbench_evolve_in-situ_unified.sh",
+        "baseline_path": PROJECT_ROOT / "examples/skillbench_examples/run_skillbench_solve_all.sh",
         "seed_dir": "skillbench-upstream-parity",
         "evolver_model_supported": True,
     },
@@ -148,7 +148,7 @@ UNIFIED_EVOLVE_REPORT: dict[str, dict] = {
 
 
 def _load_env_file() -> None:
-    env_file = REPO_ROOT / ".env"
+    env_file = PROJECT_ROOT / ".env"
     if not env_file.exists():
         return
     for line in env_file.read_text().splitlines():
@@ -160,14 +160,14 @@ def _load_env_file() -> None:
 
 
 def _seed_workspace(bm: str) -> str:
-    return str(AEVOLVE_V3_DIR / "seed_workspaces" / UNIFIED[bm]["seed_dir"])
+    return str(PROJECT_ROOT / "seed_workspaces" / UNIFIED[bm]["seed_dir"])
 
 
 def _mcp_env_file() -> str:
     mcp_env_file = os.environ.get("MCP_ENV_FILE")
     if mcp_env_file:
         return mcp_env_file
-    default_env_file = REPO_ROOT / ".env"
+    default_env_file = PROJECT_ROOT / ".env"
     return str(default_env_file) if default_env_file.exists() else ".env"
 
 
@@ -429,7 +429,7 @@ def main() -> int:
     p.add_argument("--region", default=os.environ.get("AWS_DEFAULT_REGION", "us-west-2"))
     p.add_argument("--region-strategy", choices=("single", "hash"),
                    default=os.environ.get("REGION_STRATEGY", "single"))
-    p.add_argument("--output-root", default=str(REPO_ROOT / "results" / "exp1_unified_insitu"))
+    p.add_argument("--output-root", default=str(EXPERIMENT_ROOT / "results" / "exp1_unified_insitu"))
     p.add_argument("--dry-run", action="store_true")
     p.add_argument("--resolve-only", action="store_true")
     p.add_argument("--json", action="store_true")
@@ -562,7 +562,7 @@ def main() -> int:
     logger.info("  env(delta): %s", {k: v for k, v in env_delta.items() if k not in os.environ})
 
     started = time.time()
-    rc = subprocess.call(cmd, env={**os.environ, **env_delta}, cwd=str(AEVOLVE_V3_DIR))
+    rc = subprocess.call(cmd, env={**os.environ, **env_delta}, cwd=str(PROJECT_ROOT))
     elapsed = time.time() - started
 
     logger.info("=== Done (rc=%d, %.1fs) - %s", rc, elapsed, cell_dir)

@@ -1,7 +1,6 @@
 # Harness Updating Is Not Harness Benefit: Disentangling Evolution Capabilities in Self-Evolving LLM Agents
 
 [![arXiv](https://img.shields.io/badge/arXiv-2605.30621-b31b1b.svg)](https://arxiv.org/abs/2605.30621)
-[![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 
 Official implementation for **"Harness Updating Is Not Harness Benefit: Disentangling Evolution Capabilities in Self-Evolving LLM Agents."**
 
@@ -15,7 +14,6 @@ Official implementation for **"Harness Updating Is Not Harness Benefit: Disentan
 - [Reproducing the Paper Experiments](#reproducing-the-paper-experiments)
   - [Exp0: Evolver-side Analysis (harness-updating)](#exp0-evolver-side-analysis-harness-updating)
   - [Exp1: Agent-side Analysis (harness-benefit)](#exp1-agent-side-analysis-harness-benefit)
-    - [Harness-Following Rate (HFR) Diagnostic](#harness-following-rate-hfr-diagnostic)
 - [Models](#models)
 - [Citation](#citation)
 
@@ -158,13 +156,9 @@ python examples/skillbench_examples/skillbench_evolve_split_unified.py \
 
 ## Reproducing the Paper Experiments
 
-Experiments are orchestrated under `examples/harness-evolution/`. Each *cell* is an `(agent, evolver, benchmark, seed)` tuple; the orchestrators dispatch one cell per invocation and write a `BENCHMARK_REPORT.md` sidecar used for skip/resume. The scripts keep the historical `AEVOLVE_V3_DIR` environment variable name; point it at this checkout:
+The main experiment drivers live in `examples/harness-evolution/`. They expose the two comparisons studied in the paper: Exp0 varies the evolver to measure harness-updating, while Exp1 varies the task-solving agent to measure harness-benefit.
 
-```bash
-export AEVOLVE_V3_DIR=$(pwd)
-```
-
-Model nicknames: `opus46`, `sonnet46`, `haiku45`, `qwen235b`, `qwen32b`, `qwen35_9b`, `gptoss120b` (see [Models](#models)). `--evolver none` is the no-evolve baseline.
+Run the commands below from the repository root. Model nicknames such as `opus46`, `sonnet46`, and `qwen235b` are listed in [Models](#models); `--evolver none` runs the no-evolution baseline.
 
 ### Exp0: Evolver-side Analysis (harness-updating)
 

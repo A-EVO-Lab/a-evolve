@@ -22,10 +22,10 @@
 # ─────────────────────────────────────────────────────────────────────────────
 set -uo pipefail
 
-REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-AEVOLVE_V3_DIR="${AEVOLVE_V3_DIR:-$(cd "$REPO_ROOT/../A-EVOLVE-V3" && pwd)}"
-VENV="${VENV:-$AEVOLVE_V3_DIR/.venv/bin/activate}"
-RESULTS_DIR="${RESULTS_DIR:-$REPO_ROOT/results/exp0_unified_insitu}"
+EXPERIMENT_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+PROJECT_ROOT="${AEVOLVE_REPO_DIR:-$(cd "$EXPERIMENT_ROOT/../.." && pwd)}"
+VENV="${VENV:-$PROJECT_ROOT/.venv/bin/activate}"
+RESULTS_DIR="${RESULTS_DIR:-$EXPERIMENT_ROOT/results/exp0_unified_insitu}"
 LOG_DIR="$RESULTS_DIR/logs"
 
 MAX_PARALLEL="${MAX_PARALLEL:-5}"
@@ -54,7 +54,7 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-ENV_FILE="$REPO_ROOT/.env"
+ENV_FILE="$PROJECT_ROOT/.env"
 [[ -f "$ENV_FILE" ]] && { set -a; source "$ENV_FILE"; set +a; }
 
 if [[ -z "${BEDROCK_API_KEY:-}" ]] && ! aws sts get-caller-identity &>/dev/null; then
@@ -62,7 +62,7 @@ if [[ -z "${BEDROCK_API_KEY:-}" ]] && ! aws sts get-caller-identity &>/dev/null;
     exit 1
 fi
 docker info &>/dev/null || { echo "ERROR: Docker not accessible"; exit 1; }
-[[ -d "$AEVOLVE_V3_DIR" ]] || { echo "ERROR: AEVOLVE_V3_DIR not found: $AEVOLVE_V3_DIR" >&2; exit 1; }
+[[ -d "$PROJECT_ROOT" ]] || { echo "ERROR: repository root not found: $PROJECT_ROOT" >&2; exit 1; }
 [[ -f "$VENV" ]] || { echo "ERROR: venv missing: $VENV" >&2; exit 1; }
 mkdir -p "$LOG_DIR"
 
@@ -143,7 +143,7 @@ launch() {
     local resolve_json want_region
     resolve_json="$(
         source "$VENV" 2>/dev/null
-        cd "$REPO_ROOT"
+        cd "$EXPERIMENT_ROOT"
         python run_exp0_unified_insitu.py \
             --solver "$solver" --evolver "$evolver" --benchmark "$bm" \
             --seed "$SEED" \
@@ -187,9 +187,9 @@ launch() {
     echo "[START] $run_id  (strategy=$REGION_STRATEGY region=$want_region)"
     (
         source "$VENV"
-        export AEVOLVE_V3_DIR
+        export AEVOLVE_REPO_DIR="$PROJECT_ROOT"
         export BYPASS_TOOL_CONSENT=true
-        cd "$REPO_ROOT"
+        cd "$EXPERIMENT_ROOT"
         python run_exp0_unified_insitu.py \
             --solver "$solver" \
             --evolver "$evolver" \
@@ -210,7 +210,7 @@ echo "  Solvers:    ${SOLVERS[*]}"
 echo "  Evolvers:   ${EVOLVERS[*]}"
 echo "  Benchmarks: ${BENCHMARKS[*]}"
 echo "  Parallel:   $MAX_PARALLEL"
-echo "  V3:         $AEVOLVE_V3_DIR"
+echo "  Repo:       $PROJECT_ROOT"
 echo "  Output:     $RESULTS_DIR"
 echo "  Region:     $REGION_STRATEGY (explicit=$REGION)"
 $FORCE_RELAUNCH_UNIFIED && echo "  Force-relaunch unified: yes"

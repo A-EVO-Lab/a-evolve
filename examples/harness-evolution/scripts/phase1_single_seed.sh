@@ -1,18 +1,17 @@
 #!/usr/bin/env bash
 # ─────────────────────────────────────────────────────────────────────────────
-# Phase 1 (Exp1 v3): Solver-evolvability sweep, single seed (42)
+# Phase 1 (Exp1): Solver-evolvability sweep, single seed (42)
 #
 # Default matrix: 8 solvers × 4 evolvers (none + 3 working) × 4 benchmarks × 1 seed = 128 cells.
 # `none` (no-evolution baseline route) is in the default EVOLVERS list so a
 # single invocation covers both baseline and evolve cells.
 # Evolvers = {opus46, sonnet46, qwen235b} only. Non-none evolvers route through
-# the A-EVOLVE-V3 unified train/test split wrappers. 'none' uses dedicated
+# the harness-evolution unified train/test split wrappers. 'none' uses dedicated
 # no-evolution wrappers and is opt-in via --evolver none.
 #
 # Per pivot 2026-04-21: solver is the axis under study; evolver pool is fixed
-# to the three working models. Per DEC-7: V3 adapters do not honour --seed for
-# task-order reshuffle, so the default is a single seed=42 run; multi-seed is
-# NOT part of the default scope and phase2_multi_seed.sh has been removed.
+# to the three working models. These adapters do not honour --seed for
+# task-order reshuffle, so the default is a single seed=42 run.
 #
 # Skip logic: each cell's done-marker is read from its BENCHMARK_REPORT.md
 # sidecar (authored by run_exp1.py) via scripts/lib/read_sidecar.sh. When a
@@ -29,10 +28,10 @@
 # ─────────────────────────────────────────────────────────────────────────────
 set -uo pipefail
 
-REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-AEVOLVE_V3_DIR="${AEVOLVE_V3_DIR:-$(cd "$REPO_ROOT/../A-EVOLVE-V3" && pwd)}"
-VENV="${VENV:-$AEVOLVE_V3_DIR/.venv/bin/activate}"
-RESULTS_DIR="${RESULTS_DIR:-$REPO_ROOT/results/exp1_v3}"
+EXPERIMENT_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+PROJECT_ROOT="${AEVOLVE_REPO_DIR:-$(cd "$EXPERIMENT_ROOT/../.." && pwd)}"
+VENV="${VENV:-$PROJECT_ROOT/.venv/bin/activate}"
+RESULTS_DIR="${RESULTS_DIR:-$EXPERIMENT_ROOT/results/exp1_v3}"
 LOG_DIR="$RESULTS_DIR/logs"
 
 MAX_PARALLEL="${MAX_PARALLEL:-3}"
@@ -63,7 +62,7 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-ENV_FILE="$REPO_ROOT/.env"
+ENV_FILE="$PROJECT_ROOT/.env"
 [[ -f "$ENV_FILE" ]] && { set -a; source "$ENV_FILE"; set +a; }
 
 # ── Preflight ───────────────────────────────────────────────────────────────
@@ -71,7 +70,7 @@ if [[ -z "${BEDROCK_API_KEY:-}" ]] && ! aws sts get-caller-identity &>/dev/null;
     echo "ERROR: No Bedrock auth. Set BEDROCK_API_KEY in .env or IAM creds." >&2; exit 1
 fi
 docker info &>/dev/null || { echo "ERROR: Docker not accessible"; exit 1; }
-[[ -d "$AEVOLVE_V3_DIR" ]] || { echo "ERROR: AEVOLVE_V3_DIR not found: $AEVOLVE_V3_DIR" >&2; exit 1; }
+[[ -d "$PROJECT_ROOT" ]] || { echo "ERROR: repository root not found: $PROJECT_ROOT" >&2; exit 1; }
 [[ -f "$VENV" ]] || { echo "ERROR: venv missing: $VENV" >&2; exit 1; }
 mkdir -p "$LOG_DIR"
 
@@ -157,7 +156,7 @@ launch() {
     local resolve_json want_region
     resolve_json="$(
         source "$VENV" 2>/dev/null
-        cd "$REPO_ROOT"
+        cd "$EXPERIMENT_ROOT"
         python run_exp1.py \
             --solver "$solver" --evolver "$evolver" --benchmark "$bm" \
             --seed "$SEED" \
@@ -205,9 +204,9 @@ launch() {
     echo "[START] $run_id  (strategy=$REGION_STRATEGY region=$want_region)"
     (
         source "$VENV"
-        export AEVOLVE_V3_DIR
+        export AEVOLVE_REPO_DIR="$PROJECT_ROOT"
         export BYPASS_TOOL_CONSENT=true
-        cd "$REPO_ROOT"
+        cd "$EXPERIMENT_ROOT"
         python run_exp1.py \
             --solver "$solver" \
             --evolver "$evolver" \
@@ -224,12 +223,12 @@ launch() {
 # ── Launch ──────────────────────────────────────────────────────────────────
 START=$(date +%s)
 echo "============================================================"
-echo "Phase 1 (Exp1 v3): Solver-Evolvability Sweep — seed=$SEED"
+echo "Phase 1 (Exp1): Solver-Evolvability Sweep — seed=$SEED"
 echo "  Solvers:    ${SOLVERS[*]}"
 echo "  Evolvers:   ${EVOLVERS[*]}"
 echo "  Benchmarks: ${BENCHMARKS[*]}"
 echo "  Parallel:   $MAX_PARALLEL"
-echo "  V3:         $AEVOLVE_V3_DIR"
+echo "  Repo:       $PROJECT_ROOT"
 echo "  Output:     $RESULTS_DIR"
 echo "  Region:     $REGION_STRATEGY (explicit=$REGION)"
 $FORCE_RELAUNCH_LEGACY && echo "  Force-relaunch legacy: yes"

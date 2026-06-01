@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ─────────────────────────────────────────────────────────────────────────────
-# Sidecar reader for EvolverBench Exp1 v3 cells.
+# Sidecar reader for EvolverBench Exp1 cells.
 #
 # Source this file to gain three functions:
 #
