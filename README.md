@@ -30,7 +30,13 @@ If you find this work helpful, please consider to cite our paper:
 
 ## Overview
 
-LLM agents are increasingly deployed as systems built around an editable external **harness**: prompts, skills, memories, and tools that shape task execution without changing model parameters. *Harness self-evolution* adapts such an agent by updating this harness from execution evidence. We separate two capabilities in this loop:
+LLM agents are increasingly deployed as systems built around an editable external **harness**: prompts, skills, memories, and tools that shape task execution without changing model parameters. *Harness self-evolution* adapts such an agent by updating this harness from execution evidence.
+
+<p align="center">
+  <img src="assets/figures/fig_intro_findings_v2.png" alt="Overview of harness-updating and harness-benefit findings" width="900">
+</p>
+
+We separate two capabilities in this loop:
 
 1. **Harness-updating**, exercised by the evolver, is the capability to produce useful persistent harness updates from evidence.
 2. **Harness-benefit**, exercised by the agent, is the capability to use updated harnesses during task solving.
