@@ -33,7 +33,7 @@ If you find this work helpful, please consider to cite our paper:
 LLM agents are increasingly deployed as systems built around an editable external **harness**: prompts, skills, memories, and tools that shape task execution without changing model parameters. *Harness self-evolution* adapts such an agent by updating this harness from execution evidence.
 
 <p align="center">
-  <img src="assets/figures/fig_intro_findings_v2.png" alt="Overview of harness-updating and harness-benefit findings" width="900">
+  <img src="assets/figures/fig_intro_findings_v2.jpg" alt="Overview of harness-updating and harness-benefit findings" width="900">
 </p>
 
 We separate two capabilities in this loop:
