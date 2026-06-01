@@ -1,0 +1,23 @@
+# CTF-Dojo — structured_navigation template (4-phase + git branching).
+batch_size: 5
+max_cycles: 0
+holdout_ratio: 0.0
+evolve_prompts: true
+evolve_skills: true
+evolve_memory: true
+evolve_tools: true
+evolver_model: <evolver-model-id>
+evolver_max_tokens: 128000
+solve_workers: 8
+egl_threshold: 0.05
+egl_window: 3
+sandbox_network: none
+evolver_sandbox_network: none
+navigation_enabled: true
+branch_confidence: 0.7
+orchestrator: structured_navigation
+structured_evolution:
+  prompts_dir: experiments/ctf_dojo/evolver_prompts_nav
+  research_parallel: 3
+  build_verify_retries: 3
+  hitl_enabled: false

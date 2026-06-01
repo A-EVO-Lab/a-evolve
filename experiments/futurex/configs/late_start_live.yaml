@@ -1,0 +1,25 @@
+# FutureX late start — skip evolution for first 80%, evolve last ~50 tasks, live search
+batch_size: 10
+max_cycles: 0
+holdout_ratio: 0.0
+
+evolve_prompts: true
+evolve_skills: true
+evolve_memory: true
+evolve_tools: true
+
+evolver_model: <evolver-model-id>
+evolver_max_tokens: 128000
+
+egl_threshold: 0.05
+egl_window: 3
+
+# Skip evolution for first 80%, evolve the last ~56 tasks
+evo_start_after_pct: 80
+
+# FutureX-specific
+model_name: <solver-model-id>
+sort_by_timestamp: true
+search_mode: live
+sandbox_network: bridge
+evolver_sandbox_network: bridge

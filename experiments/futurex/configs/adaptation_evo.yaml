@@ -1,0 +1,45 @@
+# FutureX — adaptation-spectrum study config.
+#
+# This config carries the EVOLVER settings (identical to full_evo so the
+# evolved store is the same across all adaptation methods) plus the
+# `adaptation:` tuning block read by protocol/adaptation_registry.
+#
+# The adaptation METHOD itself is chosen at run time via the CLI flag, NOT
+# this file, so M0/M1/M2/M4 all reuse this one config + the same evolved store:
+#   M0 full-dump      :  --adaptation whole_store
+#   M1 retrieval      :  --adaptation retrieval
+#   M2 agentic filter :  --adaptation agentic_filter
+#   M4 branch routing :  --navigation        (legacy default; or --adaptation tree_routing)
+#
+# Fair-comparison principle: evolve once, then replay the SAME store under
+# each operator. Report headroom (fraction of catalog referenced/task) and
+# pass-rate separately.
+batch_size: 20
+max_cycles: 0
+holdout_ratio: 0.0
+
+evolve_prompts: true
+evolve_skills: true
+evolve_memory: true
+evolve_tools: true
+
+evolver_model: us.anthropic.claude-opus-4-6-v1
+evolver_max_tokens: 128000
+
+egl_threshold: 0.05
+egl_window: 3
+
+model_name: us.anthropic.claude-sonnet-4-6
+sort_by_timestamp: true
+builtin_search: "off"
+sandbox_network: bridge
+evolver_sandbox_network: bridge
+
+# Solve-time adaptation tuning (consumed by adaptation_registry via config.extra).
+# Catalog spans skills+tools+memory; full-text indexed (SkillRouter finding).
+adaptation:
+  catalog_kinds: ["skill", "tool", "memory"]
+  top_k: 8            # M1: items retrieved per task
+  candidate_k: 16     # M2: candidate pool before LLM rerank
+  keep_k: 8           # M2: fallback subset size on LLM-selection failure
+  filter_model: us.anthropic.claude-sonnet-4-6   # M2 selector (solver-class, cheap)

@@ -1,0 +1,79 @@
+[project]
+name = "adaptive-auto-harness"
+version = "0.1.0"
+description = "Adaptive Auto-Harness: stateful multi-agent evolution and solve-time routing for LLM agents on open-ended task streams."
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.11"
+authors = [
+    { name = "Anonymous", email = "anon@anon.invalid" },
+]
+keywords = [
+    "agent-evolution",
+    "self-improving-agents",
+    "agentic-ai",
+    "llm",
+    "prompt-optimization",
+    "benchmark",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+dependencies = [
+    "matplotlib>=3.10.0",
+    "pyyaml>=6.0",
+]
+
+[project.optional-dependencies]
+bedrock = ["boto3>=1.34"]
+openai = ["openai>=1.30"]
+litellm = ["litellm>=1.0.0"]
+swe = ["strands-agents>=0.1.0", "datasets>=4.5.0", "boto3>=1.34", "swebench>=3.0.0"]
+mcp = ["mcp>=1.0.0", "strands-agents>=0.1.0", "datasets>=4.5.0", "boto3>=1.34", "litellm>=1.0.0"]
+skillbench = ["strands-agents>=0.1.0", "boto3>=1.34"]
+gepa = ["gepa>=0.1.0"]
+all = [
+    "openai>=1.30",
+    "boto3>=1.34",
+    "datasets>=4.5.0",
+    "strands-agents>=0.1.0",
+    "mcp>=1.0.0",
+    "litellm>=1.0.0",
+    "swebench>=3.0.0",
+    "gepa>=0.1.0",
+]
+dev = ["pytest>=8.0", "ruff>=0.5", "hypothesis>=6.0"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["agent_evolve"]
+
+[tool.hatch.build.targets.wheel.force-include]
+"seed_workspaces" = "seed_workspaces"
+
+[tool.hatch.build.targets.sdist]
+include = [
+    "/agent_evolve",
+    "/experiments",
+    "/scripts",
+    "/seed_workspaces",
+    "/data",
+    "/tests",
+    "/README.md",
+    "/INSTALL.md",
+    "/.env.template",
+]
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100

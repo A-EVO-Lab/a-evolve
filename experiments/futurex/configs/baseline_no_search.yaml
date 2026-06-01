@@ -1,0 +1,23 @@
+# FutureX baseline — no evolution, no web search (pure LLM reasoning)
+batch_size: 20
+max_cycles: 0
+holdout_ratio: 0.0
+
+evolve_prompts: false
+evolve_skills: false
+evolve_memory: false
+evolve_tools: false
+
+evolver_model: <evolver-model-id>
+evolver_max_tokens: 128000
+
+egl_threshold: 0.05
+egl_window: 3
+
+# negative = never evolve (baseline control run)
+evo_trigger_threshold: -1
+
+# FutureX-specific
+model_name: <solver-model-id>
+sort_by_timestamp: true
+builtin_search: "off"

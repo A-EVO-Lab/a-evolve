@@ -1,0 +1,15 @@
+name: futurex-temporal-prediction-agent
+version: 0.1.0
+contract_version: "1.0"
+
+agent:
+  type: reference
+  entrypoint: agent_evolve.agents.futurex.agent.FutureXAgent
+
+evolvable_layers:
+  - prompts
+  - skills
+  - memory
+  - tools
+
+reload_strategy: hot

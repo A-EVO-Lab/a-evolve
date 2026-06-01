@@ -1,0 +1,15 @@
+name: ctf-dojo-security-agent
+version: 0.1.0
+contract_version: "1.0"
+
+agent:
+  type: reference
+  entrypoint: agent_evolve.agents.ctf_dojo.agent.CtfDojoAgent
+
+evolvable_layers:
+  - prompts
+  - skills
+  - memory
+  - tools
+
+reload_strategy: hot

@@ -1,0 +1,22 @@
+# FutureX full evolution — all layers with live DuckDuckGo search
+batch_size: 20
+max_cycles: 0
+holdout_ratio: 0.0
+
+evolve_prompts: true
+evolve_skills: true
+evolve_memory: true
+evolve_tools: true
+
+evolver_model: <evolver-model-id>
+evolver_max_tokens: 128000
+
+egl_threshold: 0.05
+egl_window: 3
+
+# FutureX-specific
+model_name: <solver-model-id>
+sort_by_timestamp: true
+search_mode: live
+sandbox_network: bridge
+evolver_sandbox_network: bridge

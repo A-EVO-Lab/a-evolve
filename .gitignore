@@ -1,0 +1,14 @@
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+.env
+data/polymarket_analysis.db
+data/ctf_archive.json
+data/ctf-archive/
+data/futurex/*.parquet
+data/futurex/*.json
+results/
+logs/
+.pytest_cache/
+tests/

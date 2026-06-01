@@ -1,0 +1,20 @@
+batch_size: 5
+max_cycles: 0
+holdout_ratio: 0.0
+
+evolve_prompts: true
+evolve_skills: true
+evolve_memory: true
+evolve_tools: true
+
+evolver_model: <evolver-model-id>
+evolver_max_tokens: 128000
+
+solve_workers: 8
+
+egl_threshold: 0.05
+egl_window: 3
+
+# Evolve through first 40% of tasks, then freeze workspace for the rest.
+# max_cycles is computed dynamically: ceil(total_tasks * 0.40 / batch_size)
+evo_freeze_after_pct: 40

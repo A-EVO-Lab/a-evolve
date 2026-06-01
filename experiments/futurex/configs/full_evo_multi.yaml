@@ -1,0 +1,29 @@
+# FutureX full evolution with plan-driven multi-agent orchestration
+# (no task routing — the analyst classifies batch failures and guides
+# the evolver, but every task still flows through main).
+# Starts with NO built-in search; evolution must earn search capability
+# via /tools/*.py + bash.
+batch_size: 20
+max_cycles: 0
+holdout_ratio: 0.0
+
+evolve_prompts: true
+evolve_skills: true
+evolve_memory: true
+evolve_tools: true
+
+evolver_model: <evolver-model-id>
+evolver_max_tokens: 128000
+
+egl_threshold: 0.05
+egl_window: 3
+
+# FutureX-specific
+model_name: <solver-model-id>
+sort_by_timestamp: true
+builtin_search: "off"
+sandbox_network: bridge
+evolver_sandbox_network: bridge
+
+# Multi-agent orchestration (no navigation)
+orchestrator: plan_driven

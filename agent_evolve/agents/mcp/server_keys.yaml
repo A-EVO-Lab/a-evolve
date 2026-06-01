@@ -1,0 +1,110 @@
+# MCP-Atlas Server → Required Environment Variables
+#
+# Source: https://github.com/scaleapi/mcp-atlas/blob/main/env.template
+#
+# Maps MCP server names to the env vars they need. The KeyRegistry uses
+# prefix matching, so "google-workspace" matches tool names like
+# "google-workspace_list_events".
+#
+# Servers requiring API keys (16 servers):
+#   exa: 13% | airtable: 12% | mongodb: 12% | oxylabs: 11% | brave-search: 10%
+#   alchemy: 8% | national-parks: 8% | twelvedata: 8% | lara-translate: 7%
+#   notion: 6% | weather-data: 6% | github: 5% | slack: 5% | google-maps: 5%
+#   e2b-server: 5% | google-workspace: 4%
+#
+# 5 servers also require data imports (see data_exports/README.md):
+#   airtable, google-workspace, notion, mongodb, slack
+
+# ── Servers requiring API keys ───────────────────────────────
+
+airtable:
+  - AIRTABLE_API_KEY
+
+alchemy:
+  - ALCHEMY_API_KEY
+
+brave-search:
+  - BRAVE_API_KEY
+
+e2b:
+  - E2B_API_KEY
+e2b-server:
+  - E2B_API_KEY
+
+exa:
+  - EXA_API_KEY
+
+github:
+  - GITHUB_TOKEN
+
+google-maps:
+  - GOOGLE_MAPS_API_KEY
+
+google-workspace:
+  - GOOGLE_CLIENT_ID
+  - GOOGLE_CLIENT_SECRET
+  - GOOGLE_REFRESH_TOKEN
+
+lara-translate:
+  - LARA_ACCESS_KEY_ID
+  - LARA_ACCESS_KEY_SECRET
+
+mongodb:
+  - MONGODB_CONNECTION_STRING
+
+national-parks:
+  - NPS_API_KEY
+nps:
+  - NPS_API_KEY
+
+notion:
+  - NOTION_TOKEN
+
+oxylabs:
+  - OXYLABS_USERNAME
+  - OXYLABS_PASSWORD
+
+slack:
+  - SLACK_MCP_XOXC_TOKEN
+  - SLACK_MCP_XOXD_TOKEN
+
+twelve-data:
+  - TWELVE_DATA_API_KEY
+twelvedata:
+  - TWELVE_DATA_API_KEY
+
+weather-data:
+  - WEATHER_API_KEY
+weatherapi:
+  - WEATHER_API_KEY
+
+# ── Servers requiring no API keys (20 servers) ──────────────
+
+arxiv: []
+calculator: []
+cli-mcp-server: []
+clinicaltrialsgov-mcp-server: []
+context7: []
+ddg-search: []
+desktop-commander: []
+fetch: []
+filesystem: []
+git: []
+mcp-code-executor: []
+mcp-server-code-runner: []
+memory: []
+met-museum: []
+open-library: []
+osm-mcp-server: []
+pubmed: []
+weather: []
+whois: []
+wikipedia: []
+
+# ── Additional servers seen in tasks ─────────────────────────
+
+anili: []
+balldontlie: []
+f1-mcp-server: []
+rijksmuseum-server: []
+sqlite: []
