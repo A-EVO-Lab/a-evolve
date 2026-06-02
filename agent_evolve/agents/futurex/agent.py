@@ -23,18 +23,22 @@ import logging
 from pathlib import Path
 
 from agent_evolve.config import EvolveConfig
-from agent_evolve.agents._skill_agent import SkillLayerAgent
+from agent_evolve.protocol.base_agent import BaseAgent
 from agent_evolve.types import Task, Trajectory
 
 logger = logging.getLogger(__name__)
 
 
-class FutureXAgent(SkillLayerAgent):
+class FutureXAgent(BaseAgent):
     """FutureX agent — reference implementation.
 
     Only used for workspace plumbing; ``solve()`` is unreachable under
     the production pipeline (``solver.solve_one`` builds its own Strands
     agent per task).
+
+    Adds a ``tool_registry`` and ``skip_layers`` gating on top of the stock
+    ``BaseAgent`` (loading a layer is skipped when its ``evolve_*`` flag is
+    off); kept local so the shared ``BaseAgent`` contract is untouched.
     """
 
     def __init__(
@@ -43,8 +47,25 @@ class FutureXAgent(SkillLayerAgent):
         config: EvolveConfig,
         skip_layers: frozenset[str] = frozenset(),
     ):
-        super().__init__(workspace_dir, skip_layers=skip_layers)
+        self._skip_layers = skip_layers
+        self.tool_registry: list[dict] = []
+        super().__init__(workspace_dir)
         self.config = config
+
+    def reload_from_fs(self) -> None:
+        """Reload workspace state, honouring ``skip_layers`` + loading tools."""
+        skip = getattr(self, "_skip_layers", frozenset())
+        self.system_prompt = self.workspace.read_prompt()
+        self.skills = [] if "skills" in skip else self.workspace.list_skills()
+        self.memories = (
+            [] if "memory" in skip
+            else self.workspace.read_all_memories(limit=200)
+        )
+        self.tool_registry = (
+            [] if "tools" in skip else self.workspace.read_tool_registry()
+        )
+        self.harness = self._load_harness()
+        self._new_memories = []
 
     def _build_system_prompt(self) -> str:
         """Assemble system prompt from workspace layers.

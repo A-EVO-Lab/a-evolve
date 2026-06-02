@@ -4,9 +4,8 @@ A single one-time build of a small Alpine image (bash + git + the common
 Python packages evolved tools / benchmark solvers need), so containers
 started with ``--network none`` already have everything available offline.
 
-Lives under ``agents/`` (beside ``_partial_trajectory.py`` /
-``_harness_filter.py``) so the benchmark sandboxes and the evolver share one
-definition without any benchmark depending on a specific evolution engine.
+Kept local to this benchmark folder (rather than a shared module) so the
+benchmark carries its own sandbox definition and depends on no outer layer.
 """
 from __future__ import annotations
 
