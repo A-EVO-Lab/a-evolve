@@ -218,14 +218,16 @@ python examples/harness-evolution/hfr_analysis/pipeline.py --max-workers 4 --sta
 
 ## Models
 
-The study pairs seven LLMs as agents and evolvers. The anchor agent set and anchor evolver set are both `{Claude Opus 4.6, Claude Sonnet 4.6, Qwen3-235B}`.
+We pair the following six LLMs as task-solving agents and evolvers: Claude Opus 4.6, Claude Sonnet 4.6, Claude Haiku 4.5, Qwen3-235B-A22B, Qwen3-32B, GPT-OSS-120B.
 
-| Nickname | Model | Example provider model ID |
-|----------|-------|---------------------------|
-| `opus46` | Claude Opus 4.6 | `us.anthropic.claude-opus-4-6-v1` |
-| `sonnet46` | Claude Sonnet 4.6 | `us.anthropic.claude-sonnet-4-6-v1` |
-| `haiku45` | Claude Haiku 4.5 | `us.anthropic.claude-haiku-4-5-v1` |
-| `qwen235b` | Qwen3-235B-A22B | see `model_region_availability.json` |
-| `qwen32b` | Qwen3-32B | see `model_region_availability.json` |
-| `qwen35_9b` | Qwen3.5-9B | see `model_region_availability.json` |
-| `gptoss120b` | GPT-OSS-120B | see `model_region_availability.json` |
+In addition, we also use Qwen 3.5-9B as the evolver to test whether a substantially smaller open model can still produce useful harness updates.
+
+| Nickname | Model |
+|----------|-------|
+| `opus46` | Claude Opus 4.6 |
+| `sonnet46` | Claude Sonnet 4.6 |
+| `haiku45` | Claude Haiku 4.5 |
+| `qwen235b` | Qwen3-235B-A22B |
+| `qwen32b` | Qwen3-32B |
+| `qwen35_9b` | Qwen3.5-9B |
+| `gptoss120b` | GPT-OSS-120B |
