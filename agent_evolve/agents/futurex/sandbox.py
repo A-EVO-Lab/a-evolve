@@ -54,7 +54,7 @@ _DDGS_THROTTLE = 1.0
 # ── Docker sandbox lifecycle ────────────────────────────────────────────
 
 # Reuse the evolver's alpine sandbox image.
-from ...algorithms.aevolve.tools import SANDBOX_IMAGE, _ensure_sandbox_image  # noqa: E402
+from .._sandbox_image import SANDBOX_IMAGE, _ensure_sandbox_image  # noqa: E402
 
 
 _FORWARD_ENV_KEYS = [

@@ -14,7 +14,7 @@ import time
 from pathlib import Path
 
 # Reuse the evolver's alpine sandbox image for fallback paths.
-from ...algorithms.aevolve.tools import SANDBOX_IMAGE
+from .._sandbox_image import SANDBOX_IMAGE
 
 logger = logging.getLogger(__name__)
 

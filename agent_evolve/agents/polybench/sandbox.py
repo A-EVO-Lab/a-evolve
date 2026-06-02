@@ -12,7 +12,7 @@ import subprocess
 import tempfile
 
 # Share the evolver sandbox image (alpine + bash + git + python3)
-from ...algorithms.aevolve.tools import SANDBOX_IMAGE, _ensure_sandbox_image
+from .._sandbox_image import SANDBOX_IMAGE, _ensure_sandbox_image
 
 
 def start_sandbox(task_id: str, tool_files: dict[str, str]) -> str:
