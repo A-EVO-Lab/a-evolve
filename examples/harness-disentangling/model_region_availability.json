@@ -1,0 +1,380 @@
+{
+  "Claude Opus 4.6": [
+    {
+      "region": "us-west-2",
+      "model_id": "us.anthropic.claude-opus-4-6-v1",
+      "status": "OK"
+    },
+    {
+      "region": "us-east-1",
+      "model_id": "us.anthropic.claude-opus-4-6-v1",
+      "status": "OK"
+    },
+    {
+      "region": "us-east-2",
+      "model_id": "us.anthropic.claude-opus-4-6-v1",
+      "status": "OK"
+    },
+    {
+      "region": "eu-west-1",
+      "model_id": "eu.anthropic.claude-opus-4-6-v1",
+      "status": "OK"
+    },
+    {
+      "region": "eu-west-3",
+      "model_id": "eu.anthropic.claude-opus-4-6-v1",
+      "status": "OK"
+    },
+    {
+      "region": "eu-central-1",
+      "model_id": "eu.anthropic.claude-opus-4-6-v1",
+      "status": "OK"
+    }
+  ],
+  "Claude Sonnet 4.6": [
+    {
+      "region": "us-west-2",
+      "model_id": "us.anthropic.claude-sonnet-4-6",
+      "status": "OK"
+    },
+    {
+      "region": "us-east-1",
+      "model_id": "us.anthropic.claude-sonnet-4-6",
+      "status": "OK"
+    },
+    {
+      "region": "us-east-2",
+      "model_id": "us.anthropic.claude-sonnet-4-6",
+      "status": "OK"
+    },
+    {
+      "region": "eu-west-1",
+      "model_id": "eu.anthropic.claude-sonnet-4-6",
+      "status": "OK"
+    },
+    {
+      "region": "eu-west-3",
+      "model_id": "eu.anthropic.claude-sonnet-4-6",
+      "status": "OK"
+    },
+    {
+      "region": "eu-central-1",
+      "model_id": "eu.anthropic.claude-sonnet-4-6",
+      "status": "OK"
+    }
+  ],
+  "Claude Haiku 4.5": [
+    {
+      "region": "us-west-2",
+      "model_id": "us.anthropic.claude-haiku-4-5-20251001-v1:0",
+      "status": "OK"
+    },
+    {
+      "region": "us-east-1",
+      "model_id": "us.anthropic.claude-haiku-4-5-20251001-v1:0",
+      "status": "OK"
+    },
+    {
+      "region": "us-east-2",
+      "model_id": "us.anthropic.claude-haiku-4-5-20251001-v1:0",
+      "status": "OK"
+    },
+    {
+      "region": "eu-west-1",
+      "model_id": "eu.anthropic.claude-haiku-4-5-20251001-v1:0",
+      "status": "OK"
+    },
+    {
+      "region": "eu-west-3",
+      "model_id": "eu.anthropic.claude-haiku-4-5-20251001-v1:0",
+      "status": "OK"
+    },
+    {
+      "region": "eu-central-1",
+      "model_id": "eu.anthropic.claude-haiku-4-5-20251001-v1:0",
+      "status": "OK"
+    }
+  ],
+  "gpt-oss-120b": [
+    {
+      "region": "us-west-2",
+      "model_id": "openai.gpt-oss-120b-1:0",
+      "status": "OK"
+    },
+    {
+      "region": "us-east-1",
+      "model_id": "openai.gpt-oss-120b-1:0",
+      "status": "OK"
+    },
+    {
+      "region": "us-east-2",
+      "model_id": "openai.gpt-oss-120b-1:0",
+      "status": "OK"
+    },
+    {
+      "region": "eu-west-1",
+      "model_id": "openai.gpt-oss-120b-1:0",
+      "status": "OK"
+    },
+    {
+      "region": "eu-west-3",
+      "model_id": "openai.gpt-oss-120b-1:0",
+      "status": "FAIL"
+    },
+    {
+      "region": "eu-central-1",
+      "model_id": "openai.gpt-oss-120b-1:0",
+      "status": "OK"
+    },
+    {
+      "region": "ap-northeast-1",
+      "model_id": "openai.gpt-oss-120b-1:0",
+      "status": "OK"
+    },
+    {
+      "region": "ap-southeast-1",
+      "model_id": "openai.gpt-oss-120b-1:0",
+      "status": "FAIL"
+    },
+    {
+      "region": "ap-southeast-2",
+      "model_id": "openai.gpt-oss-120b-1:0",
+      "status": "OK"
+    }
+  ],
+  "gpt-oss-20b": [
+    {
+      "region": "us-west-2",
+      "model_id": "openai.gpt-oss-20b-1:0",
+      "status": "OK"
+    },
+    {
+      "region": "us-east-1",
+      "model_id": "openai.gpt-oss-20b-1:0",
+      "status": "OK"
+    },
+    {
+      "region": "us-east-2",
+      "model_id": "openai.gpt-oss-20b-1:0",
+      "status": "OK"
+    },
+    {
+      "region": "eu-west-1",
+      "model_id": "openai.gpt-oss-20b-1:0",
+      "status": "OK"
+    },
+    {
+      "region": "eu-west-3",
+      "model_id": "openai.gpt-oss-20b-1:0",
+      "status": "FAIL"
+    },
+    {
+      "region": "eu-central-1",
+      "model_id": "openai.gpt-oss-20b-1:0",
+      "status": "OK"
+    },
+    {
+      "region": "ap-northeast-1",
+      "model_id": "openai.gpt-oss-20b-1:0",
+      "status": "OK"
+    },
+    {
+      "region": "ap-southeast-1",
+      "model_id": "openai.gpt-oss-20b-1:0",
+      "status": "FAIL"
+    },
+    {
+      "region": "ap-southeast-2",
+      "model_id": "openai.gpt-oss-20b-1:0",
+      "status": "OK"
+    }
+  ],
+  "Qwen3-235B": [
+    {
+      "region": "us-west-2",
+      "model_id": "qwen.qwen3-235b-a22b-2507-v1:0",
+      "status": "OK"
+    },
+    {
+      "region": "us-east-1",
+      "model_id": "qwen.qwen3-235b-a22b-2507-v1:0",
+      "status": "FAIL"
+    },
+    {
+      "region": "us-east-2",
+      "model_id": "qwen.qwen3-235b-a22b-2507-v1:0",
+      "status": "OK"
+    },
+    {
+      "region": "eu-west-1",
+      "model_id": "qwen.qwen3-235b-a22b-2507-v1:0",
+      "status": "FAIL"
+    },
+    {
+      "region": "eu-west-3",
+      "model_id": "qwen.qwen3-235b-a22b-2507-v1:0",
+      "status": "FAIL"
+    },
+    {
+      "region": "eu-central-1",
+      "model_id": "qwen.qwen3-235b-a22b-2507-v1:0",
+      "status": "OK"
+    },
+    {
+      "region": "ap-northeast-1",
+      "model_id": "qwen.qwen3-235b-a22b-2507-v1:0",
+      "status": "OK"
+    },
+    {
+      "region": "ap-southeast-1",
+      "model_id": "qwen.qwen3-235b-a22b-2507-v1:0",
+      "status": "FAIL"
+    },
+    {
+      "region": "ap-southeast-2",
+      "model_id": "qwen.qwen3-235b-a22b-2507-v1:0",
+      "status": "OK"
+    }
+  ],
+  "Qwen3-32B": [
+    {
+      "region": "us-west-2",
+      "model_id": "qwen.qwen3-32b-v1:0",
+      "status": "OK"
+    },
+    {
+      "region": "us-east-1",
+      "model_id": "qwen.qwen3-32b-v1:0",
+      "status": "OK"
+    },
+    {
+      "region": "us-east-2",
+      "model_id": "qwen.qwen3-32b-v1:0",
+      "status": "OK"
+    },
+    {
+      "region": "eu-west-1",
+      "model_id": "qwen.qwen3-32b-v1:0",
+      "status": "OK"
+    },
+    {
+      "region": "eu-west-3",
+      "model_id": "qwen.qwen3-32b-v1:0",
+      "status": "FAIL"
+    },
+    {
+      "region": "eu-central-1",
+      "model_id": "qwen.qwen3-32b-v1:0",
+      "status": "OK"
+    },
+    {
+      "region": "ap-northeast-1",
+      "model_id": "qwen.qwen3-32b-v1:0",
+      "status": "OK"
+    },
+    {
+      "region": "ap-southeast-1",
+      "model_id": "qwen.qwen3-32b-v1:0",
+      "status": "FAIL"
+    },
+    {
+      "region": "ap-southeast-2",
+      "model_id": "qwen.qwen3-32b-v1:0",
+      "status": "OK"
+    }
+  ],
+  "MiniMax M2.5": [
+    {
+      "region": "us-west-2",
+      "model_id": "minimax.minimax-m2.5",
+      "status": "OK"
+    },
+    {
+      "region": "us-east-1",
+      "model_id": "minimax.minimax-m2.5",
+      "status": "OK"
+    },
+    {
+      "region": "us-east-2",
+      "model_id": "minimax.minimax-m2.5",
+      "status": "OK"
+    },
+    {
+      "region": "eu-west-1",
+      "model_id": "minimax.minimax-m2.5",
+      "status": "OK"
+    },
+    {
+      "region": "eu-west-3",
+      "model_id": "minimax.minimax-m2.5",
+      "status": "FAIL"
+    },
+    {
+      "region": "eu-central-1",
+      "model_id": "minimax.minimax-m2.5",
+      "status": "OK"
+    },
+    {
+      "region": "ap-northeast-1",
+      "model_id": "minimax.minimax-m2.5",
+      "status": "OK"
+    },
+    {
+      "region": "ap-southeast-1",
+      "model_id": "minimax.minimax-m2.5",
+      "status": "FAIL"
+    },
+    {
+      "region": "ap-southeast-2",
+      "model_id": "minimax.minimax-m2.5",
+      "status": "OK"
+    }
+  ],
+  "Kimi K2.5": [
+    {
+      "region": "us-west-2",
+      "model_id": "moonshotai.kimi-k2.5",
+      "status": "OK"
+    },
+    {
+      "region": "us-east-1",
+      "model_id": "moonshotai.kimi-k2.5",
+      "status": "OK"
+    },
+    {
+      "region": "us-east-2",
+      "model_id": "moonshotai.kimi-k2.5",
+      "status": "OK"
+    },
+    {
+      "region": "eu-west-1",
+      "model_id": "moonshotai.kimi-k2.5",
+      "status": "FAIL"
+    },
+    {
+      "region": "eu-west-3",
+      "model_id": "moonshotai.kimi-k2.5",
+      "status": "FAIL"
+    },
+    {
+      "region": "eu-central-1",
+      "model_id": "moonshotai.kimi-k2.5",
+      "status": "FAIL"
+    },
+    {
+      "region": "ap-northeast-1",
+      "model_id": "moonshotai.kimi-k2.5",
+      "status": "OK"
+    },
+    {
+      "region": "ap-southeast-1",
+      "model_id": "moonshotai.kimi-k2.5",
+      "status": "FAIL"
+    },
+    {
+      "region": "ap-southeast-2",
+      "model_id": "moonshotai.kimi-k2.5",
+      "status": "OK"
+    }
+  ]
+}
