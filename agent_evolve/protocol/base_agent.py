@@ -33,18 +33,12 @@ class BaseAgent(ABC):
     check for hook functions via ``self.harness_hook("func_name")``.
     """
 
-    def __init__(
-        self,
-        workspace_dir: str | Path,
-        skip_layers: frozenset[str] = frozenset(),
-    ):
+    def __init__(self, workspace_dir: str | Path):
         self.workspace = AgentWorkspace(workspace_dir)
         self.system_prompt: str = ""
         self.skills: list[SkillMeta] = []
         self.memories: list[dict] = []
-        self.tool_registry: list[dict] = []
         self.harness: types.ModuleType | None = None
-        self._skip_layers = skip_layers
         self._new_memories: list[dict] = []
 
         self.reload_from_fs()
@@ -55,25 +49,18 @@ class BaseAgent(ABC):
         """Reload agent state from the workspace directory.
 
         Called at init and after each evolution cycle.
-
-        Honours ``skip_layers``: any named layer in the set is not loaded
-        (leaves the attribute as an empty list).  Used by V2 when a
-        benchmark's config has that layer disabled via ``evolve_*=False``.
         """
-        skip = self._skip_layers
         self.system_prompt = self.workspace.read_prompt()
-        self.skills = [] if "skills" in skip else self.workspace.list_skills()
-        self.memories = [] if "memory" in skip else self.workspace.read_all_memories(limit=200)
-        self.tool_registry = [] if "tools" in skip else self.workspace.read_tool_registry()
+        self.skills = self.workspace.list_skills()
+        self.memories = self.workspace.read_all_memories(limit=200)
         self.harness = self._load_harness()
         self._new_memories = []
         logger.info(
-            "Reloaded from %s: prompt=%d chars, skills=%d, memories=%d, tools=%d, harness=%s",
+            "Reloaded from %s: prompt=%d chars, skills=%d, memories=%d, harness=%s",
             self.workspace.root,
             len(self.system_prompt),
             len(self.skills),
             len(self.memories),
-            len(self.tool_registry),
             "loaded" if self.harness else "none",
         )
 

@@ -8,13 +8,13 @@ from __future__ import annotations
 import logging
 from pathlib import Path
 
-from ...protocol.base_agent import BaseAgent
+from .._skill_agent import SkillLayerAgent
 from ...types import Task, Trajectory
 
 logger = logging.getLogger(__name__)
 
 
-class CtfDojoAgent(BaseAgent):
+class CtfDojoAgent(SkillLayerAgent):
     """Agent for CTF-Dojo cybersecurity challenge tasks.
 
     Reads system prompt, skills, memories, and tools from the workspace

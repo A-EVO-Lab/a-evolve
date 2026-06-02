@@ -23,13 +23,13 @@ import logging
 from pathlib import Path
 
 from agent_evolve.config import EvolveConfig
-from agent_evolve.protocol.base_agent import BaseAgent
+from agent_evolve.agents._skill_agent import SkillLayerAgent
 from agent_evolve.types import Task, Trajectory
 
 logger = logging.getLogger(__name__)
 
 
-class FutureXAgent(BaseAgent):
+class FutureXAgent(SkillLayerAgent):
     """FutureX agent — reference implementation.
 
     Only used for workspace plumbing; ``solve()`` is unreachable under

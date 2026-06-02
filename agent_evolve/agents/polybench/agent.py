@@ -10,13 +10,13 @@ from __future__ import annotations
 import logging
 from pathlib import Path
 
-from ...protocol.base_agent import BaseAgent
+from .._skill_agent import SkillLayerAgent
 from ...types import Task, Trajectory
 
 logger = logging.getLogger(__name__)
 
 
-class PolyBenchAgent(BaseAgent):
+class PolyBenchAgent(SkillLayerAgent):
     """Agent for PolyBench prediction-market tasks.
 
     Reads system prompt, skills, memories, and tools from the workspace
