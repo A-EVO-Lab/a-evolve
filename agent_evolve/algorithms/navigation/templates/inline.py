@@ -14,7 +14,7 @@ import logging
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-from ...aevolve.prompts import build_evolution_prompt
+from .._evolver_prompts import build_evolution_prompt
 from ....types import BranchInfo
 from .base import EvolutionTemplate
 from ._evolution_ops import (

@@ -338,7 +338,7 @@ class Template(EvolutionTemplate):
         self, vc, solver_workspace, batch_results,
         evo_number, prompts_dir, trajectory, evo_ws,
     ):
-        from ....algorithms.aevolve.prompts import build_evolution_prompt
+        from .._evolver_prompts import build_evolution_prompt
         cfg = self.engine.config
 
         task_board = load_task_board(evo_ws)

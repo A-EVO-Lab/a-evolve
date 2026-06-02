@@ -140,7 +140,7 @@ class StructuredNavigationTemplate(EvolutionTemplate):
         evo_number, prompts_dir, trajectory, evo_ws,
         routing_log_path,
     ):
-        from ....algorithms.aevolve.prompts import build_evolution_prompt
+        from .._evolver_prompts import build_evolution_prompt
         cfg = self.engine.config
 
         task_board = load_task_board(evo_ws)

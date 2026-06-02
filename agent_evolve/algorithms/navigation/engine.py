@@ -26,7 +26,7 @@ from typing import TYPE_CHECKING, Any
 from ...contract.workspace import AgentWorkspace
 from ...engine.versioning import VersionControl
 from ...types import StrategyTree
-from ..aevolve.engine import AEvolveEngine
+from ._evolver_engine import AEvolveEngine
 from .prompts import NAVIGATE_SYSTEM_PROMPT, build_navigate_prompt
 
 if TYPE_CHECKING:
