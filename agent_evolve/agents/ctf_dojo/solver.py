@@ -69,7 +69,7 @@ def setup(args) -> dict:
     }
 
 
-def build_prompts(agent, tasks: list) -> dict:
+def build_prompts(agent, tasks: list, emit_pieces: bool = False) -> dict:
     tool_files = {}
     for t in agent.tool_registry:
         name = t.get("name", "")
@@ -99,7 +99,7 @@ def build_prompts(agent, tasks: list) -> dict:
         "tool_files": tool_files,
         "catalog": agent._catalog_path,
     }
-    if getattr(agent, "_emit_harness_pieces", False):
+    if emit_pieces:
         from .._harness_filter import build_harness_pieces
         out["harness_pieces"] = build_harness_pieces(agent)
     return out

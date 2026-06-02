@@ -23,7 +23,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from ..types import Task
+    from ...types import Task
     from .catalog import CatalogIndex, CatalogItem
 
 logger = logging.getLogger(__name__)
@@ -34,11 +34,32 @@ class RetrievalAdaptation:
 
     name = "retrieval"
 
-    def __init__(self, index: "CatalogIndex", top_k: int = 8):
+    def __init__(self, index: "CatalogIndex", top_k: int = 8,
+                 cache_dir: Path | None = None,
+                 catalog_kinds: tuple[str, ...] = ("skill", "tool", "memory")):
         self._index = index
         self._top_k = top_k
+        self._cache_dir = cache_dir
+        self._catalog_kinds = catalog_kinds
         self._sel: dict[str, list] = {}     # task_id -> [CatalogItem]
         self._lock = threading.Lock()
+
+    def prepare(self, workspace) -> None:
+        """Rebuild the catalog+index from the CURRENT evolved store.
+
+        The evolver mutates skills/tools/memory each cycle; the index must
+        track the current store, not the seed it was first built from. Called
+        once per batch before select(). Cheap when unchanged: the index is
+        disk-cached by content_hash, so an unchanged store reloads instantly.
+        """
+        from .catalog import Catalog, CatalogIndex
+        try:
+            catalog = Catalog.from_workspace(workspace, kinds=self._catalog_kinds)
+            idx = CatalogIndex(catalog, cache_dir=self._cache_dir)
+            idx.build()
+            self._index = idx
+        except Exception as e:
+            logger.warning("Index refresh failed (keeping previous): %s", e)
 
     # ── Adaptation protocol ──────────────────────────────────────────
     def select(self, store_path: Path, task: "Task") -> str:
@@ -52,7 +73,7 @@ class RetrievalAdaptation:
         return None
 
     # ── Per-task filter accessor (read by the solve loop) ────────────
-    def task_filter(self, task_id: str) -> dict | None:
+    def project(self, task_id: str) -> dict | None:
         """Return {"skills": [...], "tools": [...], "memory": [...]} or None.
 
         None means "no filtering" (worker uses the full harness). We only
@@ -102,8 +123,10 @@ class AgenticFilterAdaptation(RetrievalAdaptation):
         top_k: int = 16,      # candidate pool size
         keep_k: int = 8,      # fallback subset size on LLM failure
         llm=None,
+        cache_dir: Path | None = None,
+        catalog_kinds: tuple[str, ...] = ("skill", "tool", "memory"),
     ):
-        super().__init__(index, top_k)
+        super().__init__(index, top_k, cache_dir=cache_dir, catalog_kinds=catalog_kinds)
         self._keep_k = keep_k
         self._llm = llm
 
@@ -119,10 +142,10 @@ class AgenticFilterAdaptation(RetrievalAdaptation):
             return candidates[: self._keep_k]
 
     def _llm_select(self, task: "Task", candidates: list["CatalogItem"]) -> list["CatalogItem"]:
-        from .adaptation_prompts import (
+        from .prompts import (
             SELECTION_SYSTEM_PROMPT, build_selection_prompt, parse_selection,
         )
-        from ..llm.bedrock import BedrockProvider
+        from ...llm.bedrock import BedrockProvider
         if not isinstance(self._llm, BedrockProvider):
             return candidates[: self._keep_k]
         prompt = build_selection_prompt(self._query_text(task), candidates)

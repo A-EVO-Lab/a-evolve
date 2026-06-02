@@ -71,3 +71,12 @@ class TreeRoutingAdaptation:
             if b is not None:
                 b.failed_checkouts = getattr(b, "failed_checkouts", 0) + 1
             vc.checkout_branch("main")
+
+    def prepare(self, workspace) -> None:
+        # Routing reads the live git tree directly; nothing to pre-build.
+        return None
+
+    def project(self, task_id: str) -> dict | None:
+        # Branch routing's granularity is the whole branch, not a per-task
+        # item subset: the harness is realized by ``materialize`` (checkout).
+        return None

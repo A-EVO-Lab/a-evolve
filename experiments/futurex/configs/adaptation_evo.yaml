@@ -43,3 +43,9 @@ adaptation:
   candidate_k: 16     # M2: candidate pool before LLM rerank
   keep_k: 8           # M2: fallback subset size on LLM-selection failure
   filter_model: us.anthropic.claude-sonnet-4-6   # M2 selector (solver-class, cheap)
+  # Pluggable embedder backend (M1/M2 retrieval stage):
+  #   embed_backend: bge          -> BAAI/bge-base-en-v1.5 (default, CPU-friendly)
+  #   embed_backend: skillrouter  -> pipizhao/SkillRouter-Embedding-0.6B
+  #                                  (github.com/zhengyanzhao1997/SkillRouter; needs GPU+transformers)
+  #   embed_model: <hf-id>        -> exact override (wins over embed_backend)
+  embed_backend: bge

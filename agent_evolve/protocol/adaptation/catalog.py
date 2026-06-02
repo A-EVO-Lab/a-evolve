@@ -25,7 +25,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
-    from ..contract.workspace import AgentWorkspace
+    from ...contract.workspace import AgentWorkspace
 
 logger = logging.getLogger(__name__)
 
@@ -97,25 +97,44 @@ def _tool_items(ws: AgentWorkspace) -> list[CatalogItem]:
     return items
 
 
-def _memory_items(ws: AgentWorkspace, limit: int = 500) -> list[CatalogItem]:
+# Memory must be loaded with the SAME limit the solver agent uses
+# (base_agent.read_all_memories(limit=200)) so that catalog memory IDs and
+# the harness-filter memory IDs index the identical set. Do not change one
+# without the other.
+MEMORY_LIMIT = 200
+
+
+def memory_text(m: dict) -> str:
+    """Canonical human-readable text for a memory entry (shared helper).
+
+    Used by BOTH the catalog (to embed) and the harness filter (to render),
+    so a memory's content — and thus its content-based id — is identical on
+    both sides.
+    """
+    body = " ".join(
+        str(m.get(k, "")) for k in ("content", "insight", "text", "approach")
+        if m.get(k)
+    ).strip()
+    return body or json.dumps(m, default=str)
+
+
+def memory_id(text: str) -> str:
+    """Content-based memory id (stable across processes / load orders)."""
+    return "memory:" + hashlib.sha1(text.encode()).hexdigest()[:12]
+
+
+def _memory_items(ws: AgentWorkspace, limit: int = MEMORY_LIMIT) -> list[CatalogItem]:
     items: list[CatalogItem] = []
     try:
         mems = ws.read_all_memories(limit=limit)
     except Exception:
         return items
-    for i, m in enumerate(mems):
-        # Memory entries vary in schema; concatenate the human-readable
-        # fields. 'content'/'insight'/'text' are the common bodies.
-        body = " ".join(
-            str(m.get(k, "")) for k in ("content", "insight", "text", "approach")
-            if m.get(k)
-        ).strip()
-        if not body:
-            body = json.dumps(m, default=str)
+    for m in mems:
+        text = memory_text(m)[:_ITEM_TEXT_MAX_CHARS]
         cat = m.get("_category", "memory")
         items.append(CatalogItem(
-            id=f"memory:{i}", kind="memory", name=f"{cat}#{i}",
-            text=body[:_ITEM_TEXT_MAX_CHARS],
+            id=memory_id(text), kind="memory", name=cat,
+            text=text,
         ))
     return items
 

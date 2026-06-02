@@ -588,7 +588,7 @@ _TASK_TEXT_MAX_CHARS = 512
 
 
 def _get_skill_embedder():
-    from ..protocol.embedder import get_embedder
+    from ..protocol.adaptation.embedder import get_embedder
     return get_embedder()
 
 
@@ -604,7 +604,7 @@ def _skill_text(skill: dict) -> str:
 
 def _get_skill_embeddings(skills: list[dict]):
     """Get embeddings for skills, using cache when skills haven't changed."""
-    from ..protocol.embedder import embed_texts
+    from ..protocol.adaptation.embedder import embed_texts
     skill_texts = [_skill_text(s) for s in skills]
     return embed_texts(skill_texts)
 

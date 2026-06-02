@@ -83,7 +83,7 @@ def setup(args) -> dict:
     }
 
 
-def build_prompts(agent, tasks: list) -> dict:
+def build_prompts(agent, tasks: list, emit_pieces: bool = False) -> dict:
     """Build prompts and configuration for FutureX tasks."""
     tool_files = {}
     if hasattr(agent, 'tool_registry'):
@@ -109,10 +109,11 @@ def build_prompts(agent, tasks: list) -> dict:
         "tool_files": tool_files,
         "config": agent.config if hasattr(agent, 'config') else None,
     }
-    # Emit raw harness pieces ONLY when a retrieval adaptation operator is
-    # active (flag set by the registry); enables worker-side per-task
-    # filtering without affecting M0/M4 (flag absent -> nothing emitted).
-    if getattr(agent, "_emit_harness_pieces", False):
+    # Emit raw harness pieces ONLY when a retrieval adaptation operator
+    # produced a per-task projection for this batch (emit_pieces, derived by
+    # the solve loop from adapter.project()); enables worker-side per-task
+    # filtering without affecting M0/M4 (emit_pieces False -> nothing emitted).
+    if emit_pieces:
         from .._harness_filter import build_harness_pieces
         out["harness_pieces"] = build_harness_pieces(agent)
     return out

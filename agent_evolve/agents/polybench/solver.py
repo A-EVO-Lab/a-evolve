@@ -60,7 +60,7 @@ def setup(args) -> dict:
     }
 
 
-def build_prompts(agent, tasks: list) -> dict:
+def build_prompts(agent, tasks: list, emit_pieces: bool = False) -> dict:
     # Serialize evolved tools so solve_one can copy them into the sandbox
     tool_files = {}
     for t in agent.tool_registry:
@@ -76,7 +76,7 @@ def build_prompts(agent, tasks: list) -> dict:
         "dataset": agent._db_path,
         "tool_files": tool_files,
     }
-    if getattr(agent, "_emit_harness_pieces", False):
+    if emit_pieces:
         from .._harness_filter import build_harness_pieces
         out["harness_pieces"] = build_harness_pieces(agent)
     return out

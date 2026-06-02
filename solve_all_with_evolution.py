@@ -334,7 +334,7 @@ def main():
         # --adaptation unset => legacy behavior: tree_routing under navigation,
         # else whole_store. Retrieval operators (retrieval/agentic_filter) build a
         # catalog index lazily and carry a per-task harness filter (no workspace churn).
-        from agent_evolve.protocol.adaptation_registry import build_adapter
+        from agent_evolve.protocol.adaptation import build_adapter
         adapter = build_adapter(
             args.adaptation,
             evolver=evolver, strategy_tree=strategy_tree,
@@ -342,11 +342,6 @@ def main():
             workspace=agent.workspace, out_dir=out_dir, config=config,
         )
         log.info("Adaptation operator: %s", getattr(adapter, "name", type(adapter).__name__))
-        # Retrieval operators (M1/M2) expose task_filter and need build_prompts
-        # to emit raw harness pieces for worker-side per-task filtering. This
-        # flag is read by build_prompts; absent for M0/M4 -> no pieces emitted.
-        if hasattr(adapter, "task_filter"):
-            agent._emit_harness_pieces = True
 
         # Batching
         batch_size = args.batch_size or config.batch_size
@@ -394,6 +389,11 @@ def main():
             log.info("=== Batch %d (%d tasks) | Evo cycle %d ===",
                      batch_num, len(batch_tasks), evo_cycle)
 
+            # Per-batch operator setup against the CURRENT evolved store
+            # (retrieval ops rebuild their index here; no-op for whole_store/
+            # tree_routing). Unconditional: every operator implements prepare().
+            adapter.prepare(agent.workspace)
+
             # ── Route tasks via the adaptation operator ────────────
             # select() is the per-task, read-only decision (no feedback);
             # tasks sharing a key share one materialized workspace below.
@@ -439,20 +439,31 @@ def main():
             for branch_name, branch_tasks in branch_groups.items():
                 # Materialize this group's workspace via the adaptation
                 # operator (git checkout for tree routing; no-op for the
-                # whole-store default). The operator owns any fallback /
-                # failed_checkout bookkeeping.
+                # whole-store / retrieval defaults). Unconditional: every
+                # operator implements materialize() and owns its own fallback
+                # / failed_checkout bookkeeping.
+                try:
+                    adapter.materialize(ws_dir, branch_name, agent.workspace)
+                except Exception:
+                    pass
+                # Re-sync the live agent to the checked-out tree — a git
+                # mechanic only branch routing needs (its materialize swaps
+                # files); skipped when navigation is off (no-op materialize).
                 if navigation_enabled:
-                    try:
-                        adapter.materialize(ws_dir, branch_name, agent.workspace)
-                    except Exception:
-                        pass
                     agent.reload_from_fs()
+
+                # Per-task harness projections (retrieval operators M1/M2).
+                # project() returns None for whole_store / tree_routing, so
+                # emit_pieces is False and the worker takes the unfiltered
+                # path — byte-identical to M0/M4.
+                projections = {t.id: adapter.project(t.id) for t in branch_tasks}
+                emit_pieces = any(v is not None for v in projections.values())
 
                 # Build prompts from this branch's workspace state.
                 # Capture everything now while on the branch — the main
                 # checkout happens after all futures are submitted, so
                 # solvers must not depend on live workspace state.
-                prompt_args = backend.build_prompts(agent, branch_tasks)
+                prompt_args = backend.build_prompts(agent, branch_tasks, emit_pieces=emit_pieces)
                 task_dicts = [{"id": t.id, "input": t.input, "metadata": t.metadata}
                               for t in branch_tasks]
                 # Serialize infra files recursively so solvers can recreate
@@ -479,13 +490,11 @@ def main():
                     "infra_files": infra_files,
                     **prompt_args,
                 }
-                # Per-task harness filter (retrieval operators M1/M2 only).
-                # hasattr is False for whole_store / tree_routing, so M0/M4
-                # add NO keys here and the worker takes the unfiltered path.
-                if hasattr(adapter, "task_filter"):
-                    tf = {t.id: adapter.task_filter(t.id) for t in branch_tasks}
-                    if any(v is not None for v in tf.values()):
-                        args_dict["task_filters"] = tf
+                # Thread the per-task projections to the worker only when the
+                # operator produced any (M1/M2). Empty for M0/M4 -> no key
+                # added -> worker takes the unfiltered path.
+                if emit_pieces:
+                    args_dict["task_filters"] = projections
 
                 for td in task_dicts:
                     futures[pool.submit(backend.solve_one, td, args_dict)] = td["id"]

@@ -37,8 +37,8 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Protocol, runtime_checkable
 
-from ..contract.workspace import AgentWorkspace
-from ..types import Task
+from ...contract.workspace import AgentWorkspace
+from ...types import Task
 
 
 @runtime_checkable
@@ -55,6 +55,25 @@ class Adaptation(Protocol):
         self, store_path: Path, key: str, workspace: AgentWorkspace
     ) -> None:
         """Realize the harness for ``key`` by mutating ``workspace`` in place."""
+        ...
+
+    def prepare(self, workspace: AgentWorkspace) -> None:
+        """Per-batch setup against the current store (default: no-op).
+
+        Called once per batch before ``select``. Operators that maintain a
+        derived structure over the evolved store (e.g. an embedding index)
+        rebuild it here; routing/whole-store operators leave it a no-op.
+        """
+        ...
+
+    def project(self, task_id: str) -> dict | None:
+        """Per-task harness filter, or ``None`` to use the full harness.
+
+        Returns ``{"skills": [...], "tools": [...], "memory": [...]}`` for
+        operators that select a per-task subset (retrieval); ``None`` for
+        operators whose granularity is the whole materialized workspace
+        (whole-store, branch routing) — the default.
+        """
         ...
 
 
@@ -77,4 +96,12 @@ class WholeStoreAdaptation:
         self, store_path: Path, key: str, workspace: AgentWorkspace
     ) -> None:
         # Nothing to do: the working tree already holds the harness.
+        return None
+
+    def prepare(self, workspace: AgentWorkspace) -> None:
+        # No derived structure to build.
+        return None
+
+    def project(self, task_id: str) -> dict | None:
+        # No per-task filtering: every task uses the whole store.
         return None
