@@ -79,7 +79,7 @@ Add `--adaptation <name>` to select the solve-time operator (default:
 > and `scripts/futurex_hypothesis.sh`. See [`INSTALL.md`](INSTALL.md) for the
 > full provider matrix and dataset notes.
 
-## Adaptation as a Service
+## Pluggable Adaptation
 
 Solve-time adaptation is a **pluggable operator** chosen with
 `--adaptation <name>`; operators live in
