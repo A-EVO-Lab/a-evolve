@@ -96,6 +96,19 @@ More operators are on the TODO list (e.g. graph-structured store, lazy loading,
 dependency-aware retrieval) — contributions welcome: add a class in
 `operators.py` and one line in `registry.py`.
 
+## Citation
+
+If you find this work helpful, please consider to cite our paper:
+
+```bibtex
+@article{liu2026adaptive,
+  title={Adaptive Auto-Harness: Sustained Self-Improvement for Agentic System Deployment on Open-Ended Task Streams},
+  author={Liu, Zewen and Shi, Zhan and Sang, Yisi and He, Bing and Lin, Minhua and Wei, Tianxin and Wang, Dakuo and Dumoulin, Benoit and Jin, Wei and Lu, Hanqing},
+  journal={arXiv preprint arXiv:2606.01770},
+  year={2026}
+}
+```
+
 ## License
 
 MIT.
