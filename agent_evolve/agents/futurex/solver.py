@@ -114,7 +114,7 @@ def build_prompts(agent, tasks: list, emit_pieces: bool = False) -> dict:
     # the solve loop from adapter.project()); enables worker-side per-task
     # filtering without affecting M0/M4 (emit_pieces False -> nothing emitted).
     if emit_pieces:
-        from .._harness_filter import build_harness_pieces
+        from ...protocol.adaptation.harness_filter import build_harness_pieces
         out["harness_pieces"] = build_harness_pieces(agent)
     return out
 
@@ -192,7 +192,7 @@ def solve_one(task_data: Dict[str, Any], args_dict: Dict[str, Any]) -> Dict[str,
     # args_dict so the later system_prompt read picks it up.
     _tf = (args_dict.get("task_filters") or {}).get(task_id)
     if _tf is not None:
-        from .._harness_filter import apply_task_filter
+        from ...protocol.adaptation.harness_filter import apply_task_filter
         _fsp, tool_files = apply_task_filter(
             args_dict.get("system_prompt", ""), tool_files, _tf,
             args_dict.get("harness_pieces"))

@@ -123,7 +123,7 @@ def build_harness_pieces(agent) -> dict[str, Any]:
 
     # Memory ids MUST match the catalog's (content-based) so the per-task
     # filter's selected memory ids resolve here. Reuse the catalog helpers.
-    from ..protocol.adaptation.catalog import memory_text, memory_id
+    from .catalog import memory_text, memory_id
     memories = []
     for m in (getattr(agent, "memories", []) or []):
         text = memory_text(m)

@@ -100,7 +100,7 @@ def build_prompts(agent, tasks: list, emit_pieces: bool = False) -> dict:
         "catalog": agent._catalog_path,
     }
     if emit_pieces:
-        from .._harness_filter import build_harness_pieces
+        from ...protocol.adaptation.harness_filter import build_harness_pieces
         out["harness_pieces"] = build_harness_pieces(agent)
     return out
 
@@ -237,7 +237,7 @@ def solve_one(task_dict: dict, args_dict: dict) -> dict:
     # Per-task harness filter (retrieval adaptation M1/M2). No-op for M0/M4.
     _tf = (args_dict.get("task_filters") or {}).get(task_id)
     if _tf is not None:
-        from .._harness_filter import apply_task_filter
+        from ...protocol.adaptation.harness_filter import apply_task_filter
         system_prompt, tool_files = apply_task_filter(
             system_prompt, tool_files, _tf, args_dict.get("harness_pieces"))
 
