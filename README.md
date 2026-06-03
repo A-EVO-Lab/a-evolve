@@ -1,5 +1,7 @@
 # Adaptive Auto-Harness
 
+[![arXiv](https://img.shields.io/badge/arXiv-2606.01770-b31b1b.svg)](https://arxiv.org/abs/2606.01770)
+
 Code for the paper **"Adaptive Auto-Harness: Sustained Self-Improvement for
 Agentic System Deployment on Open-Ended Task Streams."**
 
