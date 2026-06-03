@@ -5,7 +5,7 @@ but, unlike branch routing, they do NOT mutate the workspace. Instead they
 record a per-task *filter* — the subset of catalog items (skills/tools/
 memory) relevant to the task — which the solve loop threads into
 ``args_dict["task_filters"]`` and the worker applies at harness-assembly
-time (see ``agents/_harness_filter.py``).
+time (see ``harness_filter.py``).
 
 ``select`` returns the key ``"main"`` for every task so that ALL tasks stay
 in a single materialization group (one ``build_prompts`` call, no workspace
