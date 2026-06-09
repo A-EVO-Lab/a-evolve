@@ -15,7 +15,7 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parent
+DATA_DIR = Path(__file__).resolve().parent.parent.parent / "data"
 
 SOURCES = {
     "polybench": {
@@ -70,7 +70,7 @@ def main() -> None:
         s = SOURCES[key]
         print(f"\n=== {key} ===")
         print(f"Source:       {s['url']}")
-        print(f"Target path:  {ROOT / s['target']}")
+        print(f"Target path:  {DATA_DIR / s["target"]}")
         print(f"Instructions: {s['instructions']}")
 
 

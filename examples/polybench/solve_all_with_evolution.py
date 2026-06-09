@@ -315,7 +315,7 @@ def main():
         strategy_tree = None
         routing_log_path = None
         if navigation_enabled or multi_agent:
-            from agent_evolve.types import StrategyTree
+            from agent_evolve.algorithms.navigation.types import StrategyTree
             tree_state_path = out_dir / "tree_state.json"
             if tree_state_path.exists():
                 strategy_tree = StrategyTree.from_dict(
@@ -648,7 +648,7 @@ def main():
                         if r.get("success"):
                             b.total_passed += 1
                     # Log routing entry
-                    from agent_evolve.types import RoutingEntry
+                    from agent_evolve.algorithms.navigation.types import RoutingEntry
                     strategy_tree.routing_log.append(RoutingEntry(
                         task_id=iid,
                         properties=_regime_props(iid),
