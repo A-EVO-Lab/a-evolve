@@ -341,7 +341,7 @@ Implement `BenchmarkAdapter` to plug any new evaluation domain into A-Evolve. Th
 - ⭐ **Star this repo** to support our research — we are evolving fast.
 - 🐛 **[Open an issue](https://github.com/A-EVO-Lab/a-evolve/issues)** to report bugs or request features.
 - 🔀 **[Submit a PR](https://github.com/A-EVO-Lab/a-evolve/pulls)** — new evolution algorithms, benchmark adapters, agent implementations, and documentation improvements are all welcome.
-- 💬 **[Join our Discord]()** to discuss research directions, share results, and collaborate.
+- 💬 **Join our Discord** to discuss research directions, share results, and collaborate.
 
 ---
 
