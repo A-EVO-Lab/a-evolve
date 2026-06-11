@@ -62,37 +62,52 @@ By applying our open-source **reference evolution algorithms** to a base Claude 
 <sub>Baseline → <strong>34.9%</strong> (+15.2pp)</sub>
 </td>
 </tr>
-    <tr>
+<tr>
 <td align="center" width="23%">
-<h3>🟢 ARC-AGI </h3>
-<img src="https://img.shields.io/badge/12.23%25-10b981?style=for-the-badge&labelColor=065f46" />
+<h3>🟢 ARC-AGI</h3>
+<img src="https://img.shields.io/badge/12.3%25-10b981?style=for-the-badge&labelColor=065f46" />
 <br/><br/>
-<strong>🥇 #2 Community LeaderBoard </strong><br/>
-<sub>Baseline → <strong>12.3% </strong> (+2.2pp)</sub>
+<strong>🥇 #2 Community Leaderboard</strong><br/>
+<sub>Baseline → <strong>12.3%</strong> (+2.2pp)</sub>
 </td>
 <td align="center" width="23%">
-<h3>🔵 OSWorld </h3>
+<h3>🔵 OSWorld</h3>
 <img src="https://img.shields.io/badge/69.6%25-2563eb?style=for-the-badge&labelColor=1e3a5f" />
 <br/><br/>
-<strong> -- </strong><br/>
+<strong>—</strong><br/>
 <sub>Baseline → <strong>69.6%</strong> (+3.9pp)</sub>
 </td>
 <td align="center" width="23%">
-<h3>🟣 CL Bench </h3>
-<img src="https://img.shields.io/badge/X%25-7c3aed?style=for-the-badge&labelColor=3b1d6e" />
+<h3>🟣 SWE-bench Lite</h3>
+<img src="https://img.shields.io/badge/67.0%25-7c3aed?style=for-the-badge&labelColor=3b1d6e" />
 <br/><br/>
-<strong> To Be Announced  </strong><br/>
-<sub>To Be Announced  </sub>
+<strong>Evolved</strong><br/>
+<sub>63.7 → <strong>67.0%</strong> (+3.3pp)</sub>
 </td>
 <td align="center" width="23%">
-<h3>🟡 WebArena-infinity </h3>
-<img src="https://img.shields.io/badge/X%25-d97706?style=for-the-badge&labelColor=78350f" />
+<h3>🟡 τ-bench</h3>
+<img src="https://img.shields.io/badge/77.0%25-d97706?style=for-the-badge&labelColor=78350f" />
 <br/><br/>
-<strong> To Be Announced  </strong><br/>
-<sub>To Be Announced </sub>
+<strong>Evolved</strong><br/>
+<sub>72.7 → <strong>77.0%</strong> (+4.3pp)</sub>
 </td>
 </tr>
-</table>
+<tr>
+<td align="center" width="23%">
+<h3>🟢 CL-Bench</h3>
+<img src="https://img.shields.io/badge/34.0%25-10b981?style=for-the-badge&labelColor=065f46" />
+<br/><br/>
+<strong>Evolved</strong><br/>
+<sub>29.5 → <strong>34.0%</strong> (+4.5pp)</sub>
+</td>
+<td align="center" width="23%">
+<h3>🔵 WebArena-Infinity</h3>
+<img src="https://img.shields.io/badge/76.3%25-2563eb?style=for-the-badge&labelColor=1e3a5f" />
+<br/><br/>
+<strong>Evolved</strong><br/>
+<sub>72.5 → <strong>76.3%</strong> (+3.8pp)</sub>
+</td>
+</tr>
 </table>
 
 ![A-Evolve Benchmarks](figs/a_evolve_benchmarks.png)
