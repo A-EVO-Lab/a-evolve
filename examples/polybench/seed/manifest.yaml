@@ -1,0 +1,15 @@
+name: polybench-prediction-agent
+version: 0.1.0
+contract_version: "1.0"
+
+agent:
+  type: reference
+  entrypoint: agent_evolve.agents.polybench.agent.PolyBenchAgent
+
+evolvable_layers:
+  - prompts
+  - skills
+  - memory
+  - tools
+
+reload_strategy: hot
