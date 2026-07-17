@@ -294,7 +294,7 @@ A-Evolve is a **framework**, not a standalone agent. Every axis is pluggable:
 | **Agent (BYOA)** | `BaseAgent.solve()` | Any agent architecture — ReAct, Plan-and-Solve, custom | `SweAgent`, `McpAgent` |
 | **Benchmark (BYOE)** | `BenchmarkAdapter.get_tasks()` / `.evaluate()` | Any domain with task + evaluation signal | SWE-bench, MCP-Atlas, Terminal-Bench 2.0, SkillsBench, CL-bench |
 | **Algorithm (BYO-Algo)** | `EvolutionEngine.step()` | Any evolution strategy | `AEvolveEngine` (LLM-driven mutation) |
-| **LLM Provider** | `LLMProvider.complete()` | Any model API | Anthropic, OpenAI, AWS Bedrock |
+| **LLM Provider** | `LLMProvider.complete()` | Any model API | Anthropic, OpenAI, Atlas Cloud, AWS Bedrock |
 
 ### Built-in Evolution Algorithms
 
