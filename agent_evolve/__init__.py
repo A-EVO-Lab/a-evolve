@@ -1,7 +1,5 @@
 """Agent Evolve -- evolve any agent through a file system contract."""
 
-__version__ = "0.1.0"
-
 from .api import Evolver
 from .benchmarks.base import BenchmarkAdapter
 from .config import EvolveConfig

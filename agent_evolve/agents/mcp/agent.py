@@ -19,7 +19,6 @@ from ...protocol.base_agent import BaseAgent
 from ...types import Task, Trajectory
 from .docker_env import McpAtlasContainer, pull_image
 from .key_registry import KeyRegistry, classify_error, redact_secrets
-from .conversation_manager import PinnedFirstMessageManager
 from .mcp_client import McpClientWrapper
 from .tools import create_tool_wrappers
 
@@ -45,7 +44,6 @@ class McpAgent(BaseAgent):
         max_tokens: int = 16384,
         docker_image: str | None = None,
         key_registry: KeyRegistry | None = None,
-        shared_client: McpClientWrapper | None = None,
     ):
         super().__init__(workspace_dir)
         self.model_id = model_id
@@ -53,38 +51,22 @@ class McpAgent(BaseAgent):
         self.max_tokens = max_tokens
         self.docker_image = docker_image
         self.key_registry = key_registry
-        self.shared_client = shared_client
 
-    def _build_system_prompt(self, task_prompt: str | None = None) -> str:
-        """Assemble the full system prompt from workspace files.
-
-        If task_prompt is provided, only inject skills whose description
-        is relevant to the task (keyword matching). This reduces prompt
-        size and noise by not injecting irrelevant domain skills.
-
-        Args:
-            task_prompt: Optional task input text for skill filtering
-        """
+    def _build_system_prompt(self) -> str:
+        """Assemble the full system prompt from workspace files."""
         parts = [self.system_prompt]
 
         if self.skills:
-            # Select relevant skills based on task (if provided)
-            if task_prompt:
-                selected = self._select_relevant_skills(task_prompt, max_skills=3)
-            else:
-                selected = self.skills  # Fallback: inject all
-
-            if selected:  # Only add section if we have skills to inject
-                parts.append("\n\n## Available Skills\n")
-                parts.append(
-                    "You have specialized skills. Review them when facing relevant challenges.\n"
-                )
-                for skill in selected:
-                    parts.append(f"- **{skill.name}**: {skill.description}")
-                    content = self.get_skill_content(skill.name)
-                    if content:
-                        body = content.split("---", 2)[-1].strip() if "---" in content else content
-                        parts.append(f"\n{body}\n")
+            parts.append("\n\n## Available Skills\n")
+            parts.append(
+                "You have specialized skills. Review them when facing relevant challenges.\n"
+            )
+            for skill in self.skills:
+                parts.append(f"- **{skill.name}**: {skill.description}")
+                content = self.get_skill_content(skill.name)
+                if content:
+                    body = content.split("---", 2)[-1].strip() if "---" in content else content
+                    parts.append(f"\n{body}\n")
 
         if self.memories:
             parts.append("\n\n## Relevant Memories\n")
@@ -93,94 +75,31 @@ class McpAgent(BaseAgent):
 
         return "\n".join(parts)
 
-    def _select_relevant_skills(self, task_prompt: str, max_skills: int = 3) -> list:
-        """Select skills most relevant to the task based on keyword overlap.
-
-        Only injects skills with relevance score >= 2 (at least 2 keyword matches).
-        Tasks with no matching skills get the clean vanilla prompt.
-
-        Approach from terminal agent evolution (bing_dev_mar10):
-        - v10: Fixed -7 task regression by only injecting skills with score > 0
-        - v22: "More skills ≠ better" — filtering prevents dilution
-
-        Args:
-            task_prompt: The task input text
-            max_skills: Maximum number of skills to inject (default: 3)
-
-        Returns:
-            List of selected skills, sorted by relevance score
-        """
-        task_lower = task_prompt.lower()
-
-        scored = []
-        for skill in self.skills:
-            # Extract keywords from skill name and description
-            keywords = skill.name.replace("-", " ").split()
-            keywords += skill.description.lower().split()
-
-            # Count keyword matches (only words longer than 3 chars to avoid noise)
-            score = sum(1 for kw in keywords if kw in task_lower and len(kw) > 3)
-            scored.append((score, skill))
-
-        # Sort by relevance score (highest first)
-        scored.sort(key=lambda x: x[0], reverse=True)
-
-        # Only inject skills with score >= 2 (at least 2 keyword matches)
-        # This threshold prevents random/irrelevant skill injection
-        selected = []
-        for score, skill in scored[:max_skills]:
-            if score >= 2:
-                selected.append(skill)
-
-        if selected:
-            logger.debug(
-                "Selected %d/%d skills: %s",
-                len(selected),
-                len(self.skills),
-                [f"{s.name}(score={sc})" for sc, s in scored[:max_skills] if sc >= 2]
-            )
-        else:
-            logger.debug("No relevant skills (using vanilla prompt)")
-
-        return selected
-
-    def _build_strands_agent(self, tools: list, task_prompt: str | None = None) -> Agent:
-        """Create a strands Agent with BedrockModel and the given tools.
-
-        Args:
-            tools: List of tool wrappers
-            task_prompt: Optional task input for skill selection
-        """
+    def _build_strands_agent(self, tools: list) -> Agent:
+        """Create a strands Agent with BedrockModel and the given tools."""
         model = BedrockModel(
             model_id=self.model_id,
             region_name=self.region,
             max_tokens=self.max_tokens,
         )
-        system_prompt = self._build_system_prompt(task_prompt=task_prompt)
+        system_prompt = self._build_system_prompt()
         return Agent(
             model=model,
             system_prompt=system_prompt,
             tools=tools,
-            conversation_manager=PinnedFirstMessageManager(),
         )
 
     def solve(self, task: Task, shared_client: McpClientWrapper | None = None) -> Trajectory:
         """Solve an MCP tool-calling task via the HTTP service.
 
         If *shared_client* is provided the agent reuses it (and the
-        caller is responsible for the container lifecycle).  Falls back
-        to self.shared_client if set.  Otherwise the agent starts its
-        own container per task (original behaviour).
+        caller is responsible for the container lifecycle).  Otherwise
+        the agent starts its own container per task (original behaviour).
         """
         effective_image: str | None = task.metadata.get(
             "docker_image", self.docker_image
         )
-        raw_tools = task.metadata.get("enabled_tools", [])
-        enabled_tools: list[str] = [
-            t.get("name") if isinstance(t, dict) else str(t)
-            for t in raw_tools
-            if (isinstance(t, dict) and t.get("name")) or (not isinstance(t, dict))
-        ]
+        enabled_tools: list[str] = task.metadata.get("enabled_tools", [])
 
         # Get env vars for task's MCP servers from key registry
         env_vars: dict[str, str] = {}
@@ -188,10 +107,9 @@ class McpAgent(BaseAgent):
             server_names = task.metadata.get("mcp_server_names", [])
             env_vars = self.key_registry.get_keys_for_servers(server_names)
 
-        effective_client = shared_client or self.shared_client
         container: McpAtlasContainer | None = None
-        owns_client = effective_client is None
-        client = effective_client or McpClientWrapper()
+        owns_client = shared_client is None
+        client = shared_client or McpClientWrapper()
 
         try:
             # Start Docker container only if no shared client and image provided
@@ -235,9 +153,9 @@ class McpAgent(BaseAgent):
                     env_vars,
                 )
 
-            # Build strands agent with tool wrappers and task-specific skill selection
+            # Build strands agent with tool wrappers
             tools = create_tool_wrappers(filtered, client)
-            agent = self._build_strands_agent(tools, task_prompt=task.input)
+            agent = self._build_strands_agent(tools)
 
             logger.info("Solving %s with %d tools", task.id, len(filtered))
             response = agent(task.input)

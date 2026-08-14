@@ -22,7 +22,7 @@ logger = logging.getLogger(__name__)
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent.parent
 CHALLENGES_DIR = os.environ.get(
     "TB2_CHALLENGES_DIR",
-    str(_PROJECT_ROOT / "agent_evolve" / "benchmarks" / "tb2" / "challenges"),
+    str(_PROJECT_ROOT / "data" / "terminal_bench_challenges"),
 )
 
 # Pinned source for auto-download

@@ -1,383 +1,227 @@
-# A-Evolve 🧬: The Universal Infrastructure for Self-Improving Agents
+# EVO-HARNESS: Context-to-Harness Skill Compilation for Self-Evolving Agents
 
-[![GitHub stars](https://img.shields.io/github/stars/A-EVO-Lab/a-evolve?style=social)](https://github.com/A-EVO-Lab/a-evolve)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
-[![arXiv](https://img.shields.io/badge/arXiv-2602.00359-b31b1b.svg)](https://arxiv.org/abs/2602.00359)
+Official implementation of **“EVO-HARNESS: Context-to-Harness Skill Compilation for Self-Evolving Agents.”**
 
-> **The PyTorch for Agentic AI.**
-> A-Evolve is an open-source infrastructure that evolves *any* agent, across *any* domain, using *any* evolution algorithm — with zero human intervention.
+EVO-HARNESS studies online harness learning: a frozen solver processes a stream of tasks while an external skill harness is incrementally updated from execution context and grounded feedback. The implementation supports the five benchmarks used in the paper: CL-Bench, Terminal-Bench 2, SWE-bench Lite, τ-bench, and WebArena-Infinity.
 
-[Quick Start](#quick-start) | [News](#news) | [Benchmark Highlights](#benchmark-highlights) | [Architecture & Design](#architecture--design) | [Contribution](#community--contributing)
-</p>
+## Paper Results
 
-![A-Evolve Teaser](figs/teaser.png)
+Main results with Claude Opus 4.6 as the solver (success rate, %):
 
----
+| Method | CL-Bench | Terminal-Bench 2 | SWE-bench Lite | τ-bench | WebArena-Infinity |
+|---|---:|---:|---:|---:|---:|
+| No Evolve | 29.54 | 62.92 | 63.67 | 72.73 | 72.50 |
+| XSkill | 31.44 | 66.29 | 64.67 | 73.94 | 73.75 |
+| **EVO-HARNESS** | **34.02** | **73.03** | **67.00** | **76.97** | **76.25** |
 
-## What Does A-Evolve Do?
+## Method
 
-You provide a Base Agent. A-Evolve returns a SOTA Agent. **3 lines of code. 0 hours of manual harness 
-engineering.** One infra, any domain, any evolution algorithm.
+For every task batch, EVO-HARNESS:
 
-```python
-import agent_evolve as ae
+1. Selects relevant general and task-type skills from the current harness.
+2. Injects the selected skills into the frozen solver’s context.
+3. Solves and evaluates each task with benchmark-grounded feedback.
+4. Reflects on failed executions to propose reusable candidate skills.
+5. Uses an evolver to accept, merge, revise, or skip candidates.
+6. Writes the updated Markdown skill harness for the next batch.
 
-evolver = ae.Evolver(agent="./my_agent", benchmark="swe-verified")
-results = evolver.run(cycles=10)
+The solver and model parameters remain frozen. Learning occurs through inspectable `SKILL.md` files in the external workspace.
+
+## Project Structure
+
+```text
+.
+├── agent_evolve/                  # Core workspace, agent, LLM, and benchmark utilities
+│   ├── agents/{swe,terminal}/     # ReAct solvers and Docker environments
+│   ├── algorithms/aevolve/        # A-EVOLVE framework components
+│   ├── benchmarks/                # Benchmark adapters and evaluation utilities
+│   ├── contract/                  # File-system harness contract
+│   ├── engine/                    # Observation and evolution infrastructure
+│   └── llm/                       # Anthropic, Bedrock, and OpenAI providers
+├── examples/
+│   ├── evolve_cl_bench.py
+│   ├── evolve_swe.py
+│   ├── evolve_tau_bench.py
+│   ├── evolve_terminal.py
+│   └── evolve_webarena_infinity.py
+├── scripts/                       # Main runs, model ablations, and transfer experiments
+├── seed_workspaces/               # Initial benchmark-specific harnesses
+├── .env.example
+├── pyproject.toml
+└── Makefile
 ```
 
-### Benchmark Highlights
+Generated benchmark outputs are intentionally excluded from the release. Every run writes its own results and evolved workspace under the selected `--output-dir`.
 
-By applying our open-source **reference evolution algorithms** to a base Claude Opus-4.6 model with **zero manual harness engineering**, A-Evolve pushed agents into top-tier performance across four diverse benchmarks:
+## Installation
 
-<table>
-<tr>
-<td align="center" width="23%">
-<h3>🟢 MCP-Atlas</h3>
-<img src="https://img.shields.io/badge/79.4%25-10b981?style=for-the-badge&labelColor=065f46" />
-<br/><br/>
-<strong>🥇 #1</strong><br/>
-<sub>Baseline → <strong>79.4%</strong> (+3.4pp)</sub>
-</td>
-<td align="center" width="23%">
-<h3>🔵 SWE-bench Verified</h3>
-<img src="https://img.shields.io/badge/76.8%25-2563eb?style=for-the-badge&labelColor=1e3a5f" />
-<br/><br/>
-<strong>~#5</strong><br/>
-<sub>Baseline → <strong>76.8%</strong> (+2.6pp)</sub>
-</td>
-<td align="center" width="23%">
-<h3>🟣 Terminal-Bench 2.0</h3>
-<img src="https://img.shields.io/badge/76.5%25-7c3aed?style=for-the-badge&labelColor=3b1d6e" />
-<br/><br/>
-<strong>~#7</strong><br/>
-<sub>Baseline → <strong>76.5%</strong> (+13.0pp)</sub>
-</td>
-<td align="center" width="23%">
-<h3>🟡 SkillsBench</h3>
-<img src="https://img.shields.io/badge/34.9%25-d97706?style=for-the-badge&labelColor=78350f" />
-<br/><br/>
-<strong>#2</strong><br/>
-<sub>Baseline → <strong>34.9%</strong> (+15.2pp)</sub>
-</td>
-</tr>
-<tr>
-<td align="center" width="23%">
-<h3>🟢 ARC-AGI</h3>
-<img src="https://img.shields.io/badge/12.3%25-10b981?style=for-the-badge&labelColor=065f46" />
-<br/><br/>
-<strong>🥇 #2 Community Leaderboard</strong><br/>
-<sub>Baseline → <strong>12.3%</strong> (+2.2pp)</sub>
-</td>
-<td align="center" width="23%">
-<h3>🔵 OSWorld</h3>
-<img src="https://img.shields.io/badge/69.6%25-2563eb?style=for-the-badge&labelColor=1e3a5f" />
-<br/><br/>
-<strong>—</strong><br/>
-<sub>Baseline → <strong>69.6%</strong> (+3.9pp)</sub>
-</td>
-<td align="center" width="23%">
-<h3>🟣 SWE-bench Lite</h3>
-<img src="https://img.shields.io/badge/67.0%25-7c3aed?style=for-the-badge&labelColor=3b1d6e" />
-<br/><br/>
-<strong>Evolved</strong><br/>
-<sub>63.7 → <strong>67.0%</strong> (+3.3pp)</sub>
-</td>
-<td align="center" width="23%">
-<h3>🟡 τ-bench</h3>
-<img src="https://img.shields.io/badge/77.0%25-d97706?style=for-the-badge&labelColor=78350f" />
-<br/><br/>
-<strong>Evolved</strong><br/>
-<sub>72.7 → <strong>77.0%</strong> (+4.3pp)</sub>
-</td>
-</tr>
-<tr>
-<td align="center" width="23%">
-<h3>🟢 CL-Bench</h3>
-<img src="https://img.shields.io/badge/34.0%25-10b981?style=for-the-badge&labelColor=065f46" />
-<br/><br/>
-<strong>Evolved</strong><br/>
-<sub>29.5 → <strong>34.0%</strong> (+4.5pp)</sub>
-</td>
-<td align="center" width="23%">
-<h3>🔵 WebArena-Infinity</h3>
-<img src="https://img.shields.io/badge/76.3%25-2563eb?style=for-the-badge&labelColor=1e3a5f" />
-<br/><br/>
-<strong>Evolved</strong><br/>
-<sub>72.5 → <strong>76.3%</strong> (+3.8pp)</sub>
-</td>
-</tr>
-</table>
-
-![A-Evolve Benchmarks](figs/a_evolve_benchmarks.png)
-
-> *All results achieved with a single Claude Opus-4.6 base model, evolved using A-Evolve's sample algorithms. 0 hours of human harness engineering. Data checked March 2026.*
-
-### News
-- **6/11** **New Tech Report**, [*A-Evolve-Training: Autonomous Post-Training of a 30B Model
-*](https://arxiv.org/abs/2606.20657) (arXiv 2606.20657). We present an autonomous system that runs this loop with no human in the loop, **post-training a 30B Nemotron** across four rounds over multiple weeks. The autonomously produced model reaches a held-out score of **0.86 against the top human submission's 0.87** on the public NVIDIA Nemotron-Reasoning Challenge leaderboard, placing 8th of ~4000 at the time of writing. To the best of our knowledge, this is the first publicly reported autonomous post-training run at this scale, where prior public autonomous-ML-research demonstrations sit at GPT-2-class (~124M) budgets. The same system also post-trains the **120B and 550B** Nemotron models.
-- **6/1** **New Research Paper**, [*Adaptive Auto-Harness: Sustained Self-Improvement for Agentic System Deployment on Open-Ended Task Streams*](https://arxiv.org/abs/2606.01770) (arXiv 2606.01770). We address the brittleness of traditional auto-harness systems when moving from fixed benchmarks to open-ended, shifting task streams. We introduce **Adaptive Auto-Harness**, a framework that significantly outperforms five existing auto-harness baselines across prediction-market, security-competition, and event-forecasting streams. 
-- **5/30** **New Research Paper**, [*Harness Updating Is Not Harness Benefit: Disentangling Evolution Capabilities in Self-Evolving LLM Agents*](https://arxiv.org/abs/2605.30621) (arXiv 2605.30621).Tested across 7 evolver models (Opus-4.6, Sonnet-4.6, Qwen-3.5-9B, GPT-OSS-120B, etc.) × 6 solver agents × 3 agentic benchmarks (SWE-bench Verified, MCP-Atlas, SkillsBench), we answered **which model produced the best harness update and which models benefits the most from harness update**.  
-- **05/04** **New Benchmark Results**, A-Evolve added [results](https://x.com/HenryL_AI/status/2051711038618480816?s=20) on ARC-AGI-3, evolving a multi-agent system to be more powerful on solving difficult tasks like [ARC-AGI-3](https://arcprize.org/arc-agi/3). Improving performance from 10% to 12%.
-- **04/20** **New Algorithm Drop**, A-Evolve added new evolutionary algorithm [GEPA](https://x.com/HenryL_AI/status/2046326722912739713?s=20), submitted by the [GEPA](https://gepa-ai.github.io/gepa/blog/) team.
-- **04/10** **Integration**, A-Evolve is officially integrated into [Orch-Research Skills Library](https://x.com/HenryL_AI/status/2042688465855488476), along with others including AutoResearch, OpenRLHF, DeepSpeed, SGLang
-- **04/07** **New Agent Drop**, We added recently leaked public ClawCode (Claude Code), took the evolution harness + skills we learned on Terminal-Bench 2.0 (TB2) and directly transplanted them onto the ClawCode. [Result](https://x.com/HenryL_AI/status/2041621538580132280) on TB2: baseline **67.8%** → **72.9%** (+5.1pp uplift)
-- **04/03** **New Algorithm Drop**, A-Evolve added new evolutionary algorithm [Meta-Harness](https://x.com/HenryL_AI/status/2040218374458974715)
-- **03/30** **Integration**, A-Evolve is officially integrated into [AutoResearchClaw](https://github.com/aiming-lab/AutoResearchClaw) 
-- **03/25** 🚀 **Open-source A-Evolve**, the universal infrastructure for developing and testing evolving algorithms.
-- **03/25** 📊 **Open-source 4 evolving algorithms** developed with A-Evolve, achieving SOTA **(#1, ~#5, ~#7, #2)** on MCP-Atlas, SWE-bench Verified, Terminal-Bench 2.0, and SkillsBench.
-- **02/17** 📄 Release the official implementation of [*Position: Agentic Evolution is the Path to Evolving LLMs*](https://arxiv.org/abs/2602.00359) (arXiv 2602.00359).
-
-We are evolving fast! Support our research by leaving a ⭐.
-
-### What Does an Evolved Agent Look Like?
-
-A-Evolve mutates real files in the workspace. Here's a before/after from our MCP-Atlas evolution:
-
-<table>
-<tr>
-<th width="50%">Before (Seed Workspace)</th>
-<th width="50%">After (Evolved — 79.4% on MCP-Atlas)</th>
-</tr>
-<tr>
-<td>
-
-```
-mcp_agent/
-├── manifest.yaml
-├── prompts/system.md      ← 20 lines, generic
-├── skills/                ← empty
-└── memory/                ← empty
-```
-
-</td>
-<td>
-
-```
-mcp_agent/
-├── manifest.yaml
-├── prompts/system.md      ← 20 lines, unchanged
-├── skills/
-│   ├── entity-verification/SKILL.md   ← NEW
-│   ├── search-iteration/SKILL.md      ← NEW
-│   ├── multi-requirement/SKILL.md     ← NEW
-│   ├── code-execution/SKILL.md        ← NEW
-│   └── conditional-handler/SKILL.md   ← NEW
-└── memory/
-    └── episodic.jsonl     ← 6 entries
-```
-
-</td>
-</tr>
-</table>
-
-5 targeted skills outperformed 10 generic ones. Every mutation is git-tagged (`evo-1`, `evo-2`, …) for full reproducibility.
-
----
-
-## Quick Start
-
-### 1. Install
+Python 3.11+ is required. Docker is required for SWE-bench Lite and Terminal-Bench 2.
 
 ```bash
-# PyPI (recommended)
-pip install a-evolve              # core
-pip install a-evolve[anthropic]   # Claude support
-pip install a-evolve[mcp]         # MCP-Atlas benchmark
-pip install a-evolve[swe]         # SWE-bench benchmark
-pip install a-evolve[all]         # everything
+git clone -b release/evo-harness https://github.com/A-EVO-Lab/a-evolve.git
+cd a-evolve
 
-# From source (for development)
-git clone https://github.com/A-EVO-Lab/a-evolve.git && cd a-evolve
+conda create -n mem python=3.11 -y
+conda activate mem
+
 pip install -e ".[all,dev]"
+cp .env.example .env
 ```
 
-### 2. Evolve — 3 Lines of Code
+Configure AWS credentials using your normal AWS profile or environment variables. The paper runs primarily use AWS Bedrock in `us-west-2`.
 
-```python
-import agent_evolve as ae
+Some benchmark packages must be installed separately:
 
-evolver = ae.Evolver(
-    agent="swe-verified",           # built-in seed workspace (or path to yours)
-    benchmark="swe-verified",       # built-in benchmark adapter
-)
-results = evolver.run(cycles=10)
+```bash
+# τ-bench
+git clone https://github.com/sierra-research/tau-bench.git /path/to/tau-bench
+pip install -e /path/to/tau-bench
 
-print(f"Final score: {results.final_score:.3f}")
-print(f"Converged:   {results.converged}")
+# WebArena-Infinity
+git clone https://github.com/web-arena-x/webarena-infinity.git /path/to/webarena-infinity
+
+# Browser runtime
+playwright install chromium
 ```
 
-A-Evolve ships with built-in seed workspaces (`swe`, `mcp`, `terminal`, `skillbench`) and benchmark adapters (`swe-verified`, `mcp-atlas`, `terminal-bench 2.0`, `skill-bench`). Point `agent=` at any of them — or at your own workspace directory.
+## Datasets and Evaluation
 
-### 3. Bring Your Own Agent (BYOA)
+| Benchmark | Paper tasks | Domain | Evaluation signal |
+|---|---:|---|---|
+| CL-Bench | 1,899 | Adaptive reasoning | Rubric judge |
+| Terminal-Bench 2 | 89 | CLI and scripting | Docker verifier |
+| SWE-bench Lite | 300 | Software engineering | Unit tests |
+| τ-bench | 165 | Tool use | State verifier |
+| WebArena-Infinity | 80 | Web navigation | State verifier |
 
-To make any agent evolvable, implement one method — `solve()`:
+- **CL-Bench:** provide `CL-bench-grouped.jsonl` and `CL-bench.jsonl` through `--grouped-path` and `--raw-path`.
+- **Terminal-Bench 2:** challenge definitions are downloaded on first use or supplied with `--challenges-dir`; benchmark Docker images are pulled on demand.
+- **SWE-bench Lite:** `princeton-nlp/SWE-bench_Lite` is downloaded from Hugging Face; SWE-bench Docker images are pulled on demand.
+- **τ-bench:** install the official repository as shown above. Airline and retail data are provided by that package.
+- **WebArena-Infinity:** point `--webarena-dir` to an official checkout and ensure its application services can be launched.
 
-```python
-from agent_evolve.protocol.base_agent import BaseAgent
-from agent_evolve.types import Task, Trajectory
+## Running EVO-HARNESS
 
-class MyAgent(BaseAgent):
-    def solve(self, task: Task) -> Trajectory:
-        return Trajectory(task_id=task.id, output="result")
+All commands below are run from the repository root. Model shortcuts used by the entry points are:
+
+| Shortcut | Model |
+|---|---|
+| `1` | Claude Opus 4.6 |
+| `2` | Claude Sonnet 4.5 |
+| `3` | Claude Opus 4.5 |
+
+### SWE-bench Lite
+
+```bash
+python examples/evolve_swe.py \
+  --solver-model 1 --curator-model 1 --selector-model 2 \
+  --batch-size 16 --workers 16 \
+  --max-skills-per-topic 5 --max-general-skills 5 \
+  --shuffle --shuffle-seed 42 --no-seed-skills \
+  --eval-timeout 300 --feedback-level standard \
+  --output-dir outputs/swe_evo_harness
 ```
 
-Then evolve it:
+### Terminal-Bench 2
 
-```python
-evolver = ae.Evolver(agent=MyAgent("./my_workspace"), benchmark="mcp-atlas")
-results = evolver.run(cycles=10)
+```bash
+python examples/evolve_terminal.py \
+  --solver-model 1 --curator-model 1 --selector-model 2 \
+  --batch-size 10 --workers 10 \
+  --shuffle --shuffle-seed 42 --no-seed-skills \
+  --max-general-skills 5 --max-skills-per-topic 0 \
+  --feedback-level minimal \
+  --output-dir outputs/terminal_evo_harness
 ```
 
-Your agent's evolvable state (prompts, skills, memory) lives as a standard directory — the [Agent Workspace](#the-agent-workspace-a-file-system-contract). A-Evolve mutates these files; your agent reloads. See [Architecture & Design](#architecture--design) for the full picture.
+### τ-bench
 
-For benchmark-specific walkthroughs, see [SWE-bench Demo Guide](docs/swe-bench-demo.md), [MCP-Atlas Demo Guide](docs/mcp-atlas-demo.md), and [SkillBench Setup Guide](docs/skillbench-setup.md).
-
----
-
-## Architecture & Design
-
-![A-Evolve Framework](figs/A-EVOLVE-FRAMEWORK.png)
-
-### The Agent Workspace: A File System Contract
-
-A-Evolve's core insight: **all evolvable agent state lives on the file system as a standard directory structure.** This lets the evolution engine mutate any agent via LLM-driven file operations — without knowing the agent's internals.
-
-```
-my_agent/
-├── manifest.yaml          # identity, entrypoint, evolvable layers
-├── prompts/system.md      # system prompt
-├── skills/                # SKILL.md files (dynamic skill library)
-├── tools/                 # tool configurations
-└── memory/                # episodic + semantic memory (JSONL)
+```bash
+python examples/evolve_tau_bench.py \
+  --env both --task-split test \
+  --solver-model 1 --user-model 2 \
+  --curator-model 1 --selector-model 2 \
+  --batch-size 10 --workers 10 \
+  --max-skills-per-topic 0 --max-general-skills 5 \
+  --feedback-level standard --shuffle --shuffle-seed 42 \
+  --output-dir outputs/tau_bench_evo_harness
 ```
 
-The evolution engine reads these files, analyzes performance logs, and writes mutations back. The agent reloads. That's the entire contract.
+### CL-Bench
 
-### The Evolution Loop
-
-Every cycle follows five phases:
-
-```
-┌─────────┐    ┌─────────┐    ┌─────────┐    ┌──────┐    ┌────────┐
-│  Solve  │───▶│ Observe │───▶│ Evolve  │───▶│ Gate │───▶│ Reload │
-└─────────┘    └─────────┘    └─────────┘    └──────┘    └────────┘
-```
-
-1. **Solve** — Agent processes a batch of tasks (black-box execution).
-2. **Observe** — Collect trajectories + benchmark feedback into structured logs.
-3. **Evolve** — Evolution engine analyzes observations and mutates workspace files (prompts, skills, memory).
-4. **Gate** — Validate mutations on holdout tasks. Regressed mutations are rolled back via git.
-5. **Reload** — Agent reloads from the (possibly rolled-back) workspace.
-
-The loop converges when EGL (Evolutionary Generality Loss) stabilizes or `max_cycles` is reached. Every accepted mutation is git-tagged (`evo-1`, `evo-2`, …), providing a full audit trail.
-
-### Built-in Adapters
-
-A-Evolve ships with ready-to-use benchmark adapters and seed workspaces:
-
-| Adapter | Domain | Seed Workspace | Best Result |
-| :--- | :--- | :--- | :--- |
-| [`swe-verified`](docs/swe-bench-demo.md) | Real-world GitHub issues (Python repos) | `seed_workspaces/swe/` | **76.8%** (~#5) |
-| [`mcp-atlas`](docs/mcp-atlas-demo.md) | Tool-calling via MCP (16+ servers) | `seed_workspaces/mcp/` | **79.4%** (🥇 #1) |
-| [`terminal-bench`](docs/terminal-bench-demo.md) | Terminal/CLI ops in Docker | `seed_workspaces/terminal/` | **76.5%** (~#7) |
-| [`skill-bench`](docs/skillbench-setup.md) | Agentic skill discovery | `seed_workspaces/skillbench/` | **34.9%** (~#2)|
-| [`cl-bench`](examples/cl_bench_examples/) | Continual-learning rubric evaluation | — | **38.0%** |
-
-### Pluggability: Bring Your Own Everything
-
-A-Evolve is a **framework**, not a standalone agent. Every axis is pluggable:
-
-| Axis | Interface | You Provide | Built-in Examples |
-| :--- | :--- | :--- | :--- |
-| **Agent (BYOA)** | `BaseAgent.solve()` | Any agent architecture — ReAct, Plan-and-Solve, custom | `SweAgent`, `McpAgent` |
-| **Benchmark (BYOE)** | `BenchmarkAdapter.get_tasks()` / `.evaluate()` | Any domain with task + evaluation signal | SWE-bench, MCP-Atlas, Terminal-Bench 2.0, SkillsBench, CL-bench |
-| **Algorithm (BYO-Algo)** | `EvolutionEngine.step()` | Any evolution strategy | `AEvolveEngine` (LLM-driven mutation) |
-| **LLM Provider** | `LLMProvider.complete()` | Any model API | Anthropic, OpenAI, AWS Bedrock |
-
-### Built-in Evolution Algorithms
-
-A-Evolve ships with 4 reference evolution algorithms, each targeting different domains and strategies:
-
-| Algorithm | Strategy | Best For | Docs |
-| :--- | :--- | :--- | :--- |
-| [`adaptive_evolve`](docs/algorithms/adaptive-evolve.md) | Per-claim feedback analysis + meta-learning | MCP-Atlas (🥇 #1, 79.4%) | [Guide](docs/algorithms/adaptive-evolve.md) |
-| [`adaptive_skill`](docs/algorithms/adaptive-skill.md) | LLM-driven workspace mutation with bash tool access | Terminal-Bench 2.0 (~#7, 76.5%)  | [Guide](docs/algorithms/adaptive-skill.md) |
-| [`skillforge`](docs/algorithms/skillforge.md) | LLM-driven workspace mutation with EGL gating | SkillsBench (#2, 34.9%) | [Guide](docs/algorithms/skillforge.md) |
-| [`guided_synth`](docs/algorithms/guided-synth.md) | Memory-first evolution + LLM-guided intervention synthesis |  General-purpose, SWE-bench (~#5, 76.8%) | [Guide](docs/algorithms/guided-synth.md) |
-
-#### Plugging in a custom evolution algorithm
-
-Each algorithm lives in its own directory under `algorithms/`. Implement a single method:
-
-```python
-from agent_evolve.engine.base import EvolutionEngine
-from agent_evolve.types import StepResult
-
-class MyEvolutionEngine(EvolutionEngine):
-    def step(self, workspace, observations, history, trial) -> StepResult:
-        # Analyze observations, mutate workspace files, optionally run trial tasks
-        ...
-        return StepResult(accepted=True, score=new_score)
+```bash
+python examples/evolve_cl_bench.py \
+  --grouped-path /path/to/CL-bench-grouped.jsonl \
+  --raw-path /path/to/CL-bench.jsonl \
+  --max-samples 500 --max-evolve-turns 1 --no-retest \
+  --solver-model 1 --curator-model 1 --selector-model 2 \
+  --max-skills-per-context 5 --max-general-skills 5 \
+  --feedback-level 2 --batch-size 16 --batch-workers 16 \
+  --output-dir outputs/cl_bench_evo_harness
 ```
 
-Then pass it to the Evolver:
+`--max-samples` limits grouped contexts, not the flattened task count; the paper’s 500-context configuration contains the full 1,899-task stream.
 
-```python
-evolver = ae.Evolver(
-    agent="swe-verified",
-    benchmark="swe-verified",
-    engine=MyEvolutionEngine(config),
-)
+### WebArena-Infinity
+
+```bash
+python examples/evolve_webarena_infinity.py \
+  --webarena-dir /path/to/webarena-infinity \
+  --web-app superhuman-general --difficulty hard \
+  --solver-model 1 --curator-model 1 --selector-model 2 \
+  --batch-size 8 --workers 8 --max-steps 50 --timeout 2400 \
+  --max-skills-per-topic 5 --max-general-skills 5 \
+  --no-seed-skills --shuffle --shuffle-seed 42 \
+  --feedback-level standard --evolve-all \
+  --output-dir outputs/webarena_evo_harness
 ```
 
-The engine has full access to shared primitives — `TrialRunner` (on-demand validation), `EvolutionHistory` (observation + version queries), and `VersionControl` (git-based rollback) — but is never forced to use them. Minimal contract, maximum freedom.
+### Baselines and Ablations
 
----
+Use `--no-evolve --no-seed-skills` for a no-harness baseline. The original launch configurations used for model, feedback, curator, and transfer studies are preserved in `scripts/`:
 
-## Community & Contributing
+```bash
+bash scripts/run_all.sh
+bash scripts/run_swe_cross_transfer.sh
+bash scripts/run_swe_curator_ablation.sh
+bash scripts/run_all_45.sh
+bash scripts/run_all_47.sh
+bash scripts/run_all_kimi25.sh
+bash scripts/run_all_oss.sh
+```
 
-A-Evolve is built for the research community. We welcome contributions across every axis of the framework.
+Several scripts retain the original `/fsx/tianxin/...` dataset defaults to preserve the exact experiment commands. Edit only the external dataset paths for a different machine; benchmark logic and experiment hyperparameters do not need to change.
 
-### For Algorithm Researchers
+## Output Structure
 
-If you work in LLM self-optimization, reinforcement learning, or agent architectures — implement the `EvolutionEngine` interface and your algorithm instantly gains access to:
+```text
+output-dir/
+├── workspace/
+│   └── skills/
+│       ├── general/              # Cross-task guidance
+│       └── topic/                # Task-type or domain guidance
+├── logs/                         # Solver/evolver conversations and diagnostics
+├── results/                      # Per-task results
+├── summary.json                  # Aggregate metrics where supported
+└── all_results.jsonl             # Cumulative records where supported
+```
 
-- Diverse environments (SWE-bench, MCP-Atlas, Terminal-Bench 2.0, SkillsBench, and more).
-- Standardized agent workspace representations.
-- Rigorous evaluation, gating, and logging infrastructure.
+## Reproducibility
 
-Drop your algorithm into `agent_evolve/algorithms/your_algo/` and open a PR.
+The migrated Python entry points, core package, and seed workspaces are preserved byte-for-byte from the original `evo_skill/evo-harness-code` snapshot. The cleanup removes generated outputs and OS metadata only; it does not change benchmark, solver, evolver, prompt, selection, or evaluation logic.
 
-### For Benchmark Authors
-
-Implement `BenchmarkAdapter` to plug any new evaluation domain into A-Evolve. The interface is two methods: `get_tasks()` and `evaluate()`.
-
-### Get Involved
-
-- ⭐ **Star this repo** to support our research — we are evolving fast.
-- 🐛 **[Open an issue](https://github.com/A-EVO-Lab/a-evolve/issues)** to report bugs or request features.
-- 🔀 **[Submit a PR](https://github.com/A-EVO-Lab/a-evolve/pulls)** — new evolution algorithms, benchmark adapters, agent implementations, and documentation improvements are all welcome.
-- 💬 **[Join our Discord]()** to discuss research directions, share results, and collaborate.
-
----
+Use the same model identifiers, provider revisions, datasets, task ordering, random seed (`42`), Docker images, and command-line arguments to reproduce the original setup. Hosted LLM APIs and externally maintained benchmark environments can still introduce run-to-run variation even when the local code is identical.
 
 ## Citation
 
-If you use A-Evolve in your research, please cite our position paper:
-
 ```bibtex
-@article{lin2026position,
-  title={Position: Agentic Evolution is the Path to Evolving LLMs},
-  author={Lin, Minhua and Lu, Hanqing and Shi, Zhan and He, Bing and Mao, Rui and Zhang, Zhiwei and Wu, Zongyu and Tang, Xianfeng and Liu, Hui and Dai, Zhenwei and others},
-  journal={arXiv preprint arXiv:2602.00359},
+@article{wei2026evoharness,
+  title={EVO-HARNESS: Context-to-Harness Skill Compilation for Self-Evolving Agents},
+  author={Wei, Tianxin and Shi, Zhan and Lin, Minhua and He, Bing and Liu, Zewen and Sang, Yisi and Bei, Yuanchen and Ning, Xuying and Zou, Jiaru and Li, Ting-Wei and Lin, Xiao and Zhao, Yanjun and Wang, Chi and Dumoulin, Benoit and Wang, Dakuo and He, Jingrui and Lu, Hanqing},
   year={2026}
 }
 ```
 
----
-
 ## License
 
-[MIT](https://opensource.org/licenses/MIT)
+MIT. See [LICENSE](LICENSE).

@@ -18,21 +18,27 @@ logger = logging.getLogger(__name__)
 # Default server-to-key mapping
 # ---------------------------------------------------------------------------
 
-_SERVER_KEYS_YAML = Path(__file__).parent / "server_keys.yaml"
-
-
-def _load_default_server_key_map() -> dict[str, list[str]]:
-    """Load the server-to-key mapping from server_keys.yaml."""
-    if _SERVER_KEYS_YAML.is_file():
-        try:
-            data = yaml.safe_load(_SERVER_KEYS_YAML.read_text()) or {}
-            return {k: (v if isinstance(v, list) else []) for k, v in data.items()}
-        except Exception as e:
-            logger.warning("Failed to load %s: %s; using empty map", _SERVER_KEYS_YAML, e)
-    return {}
-
-
-DEFAULT_SERVER_KEY_MAP: dict[str, list[str]] = _load_default_server_key_map()
+DEFAULT_SERVER_KEY_MAP: dict[str, list[str]] = {
+    "brave-search": ["BRAVE_API_KEY"],
+    "github": ["GITHUB_TOKEN"],
+    "slack": ["SLACK_MCP_XOXC_TOKEN", "SLACK_MCP_XOXD_TOKEN"],
+    "google-maps": ["GOOGLE_MAPS_API_KEY"],
+    "google-workspace": ["GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET", "GOOGLE_REFRESH_TOKEN"],
+    "notion": ["NOTION_TOKEN"],
+    "mongodb": ["MONGODB_CONNECTION_STRING"],
+    "alchemy": ["ALCHEMY_API_KEY"],
+    "e2b": ["E2B_API_KEY"],
+    "exa": ["EXA_API_KEY"],
+    "lara-translate": ["LARA_ACCESS_KEY_ID", "LARA_ACCESS_KEY_SECRET"],
+    "national-parks": ["NPS_API_KEY"],
+    "nps": ["NPS_API_KEY"],
+    "oxylabs": ["OXYLABS_USERNAME", "OXYLABS_PASSWORD"],
+    "twelve-data": ["TWELVE_DATA_API_KEY"],
+    "weatherapi": ["WEATHER_API_KEY"],
+    "filesystem": [],
+    "fetch": [],
+    "sqlite": [],
+}
 
 
 # ---------------------------------------------------------------------------

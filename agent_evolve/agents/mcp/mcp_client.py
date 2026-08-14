@@ -18,7 +18,7 @@ import requests
 
 logger = logging.getLogger(__name__)
 
-DEFAULT_TIMEOUT = 300  # seconds per HTTP request (increased for slow tools like PubMed)
+DEFAULT_TIMEOUT = 120  # seconds per HTTP request
 
 
 class McpClientWrapper:

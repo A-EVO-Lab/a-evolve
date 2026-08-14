@@ -1,46 +1,36 @@
 ---
 name: scientific-computing
-description: Strategies for scientific computing, numerical methods, bioinformatics/DNA tasks, logic circuit design, algorithmic challenges, and ML training tasks.
+description: Strategies for scientific computing tasks including data analysis, numerical methods, and ML model tasks.
 ---
 
-# Scientific Computing & Algorithmic Tasks
+# Scientific Computing Skill
 
-## CRITICAL: Write complete scripts to files for complex tasks
-Multi-step scientific analysis MUST be written as a single .py file to avoid state loss:
-```python
-with open('/app/solve.py', 'w') as f:
-    f.write("""#!/usr/bin/env python3
-import numpy as np
-# ... complete self-contained solution ...
-""")
-# Then run: bash("python3 /app/solve.py")
+For tasks involving data science, ML, numerical methods, and scientific analysis.
+
+## 1. Check available libraries
+```bash
+pip list 2>/dev/null | grep -iE "numpy|scipy|pandas|torch|tensorflow|sklearn"
+R -e "installed.packages()[,'Package']" 2>/dev/null | head -20
 ```
 
-## Bioinformatics / DNA primer design
-- Use `oligotm` CLI if available for Tm calculation (check with `which oligotm`)
-- Use `primer3_core` if available for automated primer design
-- Key Tm parameters: `-tp 1 -sc 1 -mv 50 -dv 2 -n 0.8 -d 500` (Santa Lucia, salt-corrected)
-- Primer length: 15-30 bp, GC content 40-60%, Tm 55-65°C
-- For Gibson/Golden Gate assembly: add overlaps/BsaI sites to 5' end of primers
-- Parse FASTA files: handle multi-line sequences, strip whitespace
-- Write results in FASTA format to the expected output path
+## 2. Data inspection
+```bash
+# Check file formats
+file /app/data* 2>/dev/null
+head -5 /app/*.csv 2>/dev/null
+python3 -c "import json; print(json.load(open('/app/data.json'))[:2])" 2>/dev/null
+```
 
-## Logic circuit / hardware design
-- Read simulator code FIRST to understand gate semantics and timing
-- Key patterns: ripple-carry adder, mux, shift register
-- For Fibonacci mod 2^N: doubling method or iterative with registers
+## 3. Common patterns
+```bash
+# Install missing Python packages
+pip install numpy scipy pandas matplotlib scikit-learn 2>/dev/null
 
-## Numerical / distribution tasks
-- For optimization: use scipy.optimize (fsolve, minimize, root)
-- When searching distributions: verify KL divergence, entropy constraints
-- Always validate: check sums to 1, non-negative, constraint satisfaction
+# Install R packages
+R -e "install.packages(c('ggplot2','dplyr'), repos='https://cloud.r-project.org')" 2>/dev/null
+```
 
-## ML training tasks
-- Check GPU: `python3 -c "import torch; print(torch.cuda.is_available())"`
-- CPU-only: smaller batch size, simpler models, fewer epochs
-- Save checkpoints frequently
-
-## Verification
-- Verify output format matches task specification exactly
-- Save results to exact paths mentioned in task prompt
-- Compare against reference values for correctness
+## Tips
+- Always verify output format matches what the task specifies
+- Save results to the exact paths mentioned in the task prompt
+- Check for numerical precision requirements

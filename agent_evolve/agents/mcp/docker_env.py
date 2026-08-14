@@ -7,7 +7,6 @@ for the agent-environment HTTP service to become ready.
 from __future__ import annotations
 
 import logging
-import os
 import subprocess
 import time
 
@@ -26,23 +25,15 @@ class McpAtlasContainer:
         self,
         image_name: str,
         container_name: str | None = None,
-        port: int = 0,
+        port: int = DEFAULT_PORT,
         env_vars: dict[str, str] | None = None,
     ):
         self.image_name = image_name
-        self.container_name = container_name or f"mcp-atlas-{int(time.time())}-{os.urandom(4).hex()}"
-        self.port = port or self._find_free_port()
+        self.container_name = container_name or f"mcp-atlas-{int(time.time())}"
+        self.port = port
         self.env_vars = env_vars or {}
-        self.base_url = f"http://localhost:{self.port}"
+        self.base_url = f"http://localhost:{port}"
         self._running = False
-
-    @staticmethod
-    def _find_free_port() -> int:
-        """Find a free port by binding to port 0 and reading the assignment."""
-        import socket
-        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-            s.bind(("", 0))
-            return s.getsockname()[1]
 
     def start(self) -> str:
         """Start the container with port mapping and wait for readiness."""

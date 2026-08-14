@@ -1,51 +1,49 @@
 ---
 name: debug-and-fix
-description: Strategies for debugging build failures, runtime errors, writing complete output files (ICS/JSON/config), and constraint satisfaction tasks.
+description: Strategies for debugging build failures, runtime errors, and fixing broken code in containerized environments.
 ---
 
 # Debug and Fix Skill
 
-## 1. C/C++ build fixes
+For tasks that involve fixing broken code, builds, or configurations.
+
+## 1. Read error messages carefully
 ```bash
+# Capture both stdout and stderr
+command_that_fails 2>&1 | tail -50
+```
+
+## 2. Common build fixes
+```bash
+# Missing dependencies
 apt-get update && apt-get install -y build-essential pkg-config
+pip install -r requirements.txt 2>/dev/null
+
+# Missing headers
+apt-get install -y lib*-dev
+
+# Permission issues
+chmod +x script.sh
 ```
-### Protobuf API fix
+
+## 3. Debugging strategies
 ```bash
-find . -name "*.cc" -o -name "*.cpp" | xargs sed -i \
-  's/SetTotalBytesLimit(\([^,]*\),[^)]*)/SetTotalBytesLimit(\1)/g'
+# Check file encoding
+file suspicious_file.txt
+
+# Check for syntax errors
+python3 -m py_compile file.py
+node --check file.js
+
+# Trace execution
+bash -x script.sh 2>&1 | head -50
 ```
 
-## 2. Binary inspection without xxd
+## 4. Git-related tasks
 ```bash
-od -A x -t x1z -v file.dat | head -100
+git status
+git log --oneline -10
+git branch -a
+git reflog | head -10
+git stash list
 ```
-
-## 3. Writing complete structured output files
-Use Python to write ICS/JSON/XML — avoids heredoc truncation:
-```python
-from datetime import datetime
-lines = ['BEGIN:VCALENDAR','VERSION:2.0','BEGIN:VEVENT',
-    f'DTSTART:{start:%Y%m%dT%H%M%S}',
-    f'DTEND:{end:%Y%m%dT%H%M%S}',
-    f'SUMMARY:{title}',
-    'END:VEVENT','END:VCALENDAR']
-with open('/app/out.ics','w') as f:
-    f.write('\r\n'.join(lines)+'\r\n')
-```
-
-## 4. Scheduling / constraint satisfaction
-- Parse ALL constraints before attempting solutions
-- Write a systematic solver to a .py file (enumerate candidates, check all constraints)
-- Verify solution satisfies EVERY constraint before writing output
-```python
-# Write complete solver to file to avoid truncation:
-with open('/app/solver.py','w') as f:
-    f.write('''...all imports, logic, output...''')
-# Then run: python3 /app/solver.py
-```
-
-## 5. Implementation code
-- Write complete files — don't build up fragments
-- For complex logic, use Python to write files programmatically
-- Test immediately after writing
-- If tests fail, rewrite the COMPLETE file

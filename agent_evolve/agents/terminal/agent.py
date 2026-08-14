@@ -9,7 +9,6 @@ containers.
 from __future__ import annotations
 
 import concurrent.futures
-import importlib.util
 import logging
 import os
 from pathlib import Path
@@ -20,6 +19,7 @@ from strands.models import BedrockModel
 from ...protocol.base_agent import BaseAgent
 from ...types import Task, Trajectory
 from .docker_env import TB2Container, pull_image
+from .thinking import reset_thinking, sequentialthinking
 from .tools import bash, python, submit, set_container_name, reset_submit_flag, reset_tool_counter
 
 logger = logging.getLogger(__name__)
@@ -59,7 +59,7 @@ class TerminalAgent(BaseAgent):
         )
 
         system_prompt = self._build_system_prompt()
-        tools = [bash, python, submit]
+        tools = [bash, python, submit, sequentialthinking]
 
         return Agent(
             model=model,
@@ -94,6 +94,7 @@ class TerminalAgent(BaseAgent):
         with container:
             set_container_name(container.container_name)
             reset_submit_flag()
+            reset_thinking()
             reset_tool_counter()
 
             # NOTE: Test files are NOT copied before solving — only during evaluation
@@ -174,60 +175,36 @@ class TerminalAgent(BaseAgent):
         return Trajectory(task_id=task.id, output=output, steps=steps)
 
     def _build_system_prompt(self) -> str:
-        """Assemble the full system prompt from workspace files.
-
-        Skills are listed with name and description only. Full content
-        is loaded on demand via the read_skill tool during solving.
-        """
-        parts = [self.system_prompt]
+        """Assemble the full system prompt from workspace files."""
+        parts = [self.system_prompt, SUBMIT_PROMPT]
 
         if self.skills:
             parts.append("\n\n## Available Skills\n")
             parts.append(
-                "You have specialized skills available. "
-                "Call `read_skill(name)` to load the full content "
-                "before tackling a relevant challenge.\n"
+                "You have specialized skills. Review them when facing relevant challenges.\n"
             )
             for skill in self.skills:
                 parts.append(f"- **{skill.name}**: {skill.description}")
+                content = self.get_skill_content(skill.name)
+                if content:
+                    body = content.split("---", 2)[-1].strip() if "---" in content else content
+                    parts.append(f"\n{body}\n")
+
+        if self.memories:
+            parts.append("\n\n## Relevant Memories\n")
+            for m in self.memories[-10:]:
+                parts.append(f"- {m.get('content', '')}")
 
         return "\n".join(parts)
 
-    def get_skills_content(self) -> dict[str, str]:
-        """Return skill name -> body content for lazy loading via read_skill tool."""
-        result = {}
-        for skill in self.skills:
-            content = self.get_skill_content(skill.name)
-            if content:
-                body = content.split("---", 2)[-1].strip() if "---" in content else content
-                result[skill.name] = body
-        return result
-
-    def get_tool_specs(self) -> list[dict]:
-        """Load tool specs from workspace tools/registry.yaml in Bedrock format."""
-        raw_tools = self.workspace.read_tool_registry()
-        return [_to_bedrock_tool_spec(t) for t in raw_tools]
-
-    def load_tool_executors(self) -> dict[str, callable]:
-        """Load tool executor functions from workspace tools/<name>.py."""
-        executors = {}
-        raw_tools = self.workspace.read_tool_registry()
-        for t in raw_tools:
-            name = t["name"]
-            path = self.workspace.tools_dir / f"{name}.py"
-            if path.exists():
-                spec = importlib.util.spec_from_file_location(f"tool_{name}", path)
-                module = importlib.util.module_from_spec(spec)
-                spec.loader.exec_module(module)
-                if hasattr(module, "execute"):
-                    executors[name] = module.execute
-                    logger.debug("Loaded tool executor: %s from %s", name, path)
-        return executors
-
     def _build_user_prompt(self, task_name: str, prompt: str) -> str:
-        # v22: No memory injection — memories dilute attention on time-sensitive tasks.
-        # Skills (in system prompt) are the only evolved content delivered to the solver.
-        return f"{prompt}\n"
+        memory_context = ""
+        if self.memories:
+            memory_context = "\n\n## Relevant Memories from Previous Tasks\n"
+            for m in self.memories[-5:]:
+                memory_context += f"- {m.get('content', '')}\n"
+
+        return f"{prompt}\n{memory_context}"
 
     @staticmethod
     def _copy_test_files(
@@ -363,26 +340,3 @@ def _find_tool_name(conv: list[dict], tool_use_id: str) -> str:
             if tc.get("id") == tool_use_id:
                 return tc.get("function", "")
     return ""
-
-
-def _to_bedrock_tool_spec(tool: dict) -> dict:
-    """Convert a registry.yaml tool entry to Bedrock Converse toolSpec format."""
-    properties = {}
-    for param_name, param_info in tool.get("parameters", {}).items():
-        properties[param_name] = {
-            "type": param_info.get("type", "string"),
-            "description": param_info.get("description", ""),
-        }
-    return {
-        "toolSpec": {
-            "name": tool["name"],
-            "description": tool.get("description", ""),
-            "inputSchema": {
-                "json": {
-                    "type": "object",
-                    "properties": properties,
-                    "required": tool.get("required", []),
-                }
-            },
-        }
-    }

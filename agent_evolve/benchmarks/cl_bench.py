@@ -348,13 +348,13 @@ def _call_bedrock(
     temperature: float = 0.7,
     max_retries: int = 5,
 ) -> tuple[str | None, str | None]:
+    inference_config = {"maxTokens": min(max_tokens, BEDROCK_MAX_OUTPUT_TOKENS_CAP)}
+    if "opus-4-7" not in model_id:
+        inference_config["temperature"] = temperature
     req = {
         "modelId": model_id,
         "messages": [{"role": "user", "content": [{"text": user_text}]}],
-        "inferenceConfig": {
-            "maxTokens": min(max_tokens, BEDROCK_MAX_OUTPUT_TOKENS_CAP),
-            "temperature": temperature,
-        },
+        "inferenceConfig": inference_config,
     }
     if system_text and system_text.strip():
         req["system"] = [{"text": str(system_text)}]
@@ -396,13 +396,13 @@ def _call_bedrock_converse(
     temperature: float = 0.7,
     max_retries: int = 5,
 ) -> tuple[str | None, str | None]:
+    inference_config = {"maxTokens": min(max_tokens, BEDROCK_MAX_OUTPUT_TOKENS_CAP)}
+    if "opus-4-7" not in model_id:
+        inference_config["temperature"] = temperature
     req = {
         "modelId": model_id,
         "messages": messages,
-        "inferenceConfig": {
-            "maxTokens": min(max_tokens, BEDROCK_MAX_OUTPUT_TOKENS_CAP),
-            "temperature": temperature,
-        },
+        "inferenceConfig": inference_config,
     }
     if system_prompts:
         req["system"] = system_prompts

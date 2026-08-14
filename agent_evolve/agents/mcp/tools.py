@@ -52,18 +52,12 @@ def _make_tool(
         actual_args = tool_use.get("input", {})
         try:
             result = client.call_tool_sync(tool_name, actual_args)
-        except RecursionError as e:
-            result = f"RecursionError calling {tool_name}: maximum recursion depth exceeded. The tool result may be too deeply nested."
         except Exception as e:
             result = f"Error calling {tool_name}: {e}"
-
-        # Ensure result is a string to prevent serialization issues
-        result_str = str(result)[:10000]  # Limit to 10KB
-
         return {
             "toolUseId": tool_use_id,
             "status": "success",
-            "content": [{"text": result_str}],
+            "content": [{"text": result}],
         }
 
     return PythonAgentTool(tool_name, tool_spec, handler)

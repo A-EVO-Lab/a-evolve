@@ -54,58 +54,12 @@ class SweVerifiedMiniBenchmark(BenchmarkAdapter):
         self._split_done = False
 
     def get_tasks(self, split: str = "test", limit: int = 10) -> list[Task]:
-        """Load SWE-bench tasks from HuggingFace.
-
-        Supports both SWE-bench Verified (has 'version' field) and SWE-bench Live
-        (needs version auto-detection, filters to supported repos).
-        """
+        """Load SWE-bench tasks from HuggingFace."""
         rows = self._load_split(split)
         tasks = []
-
-        # Detect dataset type and filter accordingly
-        if rows:
-            has_version = bool(rows[0].get("version"))
-            has_dockerhub_tag = bool(rows[0].get("dockerhub_tag"))
-            has_docker_image = "docker_image" in rows[0]
-
-            # Live datasets (no version) — filter to supported repos + assign version
-            if not has_version and not has_dockerhub_tag:
-                from swebench import MAP_REPO_VERSION_TO_SPECS
-                supported_repos = set(MAP_REPO_VERSION_TO_SPECS.keys())
-                latest_versions = {
-                    repo: sorted(versions.keys())[-1]
-                    for repo, versions in MAP_REPO_VERSION_TO_SPECS.items()
-                }
-                rows = [r for r in rows if r.get("repo") in supported_repos]
-                logger.info("Filtered to %d tasks from supported repos", len(rows))
-
-            # Filter to tasks with Docker images (SWE-ReBench has None for some)
-            if has_docker_image:
-                before = len(rows)
-                rows = [r for r in rows if r.get("docker_image") or r.get("image_name")]
-                if len(rows) < before:
-                    logger.info("Filtered to %d tasks with Docker images (from %d)", len(rows), before)
-
         for row in rows[:limit]:
             instance_id = row["instance_id"]
-
-            # Derive version for Live tasks
-            version = row.get("version", "")
-            if not version and not has_version and not has_dockerhub_tag:
-                version = latest_versions.get(row.get("repo", ""), "")
-
-            # Derive docker image — check multiple possible field names
-            docker_image = row.get("docker_image") or row.get("image_name") or ""
-            if not docker_image:
-                # SWE-bench Pro: dockerhub_tag needs registry prefix
-                dh_tag = row.get("dockerhub_tag", "")
-                if dh_tag and not dh_tag.startswith("swebench/"):
-                    docker_image = f"jefzda/sweap-images:{dh_tag}"
-                elif dh_tag:
-                    docker_image = dh_tag
-                else:
-                    docker_image = _instance_to_docker_image(instance_id)
-
+            docker_image = _instance_to_docker_image(instance_id)
             tasks.append(Task(
                 id=instance_id,
                 input=row.get("problem_statement", ""),
@@ -114,11 +68,11 @@ class SweVerifiedMiniBenchmark(BenchmarkAdapter):
                     "docker_image": docker_image,
                     "repo": row.get("repo", ""),
                     "base_commit": row.get("base_commit", ""),
-                    "version": version,
+                    "version": row.get("version", ""),
                     "test_patch": row.get("test_patch", ""),
                     "hints_text": row.get("hints_text", ""),
-                    "FAIL_TO_PASS": _parse_list_field(row, "FAIL_TO_PASS", "fail_to_pass"),
-                    "PASS_TO_PASS": _parse_list_field(row, "PASS_TO_PASS", "pass_to_pass"),
+                    "FAIL_TO_PASS": json.loads(row.get("FAIL_TO_PASS", "[]")),
+                    "PASS_TO_PASS": json.loads(row.get("PASS_TO_PASS", "[]")),
                     "patch": row.get("patch", ""),
                     "created_at": row.get("created_at", ""),
                     "environment_setup_commit": row.get("environment_setup_commit", ""),
@@ -343,26 +297,6 @@ def _grade_with_swebench(
         f"\n\nFAIL_TO_PASS:\n\n{json.dumps(sorted_f2p, indent=2)}\n\n"
     )
     return score, explanation
-
-
-def _parse_list_field(row: dict, *keys: str) -> list:
-    """Parse a list field that may be stored as list, JSON string, or under different key names."""
-    for key in keys:
-        val = row.get(key)
-        if val is not None:
-            if isinstance(val, list):
-                return val
-            if isinstance(val, str) and val.strip():
-                try:
-                    return json.loads(val)
-                except json.JSONDecodeError:
-                    # Handle mixed quotes or other non-standard JSON
-                    import ast
-                    try:
-                        return ast.literal_eval(val)
-                    except Exception:
-                        return [val]
-    return []
 
 
 def _instance_to_docker_image(instance_id: str) -> str:

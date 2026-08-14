@@ -36,6 +36,7 @@ Thumbs.db
 # Environment / Secrets
 .env
 .env.*
+!.env.example
 credentials.json
 
 # Agent workspaces (evolution artifacts, not source)
@@ -46,101 +47,18 @@ inspect_evals/
 
 # Logs
 *.log
-/logs/
-!/docs/
-/docs/*
-!/docs/skillbench-setup.md
-!/docs/algorithms/
-!/tests/
-/tests/*
-!/tests/test_skillbench_setup.py
-!/tests/gepa/
 
 # Root-level artifacts
 /*.json
 /*.diff
 
 *.pyc
-uv.lock
 
 evolution_workdir
 logs/
 swe_results*/
-.crowdresearch/
-.claude/
-
-# Local legacy compatibility package
-agent_evolve/algorithms/aevolve/
-
-# Local research/program artifacts
-program.md
-program_v2.md
-program_v3.md
-program_v3_old.md
-results.tsv
-test.ipynb
-seed_workspaces/skillbench_zero/
-crowdresearch.yaml
-
-# Deprecated example scripts
-examples/skillbench/run_skillbench_solve_all_ablate.sh
-examples/run_skillbench_evolve_all.sh
-examples/solve_one.py
-examples/solve_one_terminal.py
-examples/solve_all.py
-examples/mcp_solve_one.py
-examples/mcp_solve_all.py
-examples/mcp_evolve_one.py
-examples/granularity_ablation.py
-examples/evolve_one.py
-examples/evolve_one_terminal.py
-examples/custom_agent.py
-examples/component_ablation.py
-examples/batch_terminal.py
-examples/analyze_skill_quality.py
-examples/quickstart.py
-examples/skillbench_examples/analyze_skill_quality.py
-examples/skillbench_examples/component_ablation.py
-examples/skillbench_examples/granularity_ablation.py
-examples/skillbench_examples/skillbench_evolve_in_situ.py
-
-# From main-release-0324
-CLAUDE.md
-PROGRAM.md
-moved_from_claude.md
-nohup.out
-run_in_container.sh
-Dockerfile.claude-runner
-ignored_first_level_files/
-docs_first_level/
-design.md
-.slackbot_output/
-grind*/
-autoresearch/
-
-# Wandb
-wandb/
-
-# Entire
-.entire/
-
-# Experiment outputs
-swe_verified/
-swe_evolve/
-learning/
-results_*/
-output_mcp_*.txt
-result_analysis_mdfiles/
-docs/mcp_code_evolve_diagram.html
-docs/mcp-atlas-demo.md
-examples/code_evolve_all.py
-examples/code_solve_all.py
-examples/mcp_evolve_all.py
-examples/mcp_evolve_one.py
-examples/mcp_solve_all.py
-examples/mcp_solve_one.py
-nonevolution_workdir/
-examples/tb_examples/skipped/
-agent_evolve/benchmarks/tb2/challenges/
-examples/run_skillbench_solve_all_ablate.sh
-examples/skillbench_evolve_one.py
+# Experiment outputs (large, not source)
+outputs*/
+archive/
+data/
+*.tar.gz

@@ -56,20 +56,26 @@ class AgentWorkspace:
     # ── Skills ───────────────────────────────────────────────────────
 
     def list_skills(self) -> list[SkillMeta]:
+        """Recursively find all SKILL.md files under skills/.
+
+        Supports hierarchical skill trees of arbitrary depth.
+        Skips directories whose name starts with ``_`` (e.g. ``_drafts``).
+        """
         if not self.skills_dir.exists():
             return []
         skills = []
-        for d in sorted(self.skills_dir.iterdir()):
-            if not d.is_dir() or d.name.startswith("_"):
+        for skill_file in sorted(self.skills_dir.rglob("SKILL.md")):
+            skill_dir = skill_file.parent
+            rel = skill_dir.relative_to(self.skills_dir)
+            if any(part.startswith("_") or part == "disabled" for part in rel.parts):
                 continue
-            skill_file = d / "SKILL.md"
-            if skill_file.exists():
-                meta = _parse_skill_frontmatter(skill_file)
-                meta.path = str(d.relative_to(self.root))
-                skills.append(meta)
+            meta = _parse_skill_frontmatter(skill_file)
+            meta.path = str(skill_dir.relative_to(self.root))
+            skills.append(meta)
         return skills
 
     def read_skill(self, name: str) -> str:
+        """Read SKILL.md by name (supports nested paths like 'reasoning/legal')."""
         path = self.skills_dir / name / "SKILL.md"
         return path.read_text() if path.exists() else ""
 
@@ -158,17 +164,6 @@ class AgentWorkspace:
                         entry.setdefault("_category", jsonl.stem)
                         all_memories.append(entry)
         return all_memories[-limit:]
-
-    # ── Harness (optional scaffolding code, mutated by MetaHarness) ──
-
-    def read_harness(self) -> str | None:
-        """Read harness.py from the workspace root, or None if absent."""
-        path = self.root / "harness.py"
-        return path.read_text() if path.exists() else None
-
-    def write_harness(self, content: str) -> None:
-        """Write harness.py to the workspace root."""
-        (self.root / "harness.py").write_text(content)
 
     # ── Evolution metadata (read-only for agents, managed by engine) ─
 

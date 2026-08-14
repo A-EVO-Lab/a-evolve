@@ -1,7 +1,7 @@
 [project]
 name = "a-evolve"
 version = "0.1.0"
-description = "Evolve any agent across any domain using any evolution algorithm — with zero human intervention"
+description = "EVO-HARNESS: context-to-harness skill compilation for self-evolving agents"
 readme = "README.md"
 license = "MIT"
 requires-python = ">=3.11"
@@ -11,24 +11,11 @@ authors = [
 keywords = [
     "agent-evolution",
     "self-improving-agents",
-    "agentic-ai",
-    "llm",
-    "prompt-optimization",
+    "llm-agents",
+    "skills",
     "benchmark",
 ]
-classifiers = [
-    "Development Status :: 4 - Beta",
-    "Intended Audience :: Developers",
-    "Intended Audience :: Science/Research",
-    "License :: OSI Approved :: MIT License",
-    "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.11",
-    "Programming Language :: Python :: 3.12",
-    "Programming Language :: Python :: 3.13",
-    "Topic :: Scientific/Engineering :: Artificial Intelligence",
-]
 dependencies = [
-    "matplotlib>=3.10.0",
     "pyyaml>=6.0",
 ]
 
@@ -38,27 +25,70 @@ Repository = "https://github.com/A-EVO-Lab/a-evolve"
 Issues = "https://github.com/A-EVO-Lab/a-evolve/issues"
 
 [project.optional-dependencies]
-anthropic = ["anthropic>=0.30"]
-openai = ["openai>=1.30"]
-bedrock = ["boto3>=1.34"]
-litellm = ["litellm>=1.0.0"]
-swe = ["strands-agents>=0.1.0", "datasets>=4.5.0", "boto3>=1.34", "swebench>=3.0.0"]
-mcp = ["mcp>=1.0.0", "strands-agents>=0.1.0", "datasets>=4.5.0", "boto3>=1.34", "litellm>=1.0.0"]
-skillbench = ["strands-agents>=0.1.0", "boto3>=1.34"]
-osworld = ["anthropic>=0.30", "boto3>=1.34"]
-gepa = ["gepa>=0.1.0"]
-all = [
+anthropic = [
     "anthropic>=0.30",
+]
+openai = [
     "openai>=1.30",
+]
+bedrock = [
+    "boto3>=1.34",
+]
+cl = [
+    "boto3>=1.34",
+    "datasets>=4.5.0",
+    "numpy>=1.26",
+    "requests>=2.31",
+    "sentence-transformers>=3.0",
+    "strands-agents>=0.1.0",
+    "tqdm>=4.66",
+]
+swe = [
     "boto3>=1.34",
     "datasets>=4.5.0",
     "strands-agents>=0.1.0",
-    "mcp>=1.0.0",
-    "litellm>=1.0.0",
     "swebench>=3.0.0",
-    "gepa>=0.1.0",
 ]
-dev = ["pytest>=8.0", "ruff>=0.5", "hypothesis>=6.0"]
+terminal = [
+    "boto3>=1.34",
+    "requests>=2.31",
+    "strands-agents>=0.1.0",
+]
+mcp = [
+    "boto3>=1.34",
+    "datasets>=4.5.0",
+    "mcp>=1.0.0",
+    "strands-agents>=0.1.0",
+]
+tau = [
+    "boto3>=1.34",
+    "litellm>=1.0.0",
+]
+webarena = [
+    "boto3>=1.34",
+    "browser-use[aws]>=0.5.0",
+    "playwright>=1.50",
+]
+all = [
+    "anthropic>=0.30",
+    "boto3>=1.34",
+    "browser-use[aws]>=0.5.0",
+    "datasets>=4.5.0",
+    "litellm>=1.0.0",
+    "mcp>=1.0.0",
+    "numpy>=1.26",
+    "openai>=1.30",
+    "playwright>=1.50",
+    "requests>=2.31",
+    "sentence-transformers>=3.0",
+    "strands-agents>=0.1.0",
+    "swebench>=3.0.0",
+    "tqdm>=4.66",
+]
+dev = [
+    "pytest>=8.0",
+    "ruff>=0.5",
+]
 
 [build-system]
 requires = ["hatchling"]
@@ -73,10 +103,11 @@ packages = ["agent_evolve"]
 [tool.hatch.build.targets.sdist]
 include = [
     "/agent_evolve",
-    "/docs",
     "/examples",
-    "/README.md",
+    "/scripts",
     "/seed_workspaces",
+    "/README.md",
+    "/LICENSE",
 ]
 
 [tool.ruff]

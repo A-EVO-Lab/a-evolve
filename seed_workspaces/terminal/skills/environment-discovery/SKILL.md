@@ -9,39 +9,29 @@ When starting a new Terminal-Bench challenge, quickly assess the environment.
 
 ## 1. Check available tools and languages
 ```bash
-which python python3 pip node npm gcc g++ make cmake perl ruby 2>/dev/null
+which python python3 pip node npm gcc g++ make cmake R java rustc go 2>/dev/null
 ```
 
 ## 2. Check the filesystem
 ```bash
 ls /app/ 2>/dev/null
-find /app -type f 2>/dev/null | head -30
+ls / | head -20
+find / -maxdepth 2 -type f -name "*.py" -o -name "*.R" -o -name "*.js" -o -name "*.c" 2>/dev/null | head -20
 ```
 
-## 3. Check pre-installed task-specific tools
-Many containers have specialized tools already installed:
+## 3. Check OS and package manager
 ```bash
-# Security/crypto tools
-which john hashcat 7z 7za openssl 2>/dev/null
-ls /app/john/run/ 2>/dev/null
-# Bio tools
-which oligotm primer3_core samtools 2>/dev/null
-# Data tools
-pip list 2>/dev/null | head -30
+cat /etc/os-release 2>/dev/null | head -5
+which apt-get yum dnf apk 2>/dev/null
 ```
 
-## 4. If python3 is missing, try alternatives
+## 4. Check working directory
 ```bash
-which python perl 2>/dev/null  # python2 may exist as 'python'
-# Use perl for text processing if python unavailable
-# Use /app/john/run/john for password cracking (has its own perl scripts)
+pwd
+ls -la
 ```
-
-## 5. Pre-installed tool locations
-- John the Ripper scripts: `/app/john/run/*.pl` (perl-based, use `perl` not `python3`)
-- Task binaries often in `/app/` or `/usr/local/bin/`
 
 ## Tips
-- Check `/app/` first — it often contains task-specific files and tools
-- Don't assume python3 exists — verify first, use bash/perl alternatives
-- Use `dpkg -l` or `apt list --installed` to see system packages
+- Many containers have pre-installed tools specific to the task
+- Check `/app/` first — it often contains task-specific files
+- Use `dpkg -l` or `pip list` to see installed packages

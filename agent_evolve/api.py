@@ -11,7 +11,7 @@ Usage::
     results = evolver.run(cycles=10)
 
     # Custom engine:
-    from agent_evolve.algorithms.skillforge import AEvolveEngine
+    from agent_evolve.algorithms.aevolve import AEvolveEngine
 
     evolver = ae.Evolver(
         agent="swe",
@@ -46,9 +46,6 @@ _BENCHMARK_REGISTRY: dict[str, str] = {
     "terminal2": "agent_evolve.benchmarks.terminal2.Terminal2Benchmark",
     "terminal-bench": "agent_evolve.benchmarks.terminal2.Terminal2Benchmark",
     "skill-bench": "agent_evolve.benchmarks.skill_bench.SkillBenchBenchmark",
-    "arc-agi-3": "agent_evolve.benchmarks.arc_agi3.ArcAgi3Benchmark",
-    "arc-agi3": "agent_evolve.benchmarks.arc_agi3.ArcAgi3Benchmark",
-    "arc": "agent_evolve.benchmarks.arc_agi3.ArcAgi3Benchmark",
 }
 
 # Registry of seed workspace names -> paths (relative to package root)
@@ -62,14 +59,6 @@ _SEED_REGISTRY: dict[str, str] = {
     "terminal": "terminal",
     "terminal2": "terminal",
     "terminal-bench": "terminal",
-    "clawcode": "clawcode",
-    "claw-code": "clawcode",
-    "arc": "arc",
-    "arc-agi-3": "arc",
-    "arc-mas": "arc-mas",
-    "arc-agi-3-mas": "arc-mas",
-    "arc-agi3": "arc",
-    "mcp-mh": "mcp_mh",
 }
 
 
@@ -106,7 +95,7 @@ class Evolver:
         self._loop = EvolutionLoop(self.agent, self.benchmark, resolved_engine, self.config)
 
     def _default_engine(self) -> EvolutionEngine:
-        from .algorithms.skillforge import AEvolveEngine
+        from .algorithms.aevolve import AEvolveEngine
 
         return AEvolveEngine(self.config)
 
