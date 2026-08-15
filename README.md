@@ -1,37 +1,41 @@
-# EVO-HARNESS: Context-to-Harness Skill Compilation for Self-Evolving Agents
+# Evo-Harness: Context-to-Harness Skill Compilation for Self-Evolving Agents
 
 Official implementation of **“EVO-HARNESS: Context-to-Harness Skill Compilation for Self-Evolving Agents.”**
 
-EVO-HARNESS studies online harness learning: a frozen solver processes a task stream while an external skill harness is updated from execution context and grounded feedback. The release contains the five benchmark pipelines used in the paper and streamlined experiment configurations derived from the latest runs.
+EVO-HARNESS studies the effectiveness of online harness learning: a frozen solver processes a task stream while an external skill harness is updated from execution context and grounded feedback. The release contains the five benchmark pipelines used in the paper and streamlined experiment configurations derived from the latest runs.
 
 <p align="center">
-  <a href="figures/main.pdf">
-    <img src="figures/main.png" alt="EVO-HARNESS compiles execution contexts into an evolving skill harness" width="100%">
+  <a href="figures/main.jpg">
+    <img src="figures/main.jpg" alt="EVO-HARNESS compiles execution contexts into an evolving skill harness" width="100%">
   </a>
 </p>
 
-## Results
-
-Main results with Claude Opus 4.6 as the solver (success rate, %):
-
-| Method | CL-Bench | Terminal-Bench 2 | SWE-bench Lite | τ-bench | WebArena-Infinity |
-|---|---:|---:|---:|---:|---:|
-| No Evolve | 29.54 | 62.92 | 63.67 | 72.73 | 72.50 |
-| XSkill | 31.44 | 66.29 | 64.67 | 73.94 | 73.75 |
-| **EVO-HARNESS** | **34.02** | **73.03** | **67.00** | **76.97** | **76.25** |
-
 ## Method
 
-For each task batch, EVO-HARNESS:
+EVO-HARNESS performs **online harness learning**: it improves a frozen solver by compiling execution experience into an external, reusable skill harness. Unlike experience retrieval, which replays similar past cases, EVO-HARNESS converts noisy trajectories and evaluator feedback into structured guidance for planning, acting, verification, and recovery.
 
-1. Selects relevant general and task-type skills from the current harness.
-2. Injects the selected guidance into the frozen solver.
-3. Solves and evaluates tasks with benchmark-grounded feedback.
-4. Reflects on failures to propose reusable candidate skills.
-5. Curates candidates through accept, merge, revise, and skip operations.
-6. Writes the updated Markdown skill harness for the next batch.
+### Context-to-Harness Compilation
 
-The model parameters remain frozen. Learning occurs entirely through inspectable `SKILL.md` files.
+For each task batch, EVO-HARNESS follows a continual update loop:
+
+`Select → Inject → Execute → Reflect → Compile → Update`
+
+- **Select and inject.** A compact, task-relevant subset of the current harness is selected under a context budget and added to the solver's task context.
+- **Execute and evaluate.** The frozen solver completes the task, producing an action trajectory, observations, an outcome, and benchmark-grounded verifier feedback.
+- **Reflect on execution.** Failed or negatively evaluated executions are analyzed to extract candidate lessons. Each candidate records what went wrong, when the lesson applies, and the execution evidence supporting it.
+- **Compile the harness.** After the batch, the evolver compares the candidates with the current harness. This stage removes noise and redundancy before promoting a lesson into reusable guidance.
+- **Update online.** The resulting harness is used for subsequent task batches, allowing useful procedures to accumulate throughout the task stream.
+
+### Two-Level Skill Harness
+
+The harness organizes guidance at two complementary levels:
+
+| Level | Purpose |
+|---|---|
+| **Cross-task patterns** | General strategies shared across tasks, such as planning, tool use, verification, and failure recovery. |
+| **Task-type procedures** | Localized instructions for recurring task formats, interfaces, environments, or domain-specific workflows. |
+
+Batch-level compilation lets EVO-HARNESS identify both task-specific procedures and patterns that transfer across tasks. The solver parameters remain frozen throughout; all learning is stored as inspectable Markdown `SKILL.md` files with lightweight metadata.
 
 ## Repository Structure
 
@@ -57,12 +61,13 @@ The model parameters remain frozen. Learning occurs entirely through inspectable
 │   ├── run_terminal_evolve.sh
 │   └── run_webarena_evolve.sh
 ├── seed_skills/                  # SWE, Terminal, and WebArena seed skills
-├── figures/                      # Paper overview figure (PDF + PNG)
+├── figures/                      # Paper overview figure (JPG)
 ├── tools/check_release.py
 └── pyproject.toml
 ```
 
-Generated outputs, historical experiment variants, unrelated benchmark adapters, and machine artifacts are excluded.
+Bundled seed skills are **disabled by default**, including in all five paper launchers.
+
 
 ## Installation
 
@@ -90,7 +95,7 @@ pip install -e ".[webarena]"
 pip install -e ".[all,dev]"
 ```
 
-All five launchers use AWS Bedrock. Configure an AWS profile or the standard AWS environment variables, and make sure the requested Claude models are enabled in `us-west-2` (or pass another `--region`). If using `.env.example`, export it before running:
+All models used by the five paper launchers—including the solver, selector, curator, and model-based judge—are accessed through Amazon Bedrock. Configure an AWS profile or the standard AWS environment variables, and make sure the required Claude models are enabled in `us-west-2` (or pass another `--region`). If using `.env.example`, export it before running:
 
 ```bash
 set -a
@@ -189,44 +194,8 @@ Model shortcuts used by the launchers:
 | `2` | Claude Sonnet 4.5 |
 | `3` | Claude Opus 4.5 |
 
-## Reproducing the Paper Runs
 
-Each shell script is derived from the latest active configuration in the original experiment script. The release defaults to no seed skills, and the WebArena launcher evolves from failures rather than enabling `--evolve-all`. Run from any directory:
 
-```bash
-bash scripts/run_cl_evolve.sh
-bash scripts/run_swe_evolve.sh
-bash scripts/run_terminal_evolve.sh
-bash scripts/run_tau_bench_evolve.sh
-bash scripts/run_webarena_evolve.sh
-```
-
-The scripts use the original Conda environment name `mem`. Override it without editing the commands:
-
-```bash
-CONDA_ENV=my-env bash scripts/run_swe_evolve.sh
-```
-
-CL-Bench and WebArena retain the original dataset defaults while supporting portable overrides:
-
-```bash
-CL_BENCH_DIR=/path/to/CL-bench bash scripts/run_cl_evolve.sh
-WEBARENA_DIR=/path/to/webarena-infinity bash scripts/run_webarena_evolve.sh
-```
-
-Bundled seed skills are **disabled by default**, including in all five paper launchers. SWE-bench, Terminal-Bench, and WebArena can opt in with `--use-seed-skills`. SWE-bench and Terminal-Bench also accept `--seed-workspace` for loading a custom or previously evolved workspace.
-
-The five Python entry points are also installed as console commands:
-
-```text
-evo-harness-cl
-evo-harness-swe
-evo-harness-tau
-evo-harness-terminal
-evo-harness-webarena
-```
-
-Pass `--help` to inspect all benchmark-specific options.
 
 ## Output Layout
 
@@ -246,14 +215,12 @@ Exact files differ slightly by benchmark, but every pipeline preserves the evolv
 
 ## Citation
 
+If you find it useful, feel free to cite our work:
+
 ```bibtex
 @article{wei2026evoharness,
-  title={EVO-HARNESS: Context-to-Harness Skill Compilation for Self-Evolving Agents},
+  title={Evo-Harness: Context-to-Harness Skill Compilation for Self-Evolving Agents},
   author={Wei, Tianxin and Shi, Zhan and Lin, Minhua and He, Bing and Liu, Zewen and Sang, Yisi and Bei, Yuanchen and Ning, Xuying and Zou, Jiaru and Li, Ting-Wei and Lin, Xiao and Zhao, Yanjun and Wang, Chi and Dumoulin, Benoit and Wang, Dakuo and He, Jingrui and Lu, Hanqing},
   year={2026}
 }
 ```
-
-## License
-
-MIT. See [LICENSE](LICENSE).

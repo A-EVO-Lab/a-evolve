@@ -19,7 +19,7 @@ REQUIRED_ENTRY_POINTS = [
     ROOT / "evo_harness" / "terminal_bench.py",
     ROOT / "evo_harness" / "webarena_infinity.py",
 ]
-REQUIRED_FIGURES = [ROOT / "figures" / "main.pdf", ROOT / "figures" / "main.png"]
+REQUIRED_FIGURES = [ROOT / "figures" / "main.jpg"]
 
 
 def main() -> int:
