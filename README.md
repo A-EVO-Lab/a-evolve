@@ -62,7 +62,6 @@ Batch-level compilation lets EVO-HARNESS identify both task-specific procedures 
 │   └── run_webarena_evolve.sh
 ├── seed_skills/                  # SWE, Terminal, and WebArena seed skills
 ├── figures/                      # Paper overview figure (JPG)
-├── tools/check_release.py
 └── pyproject.toml
 ```
 
@@ -95,7 +94,9 @@ pip install -e ".[webarena]"
 pip install -e ".[all,dev]"
 ```
 
-All models used by the five paper launchers—including the solver, selector, curator, and model-based judge—are accessed through Amazon Bedrock. Configure an AWS profile or the standard AWS environment variables, and make sure the required Claude models are enabled in `us-west-2` (or pass another `--region`). If using `.env.example`, export it before running:
+All models used by the five paper launchers—including the solver, selector, curator, and model-based judge—are accessed through Amazon Bedrock.
+
+Configure an AWS profile or the standard AWS environment variables, and make sure the required Claude models are enabled in `us-west-2` (or pass another `--region`). If using `.env.example`, export it before running:
 
 ```bash
 set -a
@@ -103,7 +104,7 @@ source .env
 set +a
 ```
 
-## Benchmark Setup
+## Benchmark Running
 
 | Benchmark | Tasks | Install extra | External requirements | Evaluation |
 |---|---:|---|---|---|
