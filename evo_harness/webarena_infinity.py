@@ -1837,8 +1837,8 @@ def main():
                    help="Baseline mode: skip propose + curation")
     p.add_argument("--evolve-all", action="store_true",
                    help="Propose for ALL tasks, not just failures")
-    p.add_argument("--no-seed-skills", action="store_true",
-                   help="Skip seed skills")
+    p.add_argument("--use-seed-skills", action="store_true",
+                   help="Opt in to the bundled seed skills (default: disabled)")
     p.add_argument("--base-port", type=int, default=8001,
                    help="Starting port for worker servers (each worker gets its own port)")
     p.add_argument("--feedback-level", type=str, default="standard",
@@ -1897,7 +1897,7 @@ def main():
         (workspace_dir / "skills").mkdir(exist_ok=True)
         (workspace_dir / "skills" / "topic").mkdir(exist_ok=True)
         (workspace_dir / "skills" / "general").mkdir(exist_ok=True)
-        if not args.no_seed_skills:
+        if args.use_seed_skills:
             _init_seed_skills(workspace_dir)
 
     log_dir = output_dir / "logs"

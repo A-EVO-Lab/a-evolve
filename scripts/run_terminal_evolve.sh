@@ -12,7 +12,6 @@ conda run -n "$CONDA_ENV" --no-capture-output python evo_harness/terminal_bench.
     --batch-size 10 \
     --shuffle --shuffle-seed 42 \
     --workers 10 \
-    --no-seed-skills \
     --max-general-skills 5 \
     --max-skills-per-topic 0 \
     --feedback-level minimal \

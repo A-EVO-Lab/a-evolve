@@ -19,12 +19,16 @@ REQUIRED_ENTRY_POINTS = [
     ROOT / "evo_harness" / "terminal_bench.py",
     ROOT / "evo_harness" / "webarena_infinity.py",
 ]
+REQUIRED_FIGURES = [ROOT / "figures" / "main.pdf", ROOT / "figures" / "main.png"]
 
 
 def main() -> int:
     missing = [str(path.relative_to(ROOT)) for path in REQUIRED_ENTRY_POINTS if not path.is_file()]
     if missing:
         raise SystemExit(f"Missing benchmark entry points: {', '.join(missing)}")
+    missing_figures = [str(path.relative_to(ROOT)) for path in REQUIRED_FIGURES if not path.is_file()]
+    if missing_figures:
+        raise SystemExit(f"Missing paper figures: {', '.join(missing_figures)}")
     if (ROOT / "examples").exists():
         raise SystemExit("Legacy examples/ directory must not exist in the release")
 
@@ -67,6 +71,13 @@ def main() -> int:
         raise SystemExit(f"Expected exactly five benchmark launchers, found {len(shell_files)}")
     for path in shell_files:
         subprocess.run(["bash", "-n", str(path)], check=True)
+        command = path.read_text(encoding="utf-8")
+        if "--use-seed-skills" in command or "--no-seed-skills" in command:
+            raise SystemExit(f"Paper launcher must use the default no-seed setting: {path.name}")
+
+    webarena_launcher = (ROOT / "scripts" / "run_webarena_evolve.sh").read_text(encoding="utf-8")
+    if "--evolve-all" in webarena_launcher:
+        raise SystemExit("WebArena paper launcher must not enable --evolve-all")
 
     print(
         f"Validated {len(python_files)} Python files, "

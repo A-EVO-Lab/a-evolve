@@ -17,9 +17,7 @@ conda run -n "$CONDA_ENV" --no-capture-output python evo_harness/webarena_infini
     --batch-size 8 --workers 8 \
     --max-skills-per-topic 5 \
     --max-general-skills 5 \
-    --no-seed-skills \
     --max-steps 50 --timeout 2400 \
     --shuffle --shuffle-seed 42 \
     --feedback-level standard \
-    --evolve-all \
-    --output-dir outputs_check/webarena_v2_evolve_all_more_timeout_gate_reset
+    --output-dir outputs_check/webarena_v2_standard_more_timeout_gate_reset

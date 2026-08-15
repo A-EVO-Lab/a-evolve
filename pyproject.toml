@@ -81,6 +81,7 @@ packages = ["agent_evolve", "evo_harness"]
 include = [
     "/agent_evolve",
     "/evo_harness",
+    "/figures",
     "/scripts",
     "/seed_skills",
     "/tools",

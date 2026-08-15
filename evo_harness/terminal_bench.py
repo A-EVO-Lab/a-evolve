@@ -2096,8 +2096,8 @@ def main():
                    help="Use agent evolver with bash tool (aggregates batch info, writes skills directly)")
     p.add_argument("--agent-curate", action="store_true",
                    help="Hybrid: per-task propose + agent curator with bash tool (domain-level organization)")
-    p.add_argument("--no-seed-skills", action="store_true",
-                   help="Skip copying seed skills (for pure baseline without any skills)")
+    p.add_argument("--use-seed-skills", action="store_true",
+                   help="Opt in to the bundled seed skills (default: disabled)")
     p.add_argument("--seed-workspace", type=str, default=None,
                    help="Seed workspace to copy (default: empty)")
     p.add_argument("--feedback-level", type=str, default="standard",
@@ -2163,8 +2163,7 @@ def main():
             (workspace_dir / "skills").mkdir(exist_ok=True)
             (workspace_dir / "skills" / "topic").mkdir(exist_ok=True)
             (workspace_dir / "skills" / "general").mkdir(exist_ok=True)
-        # Always init seed skills (from a-evolve)
-        if not args.no_seed_skills:
+        if args.use_seed_skills:
             _init_seed_skills(workspace_dir)
 
     log_dir = output_dir / "logs"

@@ -13,7 +13,6 @@ conda run -n "$CONDA_ENV" --no-capture-output python evo_harness/swe_bench.py \
     --max-skills-per-topic 5 \
     --max-general-skills 5 \
     --shuffle --shuffle-seed 42 \
-    --no-seed-skills \
     --eval-timeout 300 \
     --feedback-level standard \
     --output-dir outputs/swe_v2_minimal_feedback_gating
