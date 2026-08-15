@@ -19,9 +19,6 @@ env/
 *.swo
 *~
 
-# Hypothesis
-.hypothesis/
-
 # Testing / Linting
 .pytest_cache/
 .ruff_cache/
@@ -39,12 +36,6 @@ Thumbs.db
 !.env.example
 credentials.json
 
-# Agent workspaces (evolution artifacts, not source)
-seed_workspaces/*/memory/episodic/*.jsonl
-seed_workspaces/*/memory/semantic/*.jsonl
-seed_workspaces/*/evolution/
-inspect_evals/
-
 # Logs
 *.log
 
@@ -52,11 +43,11 @@ inspect_evals/
 /*.json
 /*.diff
 
-*.pyc
-
-evolution_workdir
+# Runtime artifacts
+evolution_workdir/
 logs/
 swe_results*/
+
 # Experiment outputs (large, not source)
 outputs*/
 archive/

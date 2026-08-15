@@ -1,5 +1,5 @@
 [project]
-name = "a-evolve"
+name = "evo-harness"
 version = "0.1.0"
 description = "EVO-HARNESS: context-to-harness skill compilation for self-evolving agents"
 readme = "README.md"
@@ -24,41 +24,24 @@ Homepage = "https://github.com/A-EVO-Lab/a-evolve"
 Repository = "https://github.com/A-EVO-Lab/a-evolve"
 Issues = "https://github.com/A-EVO-Lab/a-evolve/issues"
 
+[project.scripts]
+evo-harness-cl = "evo_harness.cl_bench:main"
+evo-harness-swe = "evo_harness.swe_bench:main"
+evo-harness-tau = "evo_harness.tau_bench:main"
+evo-harness-terminal = "evo_harness.terminal_bench:main"
+evo-harness-webarena = "evo_harness.webarena_infinity:main"
+
 [project.optional-dependencies]
-anthropic = [
-    "anthropic>=0.30",
-]
-openai = [
-    "openai>=1.30",
-]
-bedrock = [
-    "boto3>=1.34",
-]
 cl = [
     "boto3>=1.34",
-    "datasets>=4.5.0",
-    "numpy>=1.26",
-    "requests>=2.31",
-    "sentence-transformers>=3.0",
-    "strands-agents>=0.1.0",
-    "tqdm>=4.66",
 ]
 swe = [
     "boto3>=1.34",
     "datasets>=4.5.0",
-    "strands-agents>=0.1.0",
     "swebench>=3.0.0",
 ]
 terminal = [
     "boto3>=1.34",
-    "requests>=2.31",
-    "strands-agents>=0.1.0",
-]
-mcp = [
-    "boto3>=1.34",
-    "datasets>=4.5.0",
-    "mcp>=1.0.0",
-    "strands-agents>=0.1.0",
 ]
 tau = [
     "boto3>=1.34",
@@ -68,22 +51,16 @@ webarena = [
     "boto3>=1.34",
     "browser-use[aws]>=0.5.0",
     "playwright>=1.50",
+    "requests>=2.31",
 ]
 all = [
-    "anthropic>=0.30",
     "boto3>=1.34",
     "browser-use[aws]>=0.5.0",
     "datasets>=4.5.0",
     "litellm>=1.0.0",
-    "mcp>=1.0.0",
-    "numpy>=1.26",
-    "openai>=1.30",
     "playwright>=1.50",
     "requests>=2.31",
-    "sentence-transformers>=3.0",
-    "strands-agents>=0.1.0",
     "swebench>=3.0.0",
-    "tqdm>=4.66",
 ]
 dev = [
     "pytest>=8.0",
@@ -95,17 +72,18 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
-packages = ["agent_evolve"]
+packages = ["agent_evolve", "evo_harness"]
 
 [tool.hatch.build.targets.wheel.force-include]
-"seed_workspaces" = "seed_workspaces"
+"seed_skills" = "seed_skills"
 
 [tool.hatch.build.targets.sdist]
 include = [
     "/agent_evolve",
-    "/examples",
+    "/evo_harness",
     "/scripts",
-    "/seed_workspaces",
+    "/seed_skills",
+    "/tools",
     "/README.md",
     "/LICENSE",
 ]

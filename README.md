@@ -2,9 +2,9 @@
 
 Official implementation of **“EVO-HARNESS: Context-to-Harness Skill Compilation for Self-Evolving Agents.”**
 
-EVO-HARNESS studies online harness learning: a frozen solver processes a stream of tasks while an external skill harness is incrementally updated from execution context and grounded feedback. The implementation supports the five benchmarks used in the paper: CL-Bench, Terminal-Bench 2, SWE-bench Lite, τ-bench, and WebArena-Infinity.
+EVO-HARNESS studies online harness learning: a frozen solver processes a task stream while an external skill harness is updated from execution context and grounded feedback. The release contains the five benchmark pipelines used in the paper and their exact latest experiment configurations.
 
-## Paper Results
+## Results
 
 Main results with Claude Opus 4.6 as the solver (success rate, %):
 
@@ -16,42 +16,46 @@ Main results with Claude Opus 4.6 as the solver (success rate, %):
 
 ## Method
 
-For every task batch, EVO-HARNESS:
+For each task batch, EVO-HARNESS:
 
 1. Selects relevant general and task-type skills from the current harness.
-2. Injects the selected skills into the frozen solver’s context.
-3. Solves and evaluates each task with benchmark-grounded feedback.
-4. Reflects on failed executions to propose reusable candidate skills.
-5. Uses an evolver to accept, merge, revise, or skip candidates.
+2. Injects the selected guidance into the frozen solver.
+3. Solves and evaluates tasks with benchmark-grounded feedback.
+4. Reflects on failures to propose reusable candidate skills.
+5. Curates candidates through accept, merge, revise, and skip operations.
 6. Writes the updated Markdown skill harness for the next batch.
 
-The solver and model parameters remain frozen. Learning occurs through inspectable `SKILL.md` files in the external workspace.
+The model parameters remain frozen. Learning occurs entirely through inspectable `SKILL.md` files.
 
-## Project Structure
+## Repository Structure
 
 ```text
 .
-├── agent_evolve/                  # Core workspace, agent, LLM, and benchmark utilities
-│   ├── agents/{swe,terminal}/     # ReAct solvers and Docker environments
-│   ├── algorithms/aevolve/        # A-EVOLVE framework components
-│   ├── benchmarks/                # Benchmark adapters and evaluation utilities
-│   ├── contract/                  # File-system harness contract
-│   ├── engine/                    # Observation and evolution infrastructure
-│   └── llm/                       # Anthropic, Bedrock, and OpenAI providers
-├── examples/
-│   ├── evolve_cl_bench.py
-│   ├── evolve_swe.py
-│   ├── evolve_tau_bench.py
-│   ├── evolve_terminal.py
-│   └── evolve_webarena_infinity.py
-├── scripts/                       # Main runs, model ablations, and transfer experiments
-├── seed_workspaces/               # Initial benchmark-specific harnesses
-├── .env.example
-├── pyproject.toml
-└── Makefile
+├── evo_harness/                  # Five paper benchmark pipelines
+│   ├── cl_bench.py
+│   ├── swe_bench.py
+│   ├── tau_bench.py
+│   ├── terminal_bench.py
+│   └── webarena_infinity.py
+├── agent_evolve/                 # Shared runtime support used by the pipelines
+│   ├── agents/{swe,terminal}/
+│   ├── benchmarks/cl_bench.py
+│   ├── contract/workspace.py
+│   ├── engine/observer.py
+│   ├── protocol/base_agent.py
+│   └── types.py
+├── scripts/                      # One launcher per paper benchmark
+│   ├── run_cl_evolve.sh
+│   ├── run_swe_evolve.sh
+│   ├── run_tau_bench_evolve.sh
+│   ├── run_terminal_evolve.sh
+│   └── run_webarena_evolve.sh
+├── seed_skills/                  # SWE, Terminal, and WebArena seed skills
+├── tools/check_release.py
+└── pyproject.toml
 ```
 
-Generated benchmark outputs are intentionally excluded from the release. Every run writes its own results and evolved workspace under the selected `--output-dir`.
+Generated outputs, historical experiment variants, unrelated benchmark adapters, and machine artifacts are excluded.
 
 ## Installation
 
@@ -63,30 +67,26 @@ cd a-evolve
 
 conda create -n mem python=3.11 -y
 conda activate mem
-
 pip install -e ".[all,dev]"
+
 cp .env.example .env
 ```
 
-Configure AWS credentials using your normal AWS profile or environment variables. The paper runs primarily use AWS Bedrock in `us-west-2`.
+Configure AWS credentials for Bedrock in `us-west-2` or adjust `--region`.
 
-Some benchmark packages must be installed separately:
+Install the two external benchmark repositories separately:
 
 ```bash
-# τ-bench
 git clone https://github.com/sierra-research/tau-bench.git /path/to/tau-bench
 pip install -e /path/to/tau-bench
 
-# WebArena-Infinity
 git clone https://github.com/web-arena-x/webarena-infinity.git /path/to/webarena-infinity
-
-# Browser runtime
 playwright install chromium
 ```
 
-## Datasets and Evaluation
+## Benchmarks
 
-| Benchmark | Paper tasks | Domain | Evaluation signal |
+| Benchmark | Tasks | Domain | Evaluation |
 |---|---:|---|---|
 | CL-Bench | 1,899 | Adaptive reasoning | Rubric judge |
 | Terminal-Bench 2 | 89 | CLI and scripting | Docker verifier |
@@ -94,15 +94,7 @@ playwright install chromium
 | τ-bench | 165 | Tool use | State verifier |
 | WebArena-Infinity | 80 | Web navigation | State verifier |
 
-- **CL-Bench:** provide `CL-bench-grouped.jsonl` and `CL-bench.jsonl` through `--grouped-path` and `--raw-path`.
-- **Terminal-Bench 2:** challenge definitions are downloaded on first use or supplied with `--challenges-dir`; benchmark Docker images are pulled on demand.
-- **SWE-bench Lite:** `princeton-nlp/SWE-bench_Lite` is downloaded from Hugging Face; SWE-bench Docker images are pulled on demand.
-- **τ-bench:** install the official repository as shown above. Airline and retail data are provided by that package.
-- **WebArena-Infinity:** point `--webarena-dir` to an official checkout and ensure its application services can be launched.
-
-## Running EVO-HARNESS
-
-All commands below are run from the repository root. Model shortcuts used by the entry points are:
+Model shortcuts used by the launchers:
 
 | Shortcut | Model |
 |---|---|
@@ -110,107 +102,70 @@ All commands below are run from the repository root. Model shortcuts used by the
 | `2` | Claude Sonnet 4.5 |
 | `3` | Claude Opus 4.5 |
 
-### SWE-bench Lite
+## Reproducing the Paper Runs
+
+Each shell script contains only the latest active configuration from the original experiment script. Run from any directory:
 
 ```bash
-python examples/evolve_swe.py \
-  --solver-model 1 --curator-model 1 --selector-model 2 \
-  --batch-size 16 --workers 16 \
-  --max-skills-per-topic 5 --max-general-skills 5 \
-  --shuffle --shuffle-seed 42 --no-seed-skills \
-  --eval-timeout 300 --feedback-level standard \
-  --output-dir outputs/swe_evo_harness
+bash scripts/run_cl_evolve.sh
+bash scripts/run_swe_evolve.sh
+bash scripts/run_terminal_evolve.sh
+bash scripts/run_tau_bench_evolve.sh
+bash scripts/run_webarena_evolve.sh
 ```
 
-### Terminal-Bench 2
+The scripts use the original Conda environment name `mem`. Override it without editing the commands:
 
 ```bash
-python examples/evolve_terminal.py \
-  --solver-model 1 --curator-model 1 --selector-model 2 \
-  --batch-size 10 --workers 10 \
-  --shuffle --shuffle-seed 42 --no-seed-skills \
-  --max-general-skills 5 --max-skills-per-topic 0 \
-  --feedback-level minimal \
-  --output-dir outputs/terminal_evo_harness
+CONDA_ENV=my-env bash scripts/run_swe_evolve.sh
 ```
 
-### τ-bench
+CL-Bench and WebArena retain the original dataset defaults while supporting portable overrides:
 
 ```bash
-python examples/evolve_tau_bench.py \
-  --env both --task-split test \
-  --solver-model 1 --user-model 2 \
-  --curator-model 1 --selector-model 2 \
-  --batch-size 10 --workers 10 \
-  --max-skills-per-topic 0 --max-general-skills 5 \
-  --feedback-level standard --shuffle --shuffle-seed 42 \
-  --output-dir outputs/tau_bench_evo_harness
+CL_BENCH_DIR=/path/to/CL-bench bash scripts/run_cl_evolve.sh
+WEBARENA_DIR=/path/to/webarena-infinity bash scripts/run_webarena_evolve.sh
 ```
 
-### CL-Bench
+The five Python entry points are also installed as console commands:
 
-```bash
-python examples/evolve_cl_bench.py \
-  --grouped-path /path/to/CL-bench-grouped.jsonl \
-  --raw-path /path/to/CL-bench.jsonl \
-  --max-samples 500 --max-evolve-turns 1 --no-retest \
-  --solver-model 1 --curator-model 1 --selector-model 2 \
-  --max-skills-per-context 5 --max-general-skills 5 \
-  --feedback-level 2 --batch-size 16 --batch-workers 16 \
-  --output-dir outputs/cl_bench_evo_harness
+```text
+evo-harness-cl
+evo-harness-swe
+evo-harness-tau
+evo-harness-terminal
+evo-harness-webarena
 ```
 
-`--max-samples` limits grouped contexts, not the flattened task count; the paper’s 500-context configuration contains the full 1,899-task stream.
+Pass `--help` to inspect all benchmark-specific options.
 
-### WebArena-Infinity
-
-```bash
-python examples/evolve_webarena_infinity.py \
-  --webarena-dir /path/to/webarena-infinity \
-  --web-app superhuman-general --difficulty hard \
-  --solver-model 1 --curator-model 1 --selector-model 2 \
-  --batch-size 8 --workers 8 --max-steps 50 --timeout 2400 \
-  --max-skills-per-topic 5 --max-general-skills 5 \
-  --no-seed-skills --shuffle --shuffle-seed 42 \
-  --feedback-level standard --evolve-all \
-  --output-dir outputs/webarena_evo_harness
-```
-
-### Baselines and Ablations
-
-Use `--no-evolve --no-seed-skills` for a no-harness baseline. The original launch configurations used for model, feedback, curator, and transfer studies are preserved in `scripts/`:
-
-```bash
-bash scripts/run_all.sh
-bash scripts/run_swe_cross_transfer.sh
-bash scripts/run_swe_curator_ablation.sh
-bash scripts/run_all_45.sh
-bash scripts/run_all_47.sh
-bash scripts/run_all_kimi25.sh
-bash scripts/run_all_oss.sh
-```
-
-Several scripts retain the original `/fsx/tianxin/...` dataset defaults to preserve the exact experiment commands. Edit only the external dataset paths for a different machine; benchmark logic and experiment hyperparameters do not need to change.
-
-## Output Structure
+## Output Layout
 
 ```text
 output-dir/
 ├── workspace/
 │   └── skills/
-│       ├── general/              # Cross-task guidance
-│       └── topic/                # Task-type or domain guidance
-├── logs/                         # Solver/evolver conversations and diagnostics
-├── results/                      # Per-task results
-├── summary.json                  # Aggregate metrics where supported
-└── all_results.jsonl             # Cumulative records where supported
+│       ├── general/
+│       └── topic/
+├── logs/
+├── results/
+├── summary.json
+└── all_results.jsonl
 ```
 
-## Reproducibility
+Exact files differ slightly by benchmark, but every pipeline preserves the evolved workspace and per-task evaluation records.
 
-The migrated Python entry points, core package, and seed workspaces are preserved byte-for-byte from the original `evo_skill/evo-harness-code` snapshot. The cleanup removes generated outputs and OS metadata only; it does not change benchmark, solver, evolver, prompt, selection, or evaluation logic.
+## Validation
 
-Use the same model identifiers, provider revisions, datasets, task ordering, random seed (`42`), Docker images, and command-line arguments to reproduce the original setup. Hosted LLM APIs and externally maintained benchmark environments can still introduce run-to-run variation even when the local code is identical.
+Run the dependency-free release checks with:
+
+```bash
+make test
+```
+
+The check validates Python syntax, seed JSON/JSONL files, packaging metadata, the five entry points, and exactly five shell launchers.
+
+The benchmark algorithms, prompts, model settings, task ordering, and evaluation logic are preserved from the original `evo_skill/evo-harness-code` snapshot. Only unreachable historical helpers and components outside the five-paper-benchmark release scope were removed. Hosted model revisions and external benchmark environments may still introduce run-to-run variation.
 
 ## Citation
 

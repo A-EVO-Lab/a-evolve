@@ -1,3 +1,1 @@
-from .agent import SweAgent
-
-__all__ = ["SweAgent"]
+"""SWE-bench solver support."""

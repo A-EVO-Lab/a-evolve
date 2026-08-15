@@ -11,7 +11,6 @@ from __future__ import annotations
 import logging
 import subprocess
 import time
-from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -178,7 +177,6 @@ def _exec_submit(container_name: str, log: logging.Logger) -> str:
 
 def extract_conversation(messages: list[dict]) -> list[dict]:
     """Convert Bedrock Converse messages to standardized format."""
-    import json
     conv = []
     for msg in messages:
         role = msg.get("role", "unknown")

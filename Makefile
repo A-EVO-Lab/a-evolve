@@ -4,10 +4,10 @@ install:
 	pip install -e ".[all,dev]"
 
 test:
-	python3 scripts/check_release.py
+	python3 tools/check_release.py
 
 lint:
-	ruff check agent_evolve/ examples/
+	ruff check agent_evolve/ evo_harness/ tools/
 
 fmt:
-	ruff format agent_evolve/ examples/
+	ruff format agent_evolve/ evo_harness/ tools/

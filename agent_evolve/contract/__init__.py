@@ -1,5 +1,5 @@
-from .manifest import Manifest
-from .workspace import AgentWorkspace
-from .schema import validate_workspace
+"""File-system harness workspace primitives."""
 
-__all__ = ["Manifest", "AgentWorkspace", "validate_workspace"]
+from .workspace import AgentWorkspace
+
+__all__ = ["AgentWorkspace"]
