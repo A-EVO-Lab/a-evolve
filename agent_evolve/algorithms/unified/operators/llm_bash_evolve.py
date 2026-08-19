@@ -90,6 +90,21 @@ def _make_workspace_bash(workspace_root: str | Path):
 
 
 def _resolve_llm(model: str, region: str):
+    if model.startswith(("atlascloud:", "atlascloud/")):
+        from ..openai_compat import OpenAICompatProvider
+
+        model_id = model.removeprefix("atlascloud:").removeprefix("atlascloud/")
+        return (
+            OpenAICompatProvider(
+                model=model_id or "qwen/qwen3.5-flash",
+                api_key=os.environ.get("ATLASCLOUD_API_KEY")
+                or os.environ.get("ATLAS_CLOUD_API_KEY"),
+                base_url=os.environ.get("ATLASCLOUD_API_BASE")
+                or os.environ.get("ATLAS_CLOUD_API_BASE")
+                or "https://api.atlascloud.ai/v1",
+            ),
+            "atlascloud",
+        )
     if (
         model.startswith("openai:")
         or model.startswith("/")
