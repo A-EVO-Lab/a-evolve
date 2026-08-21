@@ -52,6 +52,16 @@ def make_workspace_bash(workspace_root: str | Path):
 def create_default_llm(config: EvolveConfig) -> LLMProvider:
     """Create the default LLM provider based on the evolver_model config string."""
     model = config.evolver_model
+    from ...llm.model_resolver import is_atlascloud_model, strip_atlascloud_prefix
+
+    if is_atlascloud_model(model):
+        from ...llm.atlascloud import AtlasCloudProvider
+
+        return AtlasCloudProvider(
+            model=strip_atlascloud_prefix(model),
+            api_key=config.extra.get("atlascloud_api_key"),
+            base_url=config.extra.get("atlascloud_api_base"),
+        )
 
     if "." in model and ("anthropic" in model or "amazon" in model or "meta" in model):
         from ...llm.bedrock import BedrockProvider

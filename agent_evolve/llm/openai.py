@@ -10,14 +10,25 @@ from .base import LLMMessage, LLMProvider, LLMResponse
 class OpenAIProvider(LLMProvider):
     """LLM provider using the OpenAI API (GPT / o-series models)."""
 
-    def __init__(self, model: str = "gpt-4o", api_key: str | None = None):
+    def __init__(
+        self,
+        model: str = "gpt-4o",
+        api_key: str | None = None,
+        base_url: str | None = None,
+    ):
         try:
             import openai
         except ImportError:
             raise ImportError("pip install openai  (or: pip install agent-evolve[openai])")
 
         self.model = model
-        self.client = openai.OpenAI(api_key=api_key) if api_key else openai.OpenAI()
+        kwargs: dict[str, str] = {}
+        if api_key:
+            kwargs["api_key"] = api_key
+        if base_url:
+            kwargs["base_url"] = base_url
+            kwargs.setdefault("api_key", "EMPTY")
+        self.client = openai.OpenAI(**kwargs)
 
     def complete(
         self,
