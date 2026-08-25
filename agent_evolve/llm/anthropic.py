@@ -2,9 +2,26 @@
 
 from __future__ import annotations
 
+import inspect
 from typing import Any
 
 from .base import LLMMessage, LLMProvider, LLMResponse
+
+
+def _accepts_keyword_argument(callable_obj: Any, argument: str) -> bool:
+    """Return whether a callable's signature accepts a keyword argument.
+
+    If a wrapper does not expose an inspectable signature, retain the existing
+    behavior and let the SDK surface any argument error from the actual call.
+    """
+    try:
+        parameters = inspect.signature(callable_obj).parameters
+    except (TypeError, ValueError):
+        return True
+
+    return argument in parameters or any(
+        parameter.kind is inspect.Parameter.VAR_KEYWORD for parameter in parameters.values()
+    )
 
 
 class AnthropicProvider(LLMProvider):
@@ -38,8 +55,9 @@ class AnthropicProvider(LLMProvider):
             "model": self.model,
             "messages": api_messages,
             "max_tokens": max_tokens,
-            "temperature": temperature,
         }
+        if _accepts_keyword_argument(self.client.messages.create, "temperature"):
+            params["temperature"] = temperature
         if system:
             params["system"] = system
 
