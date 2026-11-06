@@ -1,7 +1,7 @@
 # A-Evolve 🧬: The Universal Infrastructure for Self-Improving Agents
 
 [![GitHub stars](https://img.shields.io/github/stars/A-EVO-Lab/a-evolve?style=social)](https://github.com/A-EVO-Lab/a-evolve)
-[![License: CC-BY-NC-4.0](https://img.shields.io/badge/License-CC_BY_4.0-blue.svg)](https://creativecommons.org/licenses/by/4.0/)
+[![License: CC BY-NC 4.0](https://img.shields.io/badge/License-CC_BY--NC_4.0-lightgrey.svg)](https://creativecommons.org/licenses/by-nc/4.0/)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![arXiv](https://img.shields.io/badge/arXiv-2602.00359-b31b1b.svg)](https://arxiv.org/abs/2602.00359)
 
@@ -382,4 +382,4 @@ If you use A-Evolve in your research, please cite our position paper:
 
 ## License
 
-[MIT](https://opensource.org/licenses/MIT)
+[![License: CC BY-NC 4.0](https://img.shields.io/badge/License-CC_BY--NC_4.0-lightgrey.svg)](https://creativecommons.org/licenses/by-nc/4.0/)
